@@ -14,7 +14,7 @@ python tools/tinyrt.py pack path/to/my-app --key path/to/application-signing.pem
 python tools/tinyrt.py validate path/to/my-app/build/demo.my-app.trpkg --public-key path/to/application-public.sec1 --key-id 100
 ```
 
-`new` 只创建尚不存在的目录。`build` 编译清单内的所有 C 源文件，导出三个 ABI 回调；产物默认位于应用的 `build/<app_id>.wasm`。`pack` 读取同一清单，默认使用该 Wasm 并写入 `build/<app_id>.trpkg`。`--output` 可指定产物路径；`pack --wasm` 可选择已有 Wasm。输出不会覆盖源文件、清单、声明资源或签名输入。`build --output` 必须使用 `.wasm`，`pack --output` 必须使用 `.trpkg`；如果目标已存在，还需匹配对应格式魔数，才能重复生成。后缀同时检查请求路径及解析后的链接目标，因此不能把普通头文件、文本或空文件当作输出；已损坏的产物需选择新路径。已有合法产物可以原路径重建。
+`new` 只创建尚不存在的目录。`build` 编译清单内的所有 C 源文件，导出三个必需 ABI 回调，以及应用定义的可选 `tinyrt_stop()`；产物默认位于应用的 `build/<app_id>.wasm`。`pack` 读取同一清单，默认使用该 Wasm 并写入 `build/<app_id>.trpkg`。`--output` 可指定产物路径；`pack --wasm` 可选择已有 Wasm。输出不会覆盖源文件、清单、声明资源或签名输入。`build --output` 必须使用 `.wasm`，`pack --output` 必须使用 `.trpkg`；如果目标已存在，还需匹配对应格式魔数，才能重复生成。后缀同时检查请求路径及解析后的链接目标，因此不能把普通头文件、文本或空文件当作输出；已损坏的产物需选择新路径。已有合法产物可以原路径重建。
 
 **`validate` 只验证包信封。** 它检查规范头字段、策略、长度、载荷摘要、P-256 low-S 签名和显式信任 key ID；JSON 输出始终包含 `validation_level: envelope`、`wasm_validation: not_performed`。它不检查 Wasm 导入/导出、执行预算或应用行为。安装端仍必须调用 TinyRT core 的完整 Wasm 校验，运行测试另行执行。
 
@@ -59,12 +59,16 @@ python tools/tinyrt.py validate examples/pomodoro/build/demo.pomodoro.trpkg --de
 
 `assets` 只是包内经过签名的原始字节；ABI 1 尚无资源读取或通用文件系统 API。KV 是每应用 16 个 i32，不能把它描述为文件系统。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
 
+当前固定的 core 支持 `draw_round_rect`、`draw_arc` 和单行 `draw_text_box`；文本框可选择 18/24/36/48 号字体与左/中/右对齐。旧 core 会拒绝尚不支持的导入，包信封通过不能证明图形兼容。普通 clear/rect/text 应用仍可使用原接口。
+
+可选 `int32_t tinyrt_stop(void)` 用于正常离场前的有界保存；省略该定义的旧应用仍可构建。支持它的宿主在初始化成功后最多调用一次，失败或断电不保证调用；返回成功才提交变化的 KV，随后销毁实例。它不是 guest 主动退出接口。Zig 0.13 通过头文件的 Wasm `export_name` 属性导出已定义回调，Clang 同时使用 `--export-if-defined`。
+
 ## 示例和安装
 
 - [counter](examples/counter/README.md)：触摸加一，保存计数。
 - [color](examples/color/README.md)：触摸切换颜色。
 - [pomodoro](examples/pomodoro/README.md)：25m/5m 前台番茄钟与明确标记的 25s/5s 验证包。
-- `examples/nes`：独立 N1 CPU/PPU 可行性试验；状态和边界以该目录说明为准。
+- `examples/nes`：N1 CPU/PPU 诊断样例，固定自制 ROM 与输出 oracle 用于验证执行边界；不属于可玩 NES 模拟器。状态和限制以该目录说明为准。
 
 BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需要 Bleak；Windows 配对还需要对应 WinRT Python 包。设备配对、信任集和具体传输 profile 由产品配置提供，应用构建不依赖这些包。
 

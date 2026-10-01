@@ -133,6 +133,9 @@ def build(path,cc=None,output=None):
               '-Wl,--export=tinyrt_init','-Wl,--export=tinyrt_event','-Wl,--export=tinyrt_render',
               '-Wl,-z,stack-size=16384',
               f'-Wl,--max-memory={m["memory_pages"]*65536:#x}','-Wl,--strip-all']
+    # Zig 0.13 rejects --export-if-defined. The bundled guest declaration uses
+    # export_name only when compiling Wasm; a declaration alone emits no export.
+    if Path(cc).stem.lower()!='zig': command+=['-Wl,--export-if-defined=tinyrt_stop']
     command += [f'-D{name}={value}' for name,value in m.get('defines',{}).items()]
     env=os.environ.copy();env.setdefault('ZIG_GLOBAL_CACHE_DIR',str(output.parent/'zig-cache'))
     with tempfile.TemporaryDirectory(prefix='tinyrt-build-',dir=output.parent) as temp:
