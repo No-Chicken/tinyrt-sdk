@@ -1,0 +1,126 @@
+{
+  "scope": "two fresh instances, frame 13 plus frame 8, A latch on/off, init/event/render",
+  "minimum_passing_budget_for_trace": 39244,
+  "policy_budget": 100000,
+  "trials": [
+    {
+      "budget": 100000,
+      "pass": true,
+      "exit_code": 0,
+      "output": "WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM PASS checks=24080 budget=100000 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=491.391 p50_us=5.000 p95_us=89.000 max_us=434.100",
+      "stderr": ""
+    },
+    {
+      "budget": 50000,
+      "pass": true,
+      "exit_code": 0,
+      "output": "WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM PASS checks=24080 budget=50000 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=496.135 p50_us=5.000 p95_us=89.200 max_us=713.600",
+      "stderr": ""
+    },
+    {
+      "budget": 25000,
+      "pass": false,
+      "exit_code": 1,
+      "output": "CONTEXT calls=511 slices=254 frame=0 ready=1 line=0\nFAIL line=29 result==TINYRT_OK; guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    },
+    {
+      "budget": 37500,
+      "pass": false,
+      "exit_code": 1,
+      "output": "CONTEXT calls=689 slices=343 frame=0 ready=1 line=89\nFAIL line=29 result==TINYRT_OK; guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    },
+    {
+      "budget": 43750,
+      "pass": true,
+      "exit_code": 0,
+      "output": "WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM PASS checks=24080 budget=43750 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=495.390 p50_us=5.000 p95_us=89.300 max_us=493.700",
+      "stderr": ""
+    },
+    {
+      "budget": 40625,
+      "pass": true,
+      "exit_code": 0,
+      "output": "WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM PASS checks=24080 budget=40625 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=497.848 p50_us=5.000 p95_us=88.700 max_us=726.200",
+      "stderr": ""
+    },
+    {
+      "budget": 39063,
+      "pass": false,
+      "exit_code": 1,
+      "output": "CONTEXT calls=1035 slices=516 frame=1 ready=1 line=0\nFAIL line=29 result==TINYRT_OK; guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    },
+    {
+      "budget": 39844,
+      "pass": true,
+      "exit_code": 0,
+      "output": "WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM PASS checks=24080 budget=39844 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=505.793 p50_us=5.000 p95_us=90.900 max_us=598.700",
+      "stderr": ""
+    },
+    {
+      "budget": 39454,
+      "pass": true,
+      "exit_code": 0,
+      "output": "WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM PASS checks=24080 budget=39454 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=505.890 p50_us=5.000 p95_us=91.800 max_us=470.100",
+      "stderr": ""
+    },
+    {
+      "budget": 39259,
+      "pass": true,
+      "exit_code": 0,
+      "output": "WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM PASS checks=24080 budget=39259 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=501.099 p50_us=5.000 p95_us=91.000 max_us=465.500",
+      "stderr": ""
+    },
+    {
+      "budget": 39161,
+      "pass": false,
+      "exit_code": 1,
+      "output": "CONTEXT calls=1035 slices=516 frame=1 ready=1 line=0\nFAIL line=29 result==TINYRT_OK; guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    },
+    {
+      "budget": 39210,
+      "pass": false,
+      "exit_code": 1,
+      "output": "CONTEXT calls=1035 slices=516 frame=1 ready=1 line=0\nFAIL line=29 result==TINYRT_OK; guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    },
+    {
+      "budget": 39235,
+      "pass": false,
+      "exit_code": 1,
+      "output": "CONTEXT calls=1035 slices=516 frame=1 ready=1 line=0\nFAIL line=29 result==TINYRT_OK; guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    },
+    {
+      "budget": 39247,
+      "pass": true,
+      "exit_code": 0,
+      "output": "WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM PASS checks=24080 budget=39247 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=497.690 p50_us=5.000 p95_us=90.300 max_us=504.300",
+      "stderr": ""
+    },
+    {
+      "budget": 39241,
+      "pass": false,
+      "exit_code": 1,
+      "output": "CONTEXT calls=1035 slices=516 frame=1 ready=1 line=0\nFAIL line=29 result==TINYRT_OK; guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    },
+    {
+      "budget": 39244,
+      "pass": true,
+      "exit_code": 0,
+      "output": "WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51\nWASM PASS checks=24080 budget=39244 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=498.003 p50_us=5.000 p95_us=90.000 max_us=436.400",
+      "stderr": ""
+    },
+    {
+      "budget": 39243,
+      "pass": false,
+      "exit_code": 1,
+      "output": "CONTEXT calls=1035 slices=516 frame=1 ready=1 line=0\nFAIL line=29 result==TINYRT_OK; guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    }
+  ]
+}

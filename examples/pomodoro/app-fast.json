@@ -1,0 +1,1 @@
+{"app_id":"demo.pomodoro.fast","title":"TEST Pomodoro 25s/5s","version":1,"abi_version":1,"permissions":15,"memory_pages":2,"budget":100000,"sources":["main.c"],"defines":{"POMODORO_FAST":1}}

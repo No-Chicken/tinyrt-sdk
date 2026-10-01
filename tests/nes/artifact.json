@@ -1,0 +1,22 @@
+{
+  "wasm_bytes": 72429,
+  "wasm_sha256": "ad4793eb93f2204d70c4aba6635ec492394a3368002129f77243e020a027e2e3",
+  "imports": [
+    "tinyrt.draw_clear",
+    "tinyrt.draw_text"
+  ],
+  "memories": [
+    {
+      "initial_pages": 4,
+      "maximum_pages": 16
+    }
+  ],
+  "exports": [
+    "memory",
+    "tinyrt_init",
+    "tinyrt_event",
+    "tinyrt_render"
+  ],
+  "package_bytes": 72685,
+  "package_sha256": "a7e5900569c932b27bf91deba53fa515c9593991ec6e4da336a75a6ab537ebef"
+}

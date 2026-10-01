@@ -1,0 +1,9 @@
+{
+  "core_revision": "67c833c914b04a9dd291fca29059e18928d6fb1d",
+  "files": {
+    "abi-v1.json": "ae1ad3fb5c3732abdc938ed9346dfa7df77476e901940bc30bf84b7f08f7e781",
+    "guest-v1.h": "5670594bbe3f325f05cd7e69ffc81cf145ae8f8150bab4c90e0d361f1192bce1",
+    "wire-v1.json": "8195150c9d1496e608f01b18ff0697edae96e86ff655aeb9131d117b2d07c5cf"
+  },
+  "format_version": 1
+}

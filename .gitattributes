@@ -1,0 +1,7 @@
+# Stable source checkout; imported upstream files preserve their recorded bytes.
+* text=auto eol=lf
+/third_party/nes/upstream/** -text
+*.wasm -text
+*.trpkg -text
+*.nes -text
+*.bin -text
