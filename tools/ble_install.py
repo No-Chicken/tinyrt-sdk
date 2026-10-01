@@ -137,6 +137,26 @@ def info_json(raw):
         'version':struct.unpack_from('<I',raw,32)[0],'sha256':raw[36:68].hex(),
         'size':struct.unpack_from('<I',raw,68)[0]}
 
+async def directory_records(link,opcode):
+    raw=await link.management(opcode)
+    if not raw or raw[0]>2 or len(raw)!=1+raw[0]*72:
+        raise ValueError('invalid directory reply')
+    return [raw[off:off+72] for off in range(1,len(raw),72)]
+
+async def removal_identity(link,app_id):
+    if not re.fullmatch(r'[a-z0-9._-]{1,31}',app_id):
+        raise ValueError('invalid app ID')
+    hello=await link.management(protocol.HELLO)
+    if len(hello)!=8:raise ValueError('unsupported HELLO')
+    records=await directory_records(link,protocol.LIST)
+    if hello[7]&protocol.CAP_QUARANTINE:
+        records+=await directory_records(link,protocol.LIST_QUARANTINED)
+    requested=app_id.encode('ascii').ljust(32,b'\0')
+    matches=[value for value in records if value[:32]==requested]
+    if not matches:raise ValueError('app ID not found in device directory')
+    if len(matches)!=1:raise ValueError('ambiguous app ID in device directory')
+    return matches[0]
+
 async def run(args):
     from bleak import BleakClient, BleakScanner, BleakError
     if args.scan:
@@ -160,21 +180,30 @@ async def run(args):
     data=None
     if args.package:
         data=Path(args.package).read_bytes();info=protocol.package_info(data)
-    if args.command in ('install','query','launch','uninstall') and data is None:
+    app_id=getattr(args,'app_id',None)
+    if app_id and (args.command!='uninstall' or data is not None):
+        raise ValueError('--app-id is only for uninstall without a package file')
+    if args.command in ('install','query','launch','uninstall') and data is None and not app_id:
         raise ValueError('this command requires a TinyRT package file')
     if args.command=='install':
         def progress(done,total):print(f'PROGRESS {done}/{total}',flush=True)
         result=await protocol.install(connect,data,progress)
         print(json.dumps({'result':result,**info_json(info)}));return
     async with connect() as link:
-        if args.command=='list':
-            raw=await link.management(protocol.LIST)
-            if not raw or len(raw)!=1+raw[0]*72:raise ValueError('invalid directory reply')
-            print(json.dumps([info_json(raw[off:off+72]) for off in range(1,len(raw),72)]));return
+        if args.command in ('list','quarantine'):
+            opcode=protocol.LIST
+            if args.command=='quarantine':
+                hello=await link.management(protocol.HELLO)
+                if len(hello)!=8 or not hello[7]&protocol.CAP_QUARANTINE:
+                    raise ValueError('host does not support quarantine diagnostics')
+                opcode=protocol.LIST_QUARANTINED
+            records=await directory_records(link,opcode)
+            print(json.dumps([info_json(raw) for raw in records]));return
         if args.command=='hello':
             print((await link.management(protocol.HELLO)).hex());return
         if args.command=='stop':
             await link.management(protocol.STOP);print('stopped');return
+        if app_id:info=await removal_identity(link,app_id)
         opcode={'query':protocol.QUERY,'launch':protocol.LAUNCH,'uninstall':protocol.UNINSTALL}[args.command]
         raw=await link.management(opcode,info[:68])
         if args.command=='query':
@@ -187,9 +216,10 @@ async def run(args):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command',nargs='?',default='list',choices=['pair','hello','list','install','query','launch','uninstall','stop'])
+    parser.add_argument('command',nargs='?',default='list',choices=['pair','hello','list','quarantine','install','query','launch','uninstall','stop'])
     parser.add_argument('package',nargs='?')
     parser.add_argument('--address');parser.add_argument('--scan',action='store_true')
+    parser.add_argument('--app-id',help='uninstall the exact current directory identity without the original package')
     parser.add_argument('--pair',action='store_true',help='physically open pairing on the badge first')
     parser.add_argument('--pin',help='six-digit display PIN; omitted requires an interactive Windows console')
     parser.add_argument('--timeout',type=float,default=30)

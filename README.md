@@ -59,6 +59,8 @@ python tools/tinyrt.py validate examples/pomodoro/build/demo.pomodoro.trpkg --de
 
 `assets` 只是包内经过签名的原始字节；ABI 1 尚无资源读取或通用文件系统 API。KV 是每应用 16 个 i32，不能把它描述为文件系统。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
 
+当前 core 将普通 KV 保存尝试按 manager 全局五秒合并，正常停止强制刷新；`kv_set` 成功只表示 RAM 更新，突然断电可能丢失未持久化变化。故障回调不会获得 stop 补救机会。正常停止及重启是节流例外，应用仍应只保存有意义的变化。
+
 当前固定的 core 支持 `draw_round_rect`、`draw_arc` 和单行 `draw_text_box`；文本框可选择 18/24/36/48 号字体与左/中/右对齐。旧 core 会拒绝尚不支持的导入，包信封通过不能证明图形兼容。普通 clear/rect/text 应用仍可使用原接口。
 
 可选 `int32_t tinyrt_stop(void)` 用于正常离场前的有界保存；省略该定义的旧应用仍可构建。支持它的宿主在初始化成功后最多调用一次，失败或断电不保证调用；返回成功才提交变化的 KV，随后销毁实例。它不是 guest 主动退出接口。Zig 0.13 通过头文件的 Wasm `export_name` 属性导出已定义回调，Clang 同时使用 `--export-if-defined`。
@@ -68,6 +70,7 @@ python tools/tinyrt.py validate examples/pomodoro/build/demo.pomodoro.trpkg --de
 - [counter](examples/counter/README.md)：触摸加一，保存计数。
 - [color](examples/color/README.md)：触摸切换颜色。
 - [pomodoro](examples/pomodoro/README.md)：25m/5m 前台番茄钟与明确标记的 25s/5s 验证包。
+- [snake](examples/snake/README.md)：圆屏可玩贪吃蛇，触控方向键、暂停/继续、最高分存档和满棋盘胜利。
 - `examples/nes`：N1 CPU/PPU 诊断样例，固定自制 ROM 与输出 oracle 用于验证执行边界；不属于可玩 NES 模拟器。状态和限制以该目录说明为准。
 
 BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需要 Bleak；Windows 配对还需要对应 WinRT Python 包。设备配对、信任集和具体传输 profile 由产品配置提供，应用构建不依赖这些包。
@@ -75,6 +78,10 @@ BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需�
 ```powershell
 python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install examples/pomodoro/build/demo.pomodoro.trpkg
 ```
+
+支持隔离诊断的宿主在 HELLO capability bit 3 标记能力：`quarantine` 列出损坏包，`uninstall --app-id demo.snake` 解析当前目录完整身份后卸载，无需原包。`list` 只列健康项。重新 install 相同原始签名包可修复隔离项；最终 QUERY 仍必须确认完整身份，不能把 VERIFY_FAILED 当成成功。旧宿主不提供隔离查询时可继续正常安装及按 ID 解析健康项。
+
+信任策略由宿主配置：签名钥可限定 app ID 或末尾点命名空间。开发者应使用所属范围内的 ID；签名合法但越权的包仍被拒绝。公开开发钥只用于明确开启该信任的试验固件。
 
 Windows 仅在系统发出 PIN 请求后读取控制台，支持退格、Enter、Ctrl-C（取消）和 Ctrl-Z（EOF）。读取使用可取消的异步轮询；系统拒绝配对时会结束读取，不留下阻塞 `input()` 的后台线程。非交互终端必须提供 `--pin`。Python 自动验收可调用 `await windows_pair(address, pin_reader=reader)`，其中 `reader` 是无参数的异步函数，在收到请求后返回六位数字字符串；仍可用原有 `pin` 参数直接提供值。
 
@@ -90,13 +97,15 @@ python -m unittest discover -s tests/transport -v
 python -m unittest discover -s tests/package -v
 python tests/pomodoro/run_native.py --cc path/to/zig.exe
 python tests/pomodoro/run_native.py --cc path/to/zig.exe --fast
+python tests/snake/run_native.py --cc path/to/zig.exe
 python tools/tinyrt.py build examples/counter --cc path/to/zig.exe
 python tools/tinyrt.py build examples/color --cc path/to/zig.exe
 python tools/tinyrt.py build examples/pomodoro --cc path/to/zig.exe
 python tools/tinyrt.py build examples/pomodoro/app-fast.json --cc path/to/zig.exe
+python tools/tinyrt.py build examples/snake --cc path/to/zig.exe
 ```
 
-SDK 测试把工具、头和模板复制到临时独立目录，然后实际 new/build/pack/validate；覆盖清单范围、签名损坏、单包上限和输入覆盖。番茄钟原生测试通过 ABI 回调驱动生产 guest。完整的 WAMR 运行使用同一组场景，见[番茄钟测试说明](tests/pomodoro/README.md)。只有可选运行测试需要明确的 TinyRT core 与其固定 WAMR checkout。
+SDK 测试把工具、头和模板复制到临时独立目录，然后实际 new/build/pack/validate；覆盖清单范围、签名损坏、单包上限和输入覆盖。番茄钟和贪吃蛇原生测试通过 ABI 回调驱动生产 guest。完整的 WAMR 运行使用同一组场景，见[番茄钟测试说明](tests/pomodoro/README.md)和[贪吃蛇测试说明](tests/snake/README.md)。只有可选运行测试需要明确的 TinyRT core 与其固定 WAMR checkout。
 
 源码仓库不包含构建缓存、签名包或本机工具链路径。产物保留在被忽略的 `build/` 中，发布时另作附件。
 

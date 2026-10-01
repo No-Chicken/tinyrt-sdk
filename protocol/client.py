@@ -5,6 +5,8 @@ import re
 import struct
 import zlib
 HELLO, LIST, QUERY, PREPARE, UNINSTALL, LAUNCH, STOP = range(0x10, 0x17)
+LIST_QUARANTINED = 0x17
+CAP_QUARANTINE = 8
 SVC = '5377e411-0c9d-42a7-194b-5e8c71d23a6f'
 CTRL = SVC.replace('e411-', 'e412-')
 DATA = SVC.replace('e411-', 'e413-')
@@ -57,10 +59,13 @@ def package_info(data):
     if appid != name + bytes(32-len(name)): raise ValueError('noncanonical app id')
     return appid + struct.pack('<I', version) + hashlib.sha256(data).digest() + struct.pack('<I', total)
 
-async def installed(link, info):
+async def installed(link, info, *, allow_repair=False):
     try: result = await link.management(QUERY, info[:68])
     except RemoteError as exc:
         if exc.status == 8: return False
+        # Only the initial install probe may treat quarantined identity as
+        # replaceable. Final confirmation and uninstall queries stay strict.
+        if exc.status == 9 and allow_repair: return False
         raise
     if result != info: raise ValueError('query returned a different identity or size')
     return True
@@ -76,7 +81,7 @@ async def install(connect, data, progress=None):
                 abi, maximum, count, flags = struct.unpack('<HIBB', hello)
                 if abi != 1 or maximum < len(data) or count < 1 or not flags & 1:
                     raise ValueError('device does not support this package')
-                if await installed(link, info): return 'installed' if transfers else 'already-installed'
+                if await installed(link, info, allow_repair=True): return 'installed' if transfers else 'already-installed'
                 if isinstance(last_error, RemoteError) or transfers >= 2: raise last_error
                 await link.management(PREPARE, info)
                 transfers += 1

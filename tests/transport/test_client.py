@@ -47,6 +47,28 @@ class FakePeer:
         self.installed=True
 
 class InstallTests(unittest.IsolatedAsyncioTestCase):
+    async def test_quarantine_can_repair_once_but_final_query_is_strict(self):
+        class Quarantined(FakePeer):
+            async def management(self,op,payload=b''):
+                if op==client.QUERY and not self.installed:raise client.RemoteError(9)
+                return await super().management(op,payload)
+        p=Quarantined('ok')
+        self.assertEqual(await client.install(p.connect,package()),'installed')
+        self.assertEqual(p.transfers,1)
+        p=Quarantined('reject')
+        with self.assertRaises(client.RemoteError):await client.install(p.connect,package())
+        self.assertEqual(p.transfers,1)
+        with self.assertRaises(client.RemoteError):await client.installed(p,client.package_info(package()))
+
+    async def test_storage_error_never_starts_repair(self):
+        class Unreadable(FakePeer):
+            async def management(self,op,payload=b''):
+                if op==client.QUERY:raise client.RemoteError(3)
+                return await super().management(op,payload)
+        p=Unreadable('ok')
+        with self.assertRaises(client.RemoteError):await client.install(p.connect,package())
+        self.assertEqual(p.transfers,0)
+
     async def test_finish_ack_loss_queries_persistent_identity(self):
         p=FakePeer('finish_ack_lost')
         self.assertEqual(await client.install(p.connect,package()),'installed')
