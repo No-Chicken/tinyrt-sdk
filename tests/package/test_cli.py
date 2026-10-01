@@ -75,7 +75,7 @@ class PackageCLI(unittest.TestCase):
         self.assertNotEqual(self.invoke(*self.base).returncode,0)
         self.wasm.write_bytes(b"bad-wasm"*4)
         self.assertNotEqual(self.invoke(*self.base,"--development-key").returncode,0)
-        self.wasm.write_bytes(b"\0asm\1\0\0\0"+bytes(0x4a000))
+        self.wasm.write_bytes(b"\0asm\1\0\0\0"+bytes(0x200000))
         self.assertNotEqual(self.invoke(*self.base,"--development-key").returncode,0)
         self.assertFalse(self.output.exists())
     def test_output_cannot_overwrite_wasm_or_signing_key(self):

@@ -1,0 +1,3 @@
+FIRST_PIXELS ticks=524 bytes=122880
+FIRST_PIXELS ticks=32552 bytes=122880
+WAMR PASS checks=138166 budget=100000 wasm=71552 ticks=64056 calls=128254 skips=63406 peak=488648 total_ms=7134.399 p50_us=17.600 p95_us=113.700 max_us=915.400

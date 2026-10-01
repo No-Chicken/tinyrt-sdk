@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 
 HEADER_SIZE = 256
-MAX_PACKAGE_SIZE = 0x4A000
+MAX_PACKAGE_SIZE = 0x200000
 P256_ORDER = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
 DOMAIN = b"TinyRT-package-v1\0"
 
@@ -53,7 +53,7 @@ def build_package(wasm, assets, *, app_id, title, version, abi_version,
         raise ValueError("input must begin with Wasm v1 magic and contain sections")
     total = HEADER_SIZE + len(wasm) + len(assets)
     if total > MAX_PACKAGE_SIZE:
-        raise ValueError("complete package exceeds 296 KiB")
+        raise ValueError("complete package exceeds 2 MiB")
     payload = wasm + assets
     header = bytearray(HEADER_SIZE)
     header[:8] = b"TRPKG001"

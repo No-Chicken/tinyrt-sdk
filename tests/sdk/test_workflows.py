@@ -137,10 +137,10 @@ class SDKTests(unittest.TestCase):
     def test_single_package_limit(self):
         import package
         wasm=b'\0asm\x01\0\0\0\0\1\0'
-        data=self.package(wasm,b'a'*(303104-256-len(wasm)))
-        self.assertEqual(len(data),303104)
+        data=self.package(wasm,b'a'*(2097152-256-len(wasm)))
+        self.assertEqual(len(data),2097152)
         self.sdk.validate_envelope(data,package.development_key().public_key(),1)
-        with self.assertRaises(ValueError):self.package(wasm,b'a'*(303105-256-len(wasm)))
+        with self.assertRaises(ValueError):self.package(wasm,b'a'*(2097153-256-len(wasm)))
 
     def test_pack_refuses_to_overwrite_manifest_or_wasm(self):
         p=self.manifest();wasm=self.project/'app.wasm';wasm.write_bytes(b'\0asm\x01\0\0\0\0\1\0')

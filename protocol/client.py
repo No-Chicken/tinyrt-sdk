@@ -6,7 +6,13 @@ import struct
 import zlib
 HELLO, LIST, QUERY, PREPARE, UNINSTALL, LAUNCH, STOP = range(0x10, 0x17)
 LIST_QUARANTINED = 0x17
+LIST_PAGE = 0x18
+STORAGE, APP_INFO = 0x19, 0x1a
 CAP_QUARANTINE = 8
+CAP_PAGED_LIST = 16
+CAP_STORAGE = 32
+MAX_APPS = 16
+MAX_PACKAGE_SIZE = 0x200000
 SVC = '5377e411-0c9d-42a7-194b-5e8c71d23a6f'
 CTRL = SVC.replace('e411-', 'e412-')
 DATA = SVC.replace('e411-', 'e413-')
@@ -49,7 +55,7 @@ class Decoder:
             self.reset(); raise ValueError('invalid management frame') from None
 
 def package_info(data):
-    if len(data) < 256 or len(data) > 303104 or data[:8] != b'TRPKG001':
+    if len(data) < 256 or len(data) > MAX_PACKAGE_SIZE or data[:8] != b'TRPKG001':
         raise ValueError('invalid TinyRT package header or size')
     total, = struct.unpack_from('<I', data, 12)
     version, = struct.unpack_from('<I', data, 32)
@@ -58,6 +64,162 @@ def package_info(data):
         raise ValueError('invalid package identity')
     if appid != name + bytes(32-len(name)): raise ValueError('noncanonical app id')
     return appid + struct.pack('<I', version) + hashlib.sha256(data).digest() + struct.pack('<I', total)
+
+def validate_info(raw, maximum=MAX_PACKAGE_SIZE):
+    """Validate the canonical identity and size of a standard info72 record."""
+    if len(raw) != 72:
+        raise ValueError('invalid directory record length')
+    name = raw[:32].split(b'\0', 1)[0]
+    version, = struct.unpack_from('<I', raw, 32)
+    size, = struct.unpack_from('<I', raw, 68)
+    if (not re.fullmatch(rb'[a-z0-9._-]{1,31}', name)
+            or raw[:32] != name.ljust(32, b'\0') or not version
+            or not 256 <= size <= min(maximum, MAX_PACKAGE_SIZE)):
+        raise ValueError('invalid directory record identity or size')
+    return name
+
+async def directory_records(link, opcode=LIST, *, hello=None):
+    """Read one sorted inventory; restart at most twice on a catalog conflict.
+
+    Generation is an opaque u64, including zero for an empty store. Never mix
+    pages from different generations or retry malformed data as a race.
+    """
+    if opcode not in (LIST, LIST_QUARANTINED):
+        raise ValueError('invalid directory kind')
+    if hello is None:
+        hello = await link.management(HELLO)
+    if len(hello) != 8:
+        raise ValueError('unsupported HELLO')
+    abi, maximum, max_apps, flags = struct.unpack('<HIBB', hello)
+    if abi != 1 or maximum < 256 or not 1 <= max_apps <= MAX_APPS:
+        raise ValueError('unsupported HELLO limits')
+    if opcode == LIST_QUARANTINED and not flags & CAP_QUARANTINE:
+        raise ValueError('host does not support quarantine diagnostics')
+
+    def append_records(records, payload):
+        previous = records[-1][:32].split(b'\0', 1)[0] if records else b''
+        for off in range(0, len(payload), 72):
+            raw = payload[off:off + 72]
+            name = validate_info(raw, maximum)
+            if name <= previous:
+                raise ValueError('directory records are duplicated or unsorted')
+            records.append(raw)
+            previous = name
+
+    if not flags & CAP_PAGED_LIST:
+        raw = await link.management(opcode)
+        if not raw or raw[0] > min(2, max_apps) or len(raw) != 1 + raw[0] * 72:
+            raise ValueError('invalid directory reply')
+        records = []
+        append_records(records, raw[1:])
+        return records
+
+    for attempt in range(3):
+        records = []
+        generation = 0
+        total = None
+        try:
+            # Even a peer sending only one record per page cannot loop forever.
+            for _ in range(MAX_APPS):
+                offset = len(records)
+                request = struct.pack('<BBQ', int(opcode == LIST_QUARANTINED), offset, generation)
+                raw = await link.management(LIST_PAGE, request)
+                if len(raw) < 11:
+                    raise ValueError('short directory page')
+                current, advertised, cursor, count = struct.unpack_from('<QBBB', raw)
+                if (advertised > max_apps or cursor != offset or count > 3
+                        or offset + count > advertised or len(raw) != 11 + count * 72
+                        or (count == 0 and offset != advertised)):
+                    raise ValueError('invalid directory page bounds')
+                if total is not None and (current != generation or advertised != total):
+                    raise ValueError('directory generation or total changed without conflict')
+                generation, total = current, advertised
+                append_records(records, raw[11:])
+                if len(records) == total:
+                    return records
+        except RemoteError as exc:
+            if exc.status != 7 or attempt == 2:
+                raise
+            continue
+        raise ValueError('directory pagination did not terminate')
+
+async def _query_hello(link):
+    raw = await link.management(HELLO)
+    if len(raw) != 8:
+        raise ValueError('unsupported HELLO')
+    abi, maximum, count, flags = struct.unpack('<HIBB', raw)
+    if abi != 1 or not 256 <= maximum <= MAX_PACKAGE_SIZE or not 1 <= count <= MAX_APPS or not flags & CAP_STORAGE:
+        raise ValueError('host does not support storage and app details queries')
+    return maximum, count
+
+
+async def storage_info(link):
+    """Validated schema-1 counters. Opaque generation is 16 hex digits.
+
+    Unavailable RAM counters are None, never misleading zero measurements.
+    """
+    maximum, max_apps = await _query_hello(link)
+    raw = await link.management(STORAGE)
+    if len(raw) != 92:
+        raise ValueError('invalid storage reply length')
+    schema, flags, generation = struct.unpack_from('<HHQ', raw)
+    if schema != 1 or flags & ~1 or struct.unpack_from('<H', raw, 46)[0]:
+        raise ValueError('unsupported storage schema, flags or reserved bytes')
+    result = dict(schema=schema, flags=flags, generation=f'{generation:016x}', ram_valid=bool(flags & 1))
+    names = ('package_total_bytes','data_bytes','package_bytes','allocated_bytes','free_bytes','largest_free_bytes','max_package_size')
+    result.update(zip(names, struct.unpack_from('<7I', raw, 12)))
+    result.update(zip(('max_apps','installed_count','quarantined_count'), struct.unpack_from('<3H',raw,40)))
+    tail = ('app_data_total_bytes','internal_ram_total_bytes','internal_ram_free_bytes','internal_ram_largest_free_bytes',
+            'external_ram_total_bytes','external_ram_free_bytes','external_ram_largest_free_bytes',
+            'runtime_heap_limit','runtime_heap_used','runtime_heap_peak','shared_assets_total_bytes')
+    result.update(zip(tail, struct.unpack_from('<11I',raw,48)))
+    total,data,used,allocated,free,largest,limit = (result[n] for n in names)
+    count = result['installed_count']
+    if (total < 8192 or total % 4096 or data != total-8192 or allocated > data or allocated % 4096
+            or free != data-allocated or largest > free or largest % 4096
+            or (free > 0 and largest == 0) or largest*(count+1) < free
+            or limit != maximum or result['max_apps'] != max_apps or count > max_apps
+            or result['quarantined_count'] > count or not count*256 <= used <= count*limit
+            or used > allocated or allocated-used > count*4095 or allocated < count*4096
+            or result['app_data_total_bytes'] % 4096 or result['shared_assets_total_bytes'] % 4096):
+        raise ValueError('inconsistent storage capacity or counts')
+    if flags & 1:
+        for prefix in ('internal_ram','external_ram'):
+            if not result[prefix+'_largest_free_bytes'] <= result[prefix+'_free_bytes'] <= result[prefix+'_total_bytes']:
+                raise ValueError('inconsistent RAM counters')
+    else:
+        for name in tail[1:7]: result[name] = None
+    if not result['runtime_heap_used'] <= result['runtime_heap_peak'] <= result['runtime_heap_limit']:
+        raise ValueError('inconsistent runtime heap counters')
+    return result
+
+
+async def app_info(link, identity):
+    """Query healthy verified metadata for identity68 or an expected info72."""
+    identity = bytes(identity)
+    if len(identity) not in (68,72):
+        raise ValueError('invalid app details identity length')
+    validate_info(identity if len(identity)==72 else identity+struct.pack('<I',256))
+    maximum, _ = await _query_hello(link)
+    raw = await link.management(APP_INFO, identity[:68])
+    if len(raw) != 164:
+        raise ValueError('invalid app details reply length')
+    name = validate_info(raw[:72], maximum)
+    if raw[:len(identity)] != identity:
+        raise ValueError('app details identity or size mismatch')
+    title = raw[72:136]
+    end = title.find(b'\0')
+    if end < 1 or any(title[end:]):
+        raise ValueError('noncanonical app title')
+    title = title[:end].decode('utf-8', errors='strict')
+    key_id,abi,permissions,pages,budget,wasm,assets = struct.unpack_from('<7I',raw,136)
+    size, = struct.unpack_from('<I', raw, 68)
+    if abi != 1 or permissions & ~15 or not 1 <= pages <= 16 or not 1 <= budget <= 100000 or wasm <= 8 or wasm+assets+256 != size:
+        raise ValueError('invalid app details resource policy')
+    return dict(app_id=name.decode('ascii'),version=struct.unpack_from('<I',raw,32)[0],sha256=raw[36:68].hex(),
+                size=size,title=title,key_id=key_id,abi_version=abi,permissions=permissions,memory_pages=pages,
+                instruction_budget=budget,wasm_size=wasm,assets_size=assets)
+
 
 async def installed(link, info, *, allow_repair=False):
     try: result = await link.management(QUERY, info[:68])

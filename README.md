@@ -55,7 +55,7 @@ python tools/tinyrt.py validate examples/pomodoro/build/demo.pomodoro.trpkg --de
 | `assets` | 可选：应用目录内现有文件的相对路径，或 null |
 | `defines` | 可选：最多 32 个 C 标识符到整数的映射，值为 -2147483648..4294967295 |
 
-拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整签名包最多 296 KiB（303104 字节），资源计入总长。
+拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整签名包最多 2 MiB（2097152 字节），资源计入总长；安装时还会检查目标宿主 HELLO 公布的实际包上限，旧宿主仍可拒绝超出其容量的包。Flash 容量增加不改变 ABI 1 的 16 页线性内存与每回调 100000 指令限额；较大的 Wasm 仍需通过宿主运行时的独立内存检查。
 
 `assets` 只是包内经过签名的原始字节；ABI 1 尚无资源读取或通用文件系统 API。KV 是每应用 16 个 i32，不能把它描述为文件系统。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
 
@@ -80,6 +80,20 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install examples/
 ```
 
 支持隔离诊断的宿主在 HELLO capability bit 3 标记能力：`quarantine` 列出损坏包，`uninstall --app-id demo.snake` 解析当前目录完整身份后卸载，无需原包。`list` 只列健康项。重新 install 相同原始签名包可修复隔离项；最终 QUERY 仍必须确认完整身份，不能把 VERIFY_FAILED 当成成功。旧宿主不提供隔离查询时可继续正常安装及按 ID 解析健康项。
+
+支持分页的宿主在 HELLO capability bit 4 标记能力，最多安装 16 个应用。客户端使用 `LIST_PAGE=0x18`，每页最多三条 info72；目录在翻页期间变化时，从第一页重新读取，完整读取最多尝试三次。generation 是不透明的 64 位标记，客户端校验每页标记、总数、游标、规范身份和严格递增的 app ID；畸形回复立即失败。管理消息仍不超过 256 字节。未声明分页能力的旧宿主继续使用最多两条记录的 LIST/LIST_QUARANTINED。
+
+支持空间与详情查询的宿主在 HELLO capability bit 5（32）声明这两项能力：
+
+```powershell
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF storage
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id demo.snake
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info examples/snake/build/demo.snake.trpkg
+```
+
+`storage` 输出实际包字节、4 KiB 对齐占用、总空闲、最大连续空闲、健康和隔离总数及容量限制；总空闲不保证能暂存同样大小的连续更新。传输中返回 BUSY。generation 在 JSON 中是精确的 16 位十六进制字符串，表示 wire 小端 u64 的数值，来源与分页 token 相同。BSP RAM 有效位未设置时，六项 internal/external RAM 指标输出 null；runtime heap 的 limit/used/peak 独立有效，始终校验 used≤peak≤limit。
+
+`info` 仅查询已验证健康应用。包路径使用该文件的完整身份和大小；`--app-id` 先解析健康目录的当前完整身份，再发 APP_INFO。返回 title、key_id、ABI、permissions、memory_pages、instruction_budget、wasm_size、assets_size 和完整身份，可供网站/手机对照应用目录。标题和 ID 本身不证明“官方”；应结合完整 SHA-256 与受信发布者 key_id。客户端严格检查 92/164 字节布局、schema/保留位、容量关系、身份匹配与 UTF-8，未知能力或畸形回复直接失败。Python 对应 API 为 `storage_info(link)` 和 `app_info(link, identity68_or_info72)`；产品 TypeScript 协议层提供 `storageInfo` / `appInfo`，本轮未增加查询 UI。
 
 信任策略由宿主配置：签名钥可限定 app ID 或末尾点命名空间。开发者应使用所属范围内的 ID；签名合法但越权的包仍被拒绝。公开开发钥只用于明确开启该信任的试验固件。
 

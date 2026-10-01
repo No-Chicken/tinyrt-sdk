@@ -1,9 +1,9 @@
 {
-  "core_revision": "c5e1e59b571c8f9081b2022b57377e34836e0293",
+  "core_revision": "9f8d949e4974b2fae0ca6bef74ad514b87f9ba01",
   "files": {
-    "abi-v1.json": "e56238df2e34c6505dad8ff3a21ad137f789f136e8065d69b808e9f90b4d3ffe",
-    "guest-v1.h": "2b133de90f39f6a40214421b995d4bac585d4ea1df3ed8bc5a1b137b59f03e83",
-    "wire-v1.json": "29fa36afa94e9200a5302d911dd017de6ee4b1b6c24b5f7af88799523a5cfd85"
+    "abi-v1.json": "4a4e9106f2d218b53ba6fec035d1e7895fe6e59423abe382dbf1c4ac1b5299a2",
+    "guest-v1.h": "0bae67ca05519425e142897bc631d6019344e20795b657caeadde5f44f65c8b2",
+    "wire-v1.json": "bf5db62ae5707452d97d349e72b41c0b8419038a34007fe28d2d93fc0b7e35c7"
   },
   "format_version": 1
 }
