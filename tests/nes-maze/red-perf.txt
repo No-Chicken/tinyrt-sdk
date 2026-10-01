@@ -1,0 +1,9 @@
+PERF frames=60 instructions=595193 idle_jmp=590393 cpu_ms=8.142 background_ms=2.414 nmi=60
+FAIL: inert JMP dispatch dominates real game work
+
+After inert-JMP batching, before background reuse:
+PERF frames=60 instructions=6399 idle_jmp=1599 cpu_ms=0.063 background_ms=2.346 background_lines=14400 nmi=60
+FAIL: unchanged background is redrawn every frame
+
+WAMR event-latency regression against the frozen idle-only version 2:
+FAIL line=56 ticks-before<=64 ticks=1052 images=7 guest=

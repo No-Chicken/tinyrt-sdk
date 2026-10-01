@@ -50,9 +50,10 @@ static int dump(const char *name){
  FILE*f=fopen(path,"wb");CHECK(f);CHECK(fwrite(frame.pixels,1,122880,f)==122880);CHECK(fclose(f)==0);return 0;
 }
 static int click(char key){
+ unsigned before=ticks;
  int x=233,y=365;
  if(key=='D')y=405;else if(key=='L'){x=183;y=405;}else if(key=='R'){x=283;y=405;}else if(key=='S'){x=326;y=365;}
- if(event(1,x,y)||advance(3))return 1;return 0;
+ if(event(1,x,y)||advance(3))return 1;CHECK(ticks-before<=64);return 0;
 }
 static int compare(const void*a,const void*b){double x=*(const double*)a,y=*(const double*)b;return(x>y)-(x<y);}
 int main(int argc,char**argv){
@@ -84,7 +85,7 @@ int main(int argc,char**argv){
   CHECK(x==10&&y==8);if(dump("won"))return 1;if(click('L')||player(10,8))return 1;
   if(click('S')||player(1,1))return 1;
   if(dump("restart")||advance(extra))return 1;
-  CHECK(skips>images*20);
+  CHECK(skips>images*2);
   QueryPerformanceCounter(&start);if(record(tinyrt_runtime_stop(rt),start))return 1;
   tinyrt_runtime_destroy(rt);rt=NULL;CHECK(tinyrt_runtime_memory_used()==baseline);
  }

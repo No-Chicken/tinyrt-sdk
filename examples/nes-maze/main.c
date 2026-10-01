@@ -19,8 +19,10 @@ int32_t tinyrt_event(int32_t kind,int32_t x,int32_t y,int32_t arg){
     (void)arg;if(!running)return 0;
     if(kind==TINYRT_CLOCK_EVENT){
         uint32_t frame=maze_status().frame;
-        for(unsigned i=0;i<3;i++){
-            frame_input(maze_status());maze_step();
+        /* Cached idle lines are cheap; retain the three-work-line budget for
+         * real CPU/PPU work and bound every callback to 64 total scanlines. */
+        for(unsigned i=0,work=0;i<64&&work<3;i++){
+            frame_input(maze_status());work+=maze_step();
             if(maze_status().frame!=frame)break;
         }
         return 0;

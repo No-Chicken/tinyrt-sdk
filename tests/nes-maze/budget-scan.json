@@ -1,147 +1,147 @@
 {
   "scope": "Finite original maze trace only; desktop WAMR, not device FPS or arbitrary-ROM bound.",
-  "wasm_sha256": "ece71927a4885c9ee71d75a1b8f9227df71a2590d5e534138746a1594809a133",
-  "minimum_passing_budget": 63592,
+  "wasm_sha256": "8bdd69c4d29211a213ca3e88ce856a371234e7d19834581ce3b47285d8be0b12",
+  "minimum_passing_budget": 82582,
   "manifest_budget": 100000,
   "trials": [
     {
       "budget": 100000,
       "extra_frames_per_instance": 0,
       "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=100000 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3601.858 p50_us=23.700 p95_us=261.500 max_us=21328.300",
+      "output": "WAMR PASS checks=12922 budget=100000 wasm=73370 ticks=2270 calls=4682 skips=2140 peak=490355 total_ms=854.625 p50_us=13.300 p95_us=827.200 max_us=2037.700",
       "stderr": ""
     },
     {
       "budget": 50000,
       "extra_frames_per_instance": 0,
       "returncode": 1,
-      "output": "FAIL line=18 result==TINYRT_OK ticks=295 images=0 guest=Exception: instruction limit exceeded",
+      "output": "FAIL line=18 result==TINYRT_OK ticks=424 images=0 guest=Exception: instruction limit exceeded",
       "stderr": ""
     },
     {
       "budget": 75000,
       "extra_frames_per_instance": 0,
-      "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=75000 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3518.786 p50_us=14.000 p95_us=250.500 max_us=18268.800",
+      "returncode": 1,
+      "output": "FAIL line=18 result==TINYRT_OK ticks=483 images=11 guest=Exception: instruction limit exceeded",
       "stderr": ""
     },
     {
-      "budget": 62500,
+      "budget": 87500,
+      "extra_frames_per_instance": 0,
+      "returncode": 0,
+      "output": "WAMR PASS checks=12922 budget=87500 wasm=73370 ticks=2270 calls=4682 skips=2140 peak=490355 total_ms=834.286 p50_us=11.200 p95_us=814.600 max_us=1325.600",
+      "stderr": ""
+    },
+    {
+      "budget": 81250,
       "extra_frames_per_instance": 0,
       "returncode": 1,
-      "output": "FAIL line=18 result==TINYRT_OK ticks=295 images=0 guest=Exception: instruction limit exceeded",
+      "output": "FAIL line=18 result==TINYRT_OK ticks=483 images=11 guest=Exception: instruction limit exceeded",
       "stderr": ""
     },
     {
-      "budget": 68750,
+      "budget": 84375,
       "extra_frames_per_instance": 0,
       "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=68750 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3528.461 p50_us=17.300 p95_us=257.500 max_us=21063.100",
+      "output": "WAMR PASS checks=12922 budget=84375 wasm=73370 ticks=2270 calls=4682 skips=2140 peak=490355 total_ms=859.384 p50_us=15.600 p95_us=828.100 max_us=3133.200",
       "stderr": ""
     },
     {
-      "budget": 65625,
+      "budget": 82813,
       "extra_frames_per_instance": 0,
       "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=65625 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3553.369 p50_us=15.800 p95_us=265.400 max_us=18007.700",
+      "output": "WAMR PASS checks=12922 budget=82813 wasm=73370 ticks=2270 calls=4682 skips=2140 peak=490355 total_ms=837.364 p50_us=13.500 p95_us=823.300 max_us=1304.000",
       "stderr": ""
     },
     {
-      "budget": 64063,
-      "extra_frames_per_instance": 0,
-      "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=64063 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3683.819 p50_us=17.800 p95_us=273.400 max_us=19756.600",
-      "stderr": ""
-    },
-    {
-      "budget": 63282,
+      "budget": 82032,
       "extra_frames_per_instance": 0,
       "returncode": 1,
-      "output": "FAIL line=18 result==TINYRT_OK ticks=348 images=0 guest=Exception: instruction limit exceeded",
+      "output": "FAIL line=18 result==TINYRT_OK ticks=812 images=58 guest=Exception: instruction limit exceeded",
       "stderr": ""
     },
     {
-      "budget": 63673,
-      "extra_frames_per_instance": 0,
-      "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=63673 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3560.590 p50_us=24.300 p95_us=269.600 max_us=15273.100",
-      "stderr": ""
-    },
-    {
-      "budget": 63478,
+      "budget": 82423,
       "extra_frames_per_instance": 0,
       "returncode": 1,
-      "output": "FAIL line=18 result==TINYRT_OK ticks=348 images=0 guest=Exception: instruction limit exceeded",
+      "output": "FAIL line=18 result==TINYRT_OK ticks=917 images=73 guest=Exception: instruction limit exceeded",
       "stderr": ""
     },
     {
-      "budget": 63576,
+      "budget": 82618,
+      "extra_frames_per_instance": 0,
+      "returncode": 0,
+      "output": "WAMR PASS checks=12922 budget=82618 wasm=73370 ticks=2270 calls=4682 skips=2140 peak=490355 total_ms=826.827 p50_us=11.400 p95_us=815.200 max_us=1146.000",
+      "stderr": ""
+    },
+    {
+      "budget": 82521,
       "extra_frames_per_instance": 0,
       "returncode": 1,
-      "output": "FAIL line=18 result==TINYRT_OK ticks=1052 images=7 guest=Exception: instruction limit exceeded",
+      "output": "FAIL line=18 result==TINYRT_OK ticks=917 images=73 guest=Exception: instruction limit exceeded",
       "stderr": ""
     },
     {
-      "budget": 63625,
-      "extra_frames_per_instance": 0,
-      "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=63625 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3506.606 p50_us=17.400 p95_us=263.500 max_us=21662.700",
-      "stderr": ""
-    },
-    {
-      "budget": 63601,
-      "extra_frames_per_instance": 0,
-      "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=63601 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3160.691 p50_us=13.000 p95_us=226.900 max_us=26362.500",
-      "stderr": ""
-    },
-    {
-      "budget": 63589,
+      "budget": 82570,
       "extra_frames_per_instance": 0,
       "returncode": 1,
-      "output": "FAIL line=18 result==TINYRT_OK ticks=2548 images=24 guest=Exception: instruction limit exceeded",
+      "output": "FAIL line=18 result==TINYRT_OK ticks=917 images=73 guest=Exception: instruction limit exceeded",
       "stderr": ""
     },
     {
-      "budget": 63595,
+      "budget": 82594,
       "extra_frames_per_instance": 0,
       "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=63595 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3587.917 p50_us=16.100 p95_us=269.900 max_us=18646.500",
+      "output": "WAMR PASS checks=12922 budget=82594 wasm=73370 ticks=2270 calls=4682 skips=2140 peak=490355 total_ms=830.188 p50_us=11.100 p95_us=815.200 max_us=1461.000",
       "stderr": ""
     },
     {
-      "budget": 63592,
+      "budget": 82582,
       "extra_frames_per_instance": 0,
       "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=63592 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3903.399 p50_us=24.400 p95_us=299.900 max_us=16100.100",
+      "output": "WAMR PASS checks=12922 budget=82582 wasm=73370 ticks=2270 calls=4682 skips=2140 peak=490355 total_ms=831.042 p50_us=11.000 p95_us=813.100 max_us=1371.000",
       "stderr": ""
     },
     {
-      "budget": 63591,
+      "budget": 82576,
       "extra_frames_per_instance": 0,
       "returncode": 1,
-      "output": "FAIL line=18 result==TINYRT_OK ticks=2548 images=24 guest=Exception: instruction limit exceeded",
+      "output": "FAIL line=18 result==TINYRT_OK ticks=917 images=73 guest=Exception: instruction limit exceeded",
       "stderr": ""
     },
     {
-      "budget": 63592,
-      "extra_frames_per_instance": 0,
-      "returncode": 0,
-      "output": "WAMR PASS checks=44918 budget=63592 wasm=71552 ticks=18296 calls=36734 skips=18166 peak=488648 total_ms=3971.471 p50_us=23.500 p95_us=295.200 max_us=20605.900",
-      "stderr": ""
-    },
-    {
-      "budget": 63591,
+      "budget": 82579,
       "extra_frames_per_instance": 0,
       "returncode": 1,
-      "output": "FAIL line=18 result==TINYRT_OK ticks=2548 images=24 guest=Exception: instruction limit exceeded",
+      "output": "FAIL line=18 result==TINYRT_OK ticks=917 images=73 guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    },
+    {
+      "budget": 82581,
+      "extra_frames_per_instance": 0,
+      "returncode": 1,
+      "output": "FAIL line=18 result==TINYRT_OK ticks=917 images=73 guest=Exception: instruction limit exceeded",
+      "stderr": ""
+    },
+    {
+      "budget": 82582,
+      "extra_frames_per_instance": 0,
+      "returncode": 0,
+      "output": "WAMR PASS checks=12922 budget=82582 wasm=73370 ticks=2270 calls=4682 skips=2140 peak=490355 total_ms=839.889 p50_us=11.600 p95_us=820.300 max_us=1539.800",
+      "stderr": ""
+    },
+    {
+      "budget": 82581,
+      "extra_frames_per_instance": 0,
+      "returncode": 1,
+      "output": "FAIL line=18 result==TINYRT_OK ticks=917 images=73 guest=Exception: instruction limit exceeded",
       "stderr": ""
     },
     {
       "budget": 100000,
       "extra_frames_per_instance": 260,
       "returncode": 0,
-      "output": "WAMR PASS checks=137998 budget=100000 wasm=71552 ticks=64056 calls=128254 skips=63406 peak=488648 total_ms=12698.946 p50_us=27.600 p95_us=274.400 max_us=20310.000",
+      "output": "WAMR PASS checks=19682 budget=100000 wasm=73370 ticks=4870 calls=9882 skips=4220 peak=490355 total_ms=2813.600 p50_us=28.400 p95_us=933.800 max_us=4205.900",
       "stderr": ""
     }
   ]

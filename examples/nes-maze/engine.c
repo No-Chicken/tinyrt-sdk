@@ -17,7 +17,8 @@
 /* TinyRT Maze adapter, 2026. Adapted from the N1 diagnostic adapter. The scanline body below derives from PeakRacing/nes
  * revision 638096ae00d258700779be2af06478d1be5bf8a1 (Apache-2.0).
  * Changes: persistent continuation, NROM-only fixed ROM, bounded initialization,
- * one scanline per step, no audio or diagnostic CRC. Upstream files remain byte-identical.
+ * one scanline per step, inert-JMP batching and unchanged NROM background reuse,
+ * no audio or diagnostic CRC. Upstream files remain byte-identical.
  */
 #include "engine.h"
 #include "rom_data.h"
@@ -26,6 +27,62 @@ static nes_t machine;
 static uint32_t clear_offset, ready, frames, held_buttons;
 static uint8_t dot_remainder;
 static uint16_t line;
+#ifndef MAZE_CACHE_BACKGROUND
+#define MAZE_CACHE_BACKGROUND 1
+#endif
+static uint8_t cached_name[1024],cached_palette[32];
+static uint32_t dirty_rows;
+static uint16_t cached_scroll;
+static uint8_t cached_ctrl,cached_mask,cache_valid;
+static int cpu_waiting(nes_t *n) {
+    nes_cpu_t *cpu=&n->nes_cpu;
+    uint16_t pc=cpu->PC;
+    if(pc<0x8000u || pc>0xfffdu || cpu->irq_nmi || cpu->irq_nmi_delay ||
+       cpu->irq_pending || n->nes_mapper.mapper_read_prg || n->nes_mapper.mapper_cpu_clock)return 0;
+    const uint8_t *prg=n->nes_rom.prg_rom;
+    return prg[(pc-0x8000u)&0x3fffu]==0x4c &&
+           prg[(pc-0x7fffu)&0x3fffu]==(uint8_t)pc &&
+           prg[(pc-0x7ffeu)&0x3fffu]==(uint8_t)(pc>>8);
+}
+static void maze_opcode(nes_t *n,uint16_t ticks) {
+    nes_cpu_t *cpu=&n->nes_cpu;
+    /* An NROM PRG JMP to itself has no bus side effects or register changes.
+     * Batch only this inert wait, preserving its three-cycle rounding. Pending
+     * interrupts and mapper clocks always go through the real interpreter. */
+    if(ticks>cpu->cycles && cpu_waiting(n)) {
+        unsigned remaining=ticks-cpu->cycles;
+        cpu->cycles=(uint16_t)((3u-remaining%3u)%3u);
+        cpu->opcode=0x4c;cpu->write_burst=0;
+        return;
+    }
+    nes_opcode(n,ticks);
+}
+static void prepare_background_cache(nes_t *n) {
+    nes_ppu_t *p=&n->nes_ppu;
+    dirty_rows=0x3fffffffu;
+    /* Fixed CHR-ROM/NROM has no writes or mapper events while this self-JMP
+     * occupies visible lines. Restrict reuse to an aligned, sprite-free view.
+     * Other PPU states continue through the original scanline renderer. */
+    if(!MAZE_CACHE_BACKGROUND || !cpu_waiting(n) || !p->MASK_b || p->MASK_s ||
+       p->x || (p->v_reg&0x73ffu) || p->t_reg!=p->v_reg ||
+       n->nes_mapper.mapper_ppu || n->nes_mapper.mapper_hsync) {
+        cache_valid=0;return;
+    }
+    const uint8_t *name=p->name_table[p->v.nametable];
+    unsigned all=!cache_valid || cached_scroll!=p->v_reg || cached_ctrl!=p->ppu_ctrl ||
+                 cached_mask!=p->ppu_mask || nes_memcmp(cached_name+960,name+960,64) ||
+                 nes_memcmp(cached_palette,p->palette_indexes,32);
+    if(!all)dirty_rows=0;
+    for(unsigned row=0;row<30;row++) {
+        unsigned offset=row*32;
+        if(all || nes_memcmp(cached_name+offset,name+offset,32)) {
+            dirty_rows|=1u<<row;
+            nes_memcpy(cached_name+offset,name+offset,32);
+        }
+    }
+    nes_memcpy(cached_name+960,name+960,64);nes_memcpy(cached_palette,p->palette_indexes,32);
+    cached_scroll=p->v_reg;cached_ctrl=p->ppu_ctrl;cached_mask=p->ppu_mask;cache_valid=1;
+}
 static void visible_line(nes_t *nes) {
  // 0-239 Visible frame
             uint16_t scanline_ticks = nes->timing.line_clocks;
@@ -37,7 +94,7 @@ static void visible_line(nes_t *nes) {
                 nes_prepare_sprite_line(nes, nes->scanline, &sprite_line);
                 NES_PROF_END(nes, NES_PROF_SPRITE);
             }
-            if (nes->nes_ppu.MASK_b){
+            if (nes->nes_ppu.MASK_b && (dirty_rows&(1u<<(nes->scanline/8)))){
                 if (nes->nes_mapper.mapper_render_screen)
                     nes->nes_mapper.mapper_render_screen(nes, 1);
                 NES_PROF_BEGIN(nes, NES_PROF_BG);
@@ -59,7 +116,7 @@ static void visible_line(nes_t *nes) {
                 }
 #endif
                 NES_PROF_END(nes, NES_PROF_BG);
-            } else {
+            } else if (!nes->nes_ppu.MASK_b) {
 #if (NES_FRAME_SKIP != 0)
                 if (nes->nes_frame_skip_count == 0)
 #endif
@@ -86,7 +143,7 @@ static void visible_line(nes_t *nes) {
 #endif
                 NES_PROF_END(nes, NES_PROF_SPRITE);
             }
-            nes_opcode(nes,nes->timing.line_split); // ppu cycles: 85*3=255 (NTSC)
+            maze_opcode(nes,nes->timing.line_split); // ppu cycles: 85*3=255 (NTSC)
             // https://www.nesdev.org/wiki/PPU_scrolling#Wrapping_around
             if (nes->nes_ppu.MASK_b || nes->nes_ppu.MASK_s){
                 // Rendering resets OAMADDR during sprite evaluation; at line granularity,
@@ -115,7 +172,7 @@ static void visible_line(nes_t *nes) {
             if (nes->nes_mapper.mapper_hsync) {
                 nes->nes_mapper.mapper_hsync(nes);
             }
-            nes_opcode(nes,scanline_ticks-nes->timing.line_split);
+            maze_opcode(nes,scanline_ticks-nes->timing.line_split);
 #if (NES_ENABLE_SOUND==1)
             if ((uint16_t)nes->scanline % nes->timing.apu_frame_divisor == (uint16_t)(nes->timing.apu_frame_divisor - 1u)) {
                 NES_PROF_BEGIN(nes, NES_PROF_APU);
@@ -161,9 +218,10 @@ static void nrom_attach(void) {
 void maze_start(void) {
     clear_offset=0;ready=0;frames=0;
     held_buttons=0;dot_remainder=0;line=0;
+    cache_valid=0;dirty_rows=0x3fffffffu;
 }
 void maze_buttons(uint32_t held) {held_buttons=held&255u;}
-void maze_step(void) {
+unsigned maze_step(void) {
     if(!ready) {
         /* Even restart avoids an unmetered/full framebuffer clear in init. */
         uint32_t remaining=(uint32_t)sizeof(machine)-clear_offset;
@@ -172,23 +230,26 @@ void maze_step(void) {
         for(uint32_t i=0;i<count;i++)p[clear_offset+i]=0;
         clear_offset+=count;
         if(clear_offset==sizeof(machine)){nrom_attach();ready=1;}
-        return;
+        return 1;
     }
     nes_t *n=&machine;n->scanline=line;n->nes_cpu.joypad.joypad=(uint16_t)(held_buttons<<8);
+    unsigned work=!cpu_waiting(n);
     if(line<240) {
-        if(line==0){n->nes_ppu.STATUS_S=0;n->nes_ppu.STATUS_O=0;nes_palette_generate(n);}
+        if(line==0){n->nes_ppu.STATUS_S=0;n->nes_ppu.STATUS_O=0;nes_palette_generate(n);prepare_background_cache(n);}
+        if(dirty_rows&(1u<<(line/8)))work=1;
         visible_line(n);
 
     } else {
-        if(line==241){n->nes_ppu.STATUS_V=1;if(n->nes_ppu.CTRL_V)n->nes_cpu.irq_nmi=1;}
+        if(line==241){n->nes_ppu.STATUS_V=1;if(n->nes_ppu.CTRL_V){n->nes_cpu.irq_nmi=1;work=1;}}
         if(line==261)n->nes_ppu.ppu_status=0;
-        nes_opcode(n,ticks_for_line());
+        maze_opcode(n,ticks_for_line());
         if(line==261) {
             if(n->nes_ppu.MASK_b||n->nes_ppu.MASK_s)n->nes_ppu.v_reg=n->nes_ppu.t_reg;
-            frames++;line=0;return;
+            frames++;line=0;return work;
         }
     }
     line++;
+    return work;
 }
 maze_status_t maze_status(void) {
     uint8_t *ram=machine.nes_cpu.cpu_ram;

@@ -17,10 +17,11 @@
   ],
   "rom_bytes": 24592,
   "rom_sha256": "f3dac02f99061c94e06a248698b39c9cb89cedd7aa918deac9ebca9beedf49f7",
-  "wasm_bytes": 71552,
-  "wasm_sha256": "ece71927a4885c9ee71d75a1b8f9227df71a2590d5e534138746a1594809a133",
-  "package_bytes": 71808,
-  "package_sha256": "37ffd4dea9cfe21d16edae89321bbb19ce3c2a6998af2fb90baa206fea7f8366",
+  "app_version": 3,
+  "wasm_bytes": 73370,
+  "wasm_sha256": "8bdd69c4d29211a213ca3e88ce856a371234e7d19834581ce3b47285d8be0b12",
+  "package_bytes": 73626,
+  "package_sha256": "2cc21ea6dfdac40f502932991619c993d820e804044d40ef8be53b0ccab4bfac",
   "compiler": "Zig 0.13.0, wasm32-freestanding -O2",
   "memory": {
     "initial_pages": 4,
@@ -28,6 +29,6 @@
     "instruction_budget": 100000,
     "wamr_execution_stack_bytes": 8192
   },
-  "first_complete_pixel_frame_clock_ticks": 524,
-  "scanned_minimum_budget_for_finite_trace": 63592
+  "first_complete_pixel_frame_clock_ticks": 429,
+  "scanned_minimum_budget_for_finite_trace": 82582
 }

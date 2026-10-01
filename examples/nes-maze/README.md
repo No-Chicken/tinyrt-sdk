@@ -36,9 +36,10 @@ python tools/tinyrt.py validate examples/nes-maze/build/nes-maze.trpkg --key-id 
 
 - 包 ABI 1，permissions=11（DRAW、TOUCH、CLOCK），memory_pages=16，回调预算100000；线性内存初始256 KiB、最大1 MiB，WAMR 执行栈仍为8 KiB。
 - 需要可选 `draw_rgb565`、`draw_skip`、`clock_interval` 导入。旧宿主会因不支持导入拒绝此包；ABI 1 的其他旧应用继续使用既有接口。
-- 请求1 ms时钟间隔，每次事件最多推进3条扫描线，到完整帧立即返回。未完成新帧时 `draw_skip()`；完整帧只提交一张256×240 RGB565LE图像，位于466×466画布的 `(105,95)`。
-- ROM 在启动时等待两次 vblank；初始化分片清零，第524次CLOCK事件才提交首张完整游戏图像，随后每88次事件完成一帧。1 ms是调度请求，不包含实际CPU/显示耗时，不能据此声称设备帧率。
+- 请求1 ms时钟间隔，每次事件最多推进64条扫描线，其中需要CPU解释或背景绘制的扫描线最多3条，到完整帧立即返回。未完成新帧时 `draw_skip()`；完整帧只提交一张256×240 RGB565LE图像，位于466×466画布的 `(105,95)`。
+- ROM 在启动时等待两次 vblank；初始化分片清零，第429次CLOCK事件提交首张完整游戏图像；无输入的稳定画面每5次事件完成一帧，有变化时按实际绘制工作量分片。1 ms是调度请求，不包含实际CPU/显示耗时，不能据此声称设备帧率。
+- 对固定NROM的无副作用自跳 `JMP` 合并6502周期；有待处理中断或mapper回调时仍逐条解释。PPU只在CPU处于该等待循环、没有精灵和滚动偏移时比较真实nametable、attribute与palette输入，复用未变化的图块行；其他情况完整渲染。游戏规则和输入处理始终由原ROM执行。这是该固定ROM的优化，不是通用NES性能保证。
 - 原始 N1 诊断示例保留。这个游戏不在运行时计算逐行CRC；CRC只由测试宿主计算。
 - ROM、生成器和原创图案采用 [MIT](ROM-LICENSE)；模拟器与派生的 `engine.c` 使用 [Apache-2.0](../../third_party/nes/upstream/LICENSE)，[固定来源及CPU分派适配](../../third_party/nes/README.md)未变。
 
-ROM 24592字节，Wasm 71552字节，签名包71808字节。精确哈希、有限轨迹预算和可复现测试见 [测试说明](../../tests/nes-maze/README.md)。
+当前应用版本3；ROM 24592字节，Wasm 73370字节，签名包73626字节。精确哈希、有限轨迹预算和可复现测试见 [测试说明](../../tests/nes-maze/README.md)。

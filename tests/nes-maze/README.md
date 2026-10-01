@@ -10,6 +10,7 @@
 python examples/nes-maze/build.py --cc <zig路径> --native
 examples/nes-maze/build/nes-maze-native.exe examples/nes-maze/build
 python examples/nes-maze/build.py --cc <zig路径> --development-key --key-id 1
+python tests/nes-maze/run_perf.py --cc <zig路径>
 ```
 
 在 MSVC x64 开发环境中编译真实 WAMR runner，传入 core 要求的固定 WAMR checkout：
@@ -31,10 +32,13 @@ python tests/nes-maze/budget_scan.py --runner tests/nes-maze/build/test_nes_maze
 - `test_wamr.c`：通过实际ABI事件点击屏幕按钮，检查画面中的玩家位置、单项输入队列、队列满时不覆盖、无效区域触摸、完整路线、退出及两次实例创建/销毁。每次事件/渲染均受原100000预算控制；停止调用可选 `tinyrt_stop`；销毁后受跟踪内存回到基线，关闭runtime后为0。
 - `test_oracle.py`：独立构造预期nametable、解码ROM CHR图块，比较native与WAMR标题、行走、胜利、重开八张完整画面的全部61440像素；核验两次vblank暖机、控制器读取、向量与原创地图。另对WAMR完整路线每步采样作逐像素核验，导出 `board-oracle.json`。
 - [artifact.json](artifact.json)：ROM/Wasm/签名包大小、哈希和实际模块导入/导出。`preview.png` 来自native真实帧。
-- [budget-scan.json](budget-scan.json)：完整有限路线的最低passing budget=63592，63591失败。正式manifest保持100000。扫描结果仅覆盖此ROM、此有限输入轨迹；不构成任意ROM、sprite或全部6502 opcode的最坏上界。
+- [budget-scan.json](budget-scan.json)：版本3完整有限路线的最低passing budget=82582，82581失败。正式manifest保持100000。扫描结果仅覆盖此ROM、此有限输入轨迹；不构成任意ROM、sprite或全部6502 opcode的最坏上界。
+- `run_perf.py`：60个稳定帧的真实6502 dispatch从595193条降到6399条，背景扫描线绘制从14400条降到0；NMI仍执行60次。`test_idle.c`以未修改的CPU解释器对照17245项断言，覆盖周期余量、NMI、延迟NMI、IRQ、mapper时钟和PRG读取回调。`test_cache_trace.c`比较开关缓存两版54个完整帧的CPU、VRAM和像素摘要，覆盖真实PPU的tile、attribute、palette、mask、scroll、sprite状态变化与重启。
 - `red-native.txt`、`red-wamr.txt` 记录先失败的行为；`green-native.txt`、`green-wamr.txt` 记录最终通过结果。
 
-最终长轨迹包含两个完整通关实例，各再空闲260帧。真实WAMR峰值跟踪内存488648字节（包括模块、线性内存和宿主frame，不是进程RSS或板上总RAM）。桌面耗时包含加载、建实例、测试检查及采样文件开销，不能换算成ESP32-S3帧率。
+版本3长轨迹包含两个完整通关实例，各再空闲260帧；需要4870次CLOCK事件，原版本需要64056次。每次测试点击后完成三个新画面最多64次CLOCK（原版本264次，会触发新增回归失败）。真实WAMR峰值跟踪内存490355字节（包括模块、线性内存和宿主frame，不是进程RSS或板上总RAM）。桌面耗时包含加载、建实例、测试检查及采样文件开销，不能换算成ESP32-S3帧率。
+
+`red-perf.txt`、`green-perf.txt`分别保留优化前的性能失败与差分验证结果。固定NROM的背景缓存要求可见期间CPU没有可能修改PPU的工作；条件不满足时退回原渲染。该结果不代表任意NES ROM可以在WAMR字节码解释器上达到实时帧率。
 
 ## 板测坐标与判定
 
@@ -51,4 +55,4 @@ python tests/nes-maze/budget_scan.py --runner tests/nes-maze/build/test_nes_maze
 
 CRC为标准CRC32，覆盖 `frame.pixels` 的全部122880字节RGB565LE数据，不包含宿主控件。标题=`a742dc95`；开始/重开/初始撞上墙=`7a1a234c`；右一次=`059ce89c`；右两次=`92549c97`；胜利=`7348876c`。
 
-重开后完整路线为 `RRRDDRRUURRRRDDDDDDD`（20步）。每步坐标、玩家位置和经过真实WAMR采样并独立比较的CRC见 [board-oracle.json](board-oracle.json)。真实runner确认首次像素在第524次CLOCK事件；之后每88次事件完成一帧。实际秒数取决于设备调度与执行成本，须上板测量。
+重开后完整路线为 `RRRDDRRUURRRRDDDDDDD`（20步）。每步坐标、玩家位置和经过真实WAMR采样并独立比较的CRC见 [board-oracle.json](board-oracle.json)。真实runner确认版本3首次像素在第429次CLOCK事件；稳定无输入帧每5次事件完成一帧。实际秒数取决于设备调度与执行成本，须上板测量。
