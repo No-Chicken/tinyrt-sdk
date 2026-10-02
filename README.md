@@ -19,6 +19,8 @@ python tools/tinyrt.py validate my-game/build/demo.my-game.trpkg --development-k
 
 `new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单、资源或签名输入；损坏产物需选择新路径。
 
+`app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为签名 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入 2 MiB 上限。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
+
 `run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。该v0.1.0下载位置尚待发布，当前使用显式本地runner。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
 
 `pack --aot --development-key` 限定非空`demo.`子命名空间与key_id=1。它用SDK pin校验编译器SHA-256，固定ESP32-S3目标与bounds/stack/loop-poll检查，自行生成AOT，打入格式1包并保留Wasm回退。通用入口不接受上传者提供的AOT或自报安全参数。`--wamrc`也必须匹配固定摘要。当前`tools/toolchains/esp32s3.json`内的v0.1.0附件URL是待发布位置，尚不能声称可下载；现阶段需使用匹配的本地编译器。自动下载代码只支持Windows x64，其他系统须显式提供匹配工具。

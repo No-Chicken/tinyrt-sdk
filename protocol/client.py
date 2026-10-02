@@ -8,6 +8,8 @@ HELLO, LIST, QUERY, PREPARE, UNINSTALL, LAUNCH, STOP = range(0x10, 0x17)
 LIST_QUARANTINED = 0x17
 LIST_PAGE = 0x18
 STORAGE, APP_INFO, RUNTIME_INFO = 0x19, 0x1a, 0x1b
+APP_COVER, MOBILE_STATUS = 0x1c, 0x1d
+CAP_COVER_MOBILE_CONFIRM = 128
 CAP_QUARANTINE = 8
 CAP_PAGED_LIST = 16
 CAP_STORAGE = 32
@@ -58,7 +60,7 @@ class Decoder:
 def package_info(data):
     if len(data) < 256 or len(data) > MAX_PACKAGE_SIZE or data[:8] != b'TRPKG001':
         raise ValueError('invalid TinyRT package header or size')
-    if struct.unpack_from('<HH5I',data,8)[0:2] != (1,256) or struct.unpack_from('<I',data,16)[0]!=256 or not 1<=struct.unpack_from('<I',data,20)[0]<=3 or struct.unpack_from('<II',data,24)!=(16,0):
+    if struct.unpack_from('<HH5I',data,8)[0:2] != (1,256) or struct.unpack_from('<I',data,16)[0]!=256 or not 1<=struct.unpack_from('<I',data,20)[0]<=4 or struct.unpack_from('<II',data,24)!=(16,0):
         raise ValueError('invalid format-1 package header')
     total, = struct.unpack_from('<I', data, 12)
     version, = struct.unpack_from('<I', data, 32)
@@ -218,7 +220,7 @@ def _target_text(raw):
 def _app_info_sections(raw, identity, maximum):
     if len(raw)!=248:raise ValueError('invalid format-1 app details length')
     schema,fmt,backend,fallback,sections=struct.unpack_from('<HHBBH',raw)
-    if schema!=1 or fmt!=1 or backend not in (1,2) or fallback>3 or sections & ~7:
+    if schema!=1 or fmt!=1 or backend not in (1,2) or fallback>3 or sections & ~15:
         raise ValueError('unknown format-1 app details schema or flags')
     name=validate_info(raw[8:80],maximum)
     if raw[8:8+len(identity)]!=identity:raise ValueError('app details identity or size mismatch')
@@ -229,7 +231,7 @@ def _app_info_sections(raw, identity, maximum):
     size=struct.unpack_from('<I',raw,76)[0]
     expected_sections=int(bool(wasm)) | (2 if aot else 0) | (4 if assets else 0)
     if (abi!=1 or permissions & ~15 or not 1<=pages<=16 or not 1<=budget<=100000
-            or (wasm and wasm<=8) or not (wasm or aot) or sections!=expected_sections):
+            or (wasm and wasm<=8) or not (wasm or aot) or (sections & 7)!=expected_sections):
         raise ValueError('invalid format-1 app details policy or sections')
     if aot:
         arch=_target_text(raw[184:200]);cpu=_target_text(raw[200:216])
@@ -240,13 +242,13 @@ def _app_info_sections(raw, identity, maximum):
     if (backend==2 and (not aot or fallback) or backend==1 and (not wasm or bool(aot)!=bool(fallback))):
         raise ValueError('inconsistent selected backend or fallback')
     calculated=256+16*sections.bit_count()
-    for length in (wasm,256+aot if aot else 0,assets):
+    for length in (wasm,256+aot if aot else 0,assets,133232 if sections & 8 else 0):
         if length:calculated=(calculated+3)//4*4+length
     if calculated!=size:raise ValueError('inconsistent package section lengths')
     return dict(schema=1,package_format=fmt,selected_backend=backend,fallback_reason=fallback,section_bits=sections,
         app_id=name.decode('ascii'),version=struct.unpack_from('<I',raw,40)[0],sha256=raw[44:76].hex(),
         size=size,title=title,key_id=key_id,abi_version=abi,permissions=permissions,memory_pages=pages,
-        instruction_budget=budget,wasm_size=wasm,assets_size=assets,aot_size=aot,aot_format=aot_format,
+        instruction_budget=budget,wasm_size=wasm,assets_size=assets,aot_size=aot,cover_size=133232 if sections & 8 else 0,aot_format=aot_format,
         safety_flags=safety,target_arch=arch,target_cpu=cpu,compat_id=raw[216:248].hex())
 
 
@@ -296,7 +298,12 @@ async def install(connect, data, progress=None):
                     raise ValueError('device does not support this package')
                 if await installed(link, info, allow_repair=True): return 'installed' if transfers else 'already-installed'
                 if isinstance(last_error, RemoteError) or transfers >= 2: raise last_error
-                await link.management(PREPARE, info)
+                if flags & CAP_STORAGE:
+                    capacity=await storage_info(link)
+                    required=(len(data)+4095)//4096*4096
+                    if required>capacity['free_bytes'] or required>capacity['largest_free_bytes']:
+                        raise RemoteError(5)
+                await confirmed_operation(link,PREPARE,info)
                 transfers += 1
                 await link.transfer(data, progress)
                 if await installed(link, info): return 'installed'
@@ -375,3 +382,50 @@ class Link:
         ok,err,received=await self.control(2)
         if not ok:raise RemoteError(err)
         if received!=len(data):raise ValueError('invalid FINISH watermark')
+
+async def confirmed_operation(link, opcode, payload, *, poll_interval=0.25, timeout=20):
+    """Wait for device UI consent before START or durable uninstall query."""
+    if opcode not in (PREPARE,UNINSTALL):raise ValueError('operation does not support consent')
+    raw=await link.management(opcode,payload)
+    if not raw:return raw # Older hosts and an open receive window complete immediately.
+    if len(raw)!=8:raise ValueError('invalid confirmation receipt')
+    schema,kind,reserved,token=struct.unpack('<HBBI',raw)
+    expected=2 if opcode==PREPARE else 1
+    if schema!=1 or kind!=expected or reserved or not token:raise ValueError('invalid confirmation receipt')
+    deadline=asyncio.get_running_loop().time()+timeout
+    while asyncio.get_running_loop().time()<deadline:
+        raw=await link.management(MOBILE_STATUS,struct.pack('<I',token))
+        if len(raw)!=12:raise ValueError('invalid confirmation status')
+        schema,current,state,returned,result,reserved=struct.unpack('<HBBIHH',raw)
+        if schema!=1 or current!=kind or returned!=token or reserved or state not in (1,2,3,4,5):
+            raise ValueError('confirmation token, kind or schema mismatch')
+        if state==3:
+            if result:raise RemoteError(result)
+            return b''
+        if result!=6:raise ValueError('invalid pending confirmation result')
+        if state in (4,5):raise RemoteError(result)
+        await asyncio.sleep(poll_interval)
+    raise TimeoutError('device confirmation timed out')
+
+async def app_cover(link, identity, *, chunk_size=206):
+    """Read and authenticate one bounded device-ready cover; missing cover raises NOT_FOUND."""
+    identity=bytes(identity)
+    if len(identity) not in (68,72) or type(chunk_size) is not int or not 1<=chunk_size<=206:raise ValueError('invalid cover request')
+    validate_info(identity if len(identity)==72 else identity+struct.pack('<I',256))
+    await _query_hello(link,CAP_COVER_MOBILE_CONFIRM)
+    data=bytearray();expected_hash=None
+    while len(data)<133232:
+        offset=len(data);raw=await link.management(APP_COVER,identity[:68]+struct.pack('<IH',offset,chunk_size))
+        if len(raw)<48:raise ValueError('short cover response')
+        schema,codec,total,cursor,count,reserved=struct.unpack_from('<HHIIHH',raw)
+        digest=raw[16:48]
+        if (schema!=1 or codec!=1 or total!=133232 or cursor!=offset or reserved
+                or count!=min(chunk_size,total-offset) or len(raw)!=48+count
+                or expected_hash is not None and digest!=expected_hash):
+            raise ValueError('invalid cover metadata, progress or bounds')
+        expected_hash=digest;data.extend(raw[48:])
+    header=struct.pack('<8sHHIHHHHII',b'TRCOV001',1,1,32,210,210,150,150,88200,45000)
+    if data[:32]!=header or hashlib.sha256(data).digest()!=expected_hash:
+        raise ValueError('cover dimensions or SHA-256 mismatch')
+    return dict(codec=1,size=len(data),sha256=expected_hash.hex(),data=bytes(data),
+                main_pixels=bytes(data[32:88232]),side_pixels=bytes(data[88232:]))

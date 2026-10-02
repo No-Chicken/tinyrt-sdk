@@ -59,6 +59,43 @@ def metadata_header(wasm, assets, *, app_id, title, version, abi_version,
     return header
 
 META_SIZE = 256
+COVER_HEADER = struct.pack('<8sHHIHHHHII',b'TRCOV001',1,1,32,210,210,150,150,88200,45000)
+COVER_SECTION_SIZE = 133232
+
+def decode_cover(raw):
+    if len(raw)!=COVER_SECTION_SIZE or raw[:32]!=COVER_HEADER:
+        raise ValueError('invalid cover codec, dimensions, header or bounded size')
+    return dict(codec=1,size=len(raw),sha256=hashlib.sha256(raw).hexdigest())
+
+def encode_cover_png(raw):
+    """Bound and inspect PNG before decode; precompute device-ready opaque pixels."""
+    import io
+    from PIL import Image
+    if len(raw)>65536 or len(raw)<33 or raw[:8]!=b'\x89PNG\r\n\x1a\n' or raw[8:16]!=b'\0\0\0\rIHDR':
+        raise ValueError('cover must be a PNG of at most 64 KiB')
+    if struct.unpack_from('>II',raw,16)!=(210,210):
+        raise ValueError('cover PNG must be exactly 210x210')
+    with Image.open(io.BytesIO(raw)) as source:
+        if source.format!='PNG' or source.size!=(210,210) or getattr(source,'n_frames',1)!=1:
+            raise ValueError('cover must be a single-frame 210x210 PNG')
+        source.load()
+        background=Image.new('RGBA',(210,210),(16,20,24,255))
+        background.alpha_composite(source.convert('RGBA'))
+        image=background.convert('RGB')
+        result=bytearray(COVER_HEADER)
+        for pixels in (image,image.resize((150,150),Image.Resampling.LANCZOS)):
+            for red,green,blue in struct.iter_unpack('BBB',pixels.tobytes()):
+                result+=struct.pack('<H',((red>>3)<<11)|((green>>2)<<5)|(blue>>3))
+    return bytes(result)
+
+def read_cover_source(path):
+    with Path(path).open('rb') as source:raw=source.read(65537)
+    if len(raw)>65536:raise ValueError('cover PNG exceeds 64 KiB')
+    return raw
+
+def read_cover_png(path):
+    return encode_cover_png(read_cover_source(path))
+
 
 def _text(raw, encoding, pattern=None):
     end = raw.find(b'\0')
@@ -85,7 +122,7 @@ def decode_aot_metadata(raw):
         result[name] = raw[start:start+size].hex()
     return result
 
-def _assemble(wasm, assets, *, native=None, native_metadata=None, include_wasm=True, **metadata):
+def _assemble(wasm, assets, *, native=None, native_metadata=None, include_wasm=True, cover=None, **metadata):
     header = metadata_header(wasm,b'',**metadata); header[:8] = b'TRPKG001'
     sections = [(1,bytes(wasm))] if include_wasm else []
     if native is not None:
@@ -96,6 +133,8 @@ def _assemble(wasm, assets, *, native=None, native_metadata=None, include_wasm=T
             raise ValueError('AOT module header does not match metadata')
         sections.append((2,bytes(native_metadata)+bytes(native)))
     if assets: sections.append((3,bytes(assets)))
+    if cover is not None:
+        decode_cover(cover);sections.append((4,bytes(cover)))
     if not sections or sections[0][0] == 3: raise ValueError('package requires executable section')
     cursor = 256 + 16*len(sections)
     table, body = bytearray(), bytearray()
@@ -124,7 +163,7 @@ def validate_envelope(data, public_key, expected_key_id):
     if not 272 <= len(data) <= MAX_PACKAGE_SIZE or data[:8] != b'TRPKG001':
         raise ValueError('invalid format-1 size or magic')
     fmt,header,total,table,count,entry,flags = struct.unpack_from('<HH5I',data,8)
-    if (fmt,header,total,table,entry,flags) != (1,256,len(data),256,16,0) or not 1 <= count <= 3:
+    if (fmt,header,total,table,entry,flags) != (1,256,len(data),256,16,0) or not 1 <= count <= 4:
         raise ValueError('invalid format-1 header')
     version,abi,permissions,pages,budget,key_id = struct.unpack_from('<6I',data,32)
     if not version or abi!=1 or permissions & ~15 or not 1<=pages<=16 or not 1<=budget<=100000 or any(data[184:192]):
@@ -143,7 +182,7 @@ def validate_envelope(data, public_key, expected_key_id):
     for i in range(count):
         kind, flags, offset, size = struct.unpack_from('<4I',data,256+16*i)
         aligned=(cursor+3)&~3
-        if not previous<kind<=3 or flags or offset!=aligned or any(data[cursor:aligned]) or size<1 or offset+size>len(data):
+        if not previous<kind<=4 or flags or offset!=aligned or any(data[cursor:aligned]) or size<1 or offset+size>len(data):
             raise ValueError('invalid section table, range or padding')
         sections[kind]=data[offset:offset+size];previous=kind;cursor=offset+size
     if cursor!=len(data) or not ({1,2}&sections.keys()): raise ValueError('missing executable section or trailing bytes')
@@ -157,10 +196,11 @@ def validate_envelope(data, public_key, expected_key_id):
             raise ValueError('native header does not match metadata')
         if wasm and hashlib.sha256(wasm).hexdigest()!=aot['source_wasm_sha256']:
             raise ValueError('AOT source identity mismatch')
+    cover=decode_cover(sections[4]) if 4 in sections else None
     return dict(validation_level='envelope',wasm_validation='not_performed',aot_validation='not_performed',
                 format_version=1,app_id=app_id,title=title,version=version,package_size=len(data),key_id=key_id,
                 sha256=hashlib.sha256(data).hexdigest(),wasm_size=len(wasm),assets_size=len(sections.get(3,b'')),
-                aot_size=native_size,aot=aot)
+                aot_size=native_size,aot=aot,cover=cover)
 
 
 build_package = build_wasm_package
@@ -178,6 +218,7 @@ def main(argv=None):
     pack = commands.add_parser("pack", help="build a signed TinyRT Wasm package")
     pack.add_argument("--wasm", required=True, type=Path)
     pack.add_argument("--assets", type=Path)
+    pack.add_argument("--cover", type=Path, help="single-frame 210x210 PNG, at most 64 KiB")
     pack.add_argument("--output", required=True, type=Path)
     pack.add_argument("--app-id", required=True)
     pack.add_argument("--title", required=True)
@@ -200,7 +241,7 @@ def main(argv=None):
             print("WARNING: public development key for TESTS ONLY; never trust in production.", file=sys.stderr)
             args.output.write_bytes(data)
             return 0
-        for source in (args.wasm, args.assets, args.key):
+        for source in (args.wasm, args.assets, args.cover, args.key):
             if source is not None and (args.output.resolve() == source.resolve() or
                     (args.output.exists() and args.output.samefile(source))):
                 raise ValueError("output must not overwrite an input or signing key")
@@ -211,6 +252,7 @@ def main(argv=None):
             key = serialization.load_pem_private_key(args.key.read_bytes(), password=None)
         builder = build_package
         data = builder(read_bounded(args.wasm), read_bounded(args.assets) if args.assets else b"",
+            cover=read_cover_png(args.cover) if args.cover else None,
             app_id=args.app_id, title=args.title, version=args.version, abi_version=args.abi_version,
             permissions=args.permissions, memory_pages=args.memory_pages, budget=args.budget,
             key_id=args.key_id, private_key=key)

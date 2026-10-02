@@ -13,10 +13,10 @@ def info(size):
     return b'demo.native'.ljust(32,b'\0')+struct.pack('<I',2)+bytes(range(32))+struct.pack('<I',size)
 
 
-def details(fmt=1,wasm=11,aot=29,assets=3,backend=2,fallback=0):
-    sections=int(bool(wasm)) | (2 if aot else 0) | (4 if assets else 0)
+def details(fmt=1,wasm=11,aot=29,assets=3,backend=2,fallback=0,cover=False):
+    sections=int(bool(wasm)) | (2 if aot else 0) | (4 if assets else 0) | (8 if cover else 0)
     size=256+16*sections.bit_count()
-    for length in (wasm,256+aot if aot else 0,assets):
+    for length in (wasm,256+aot if aot else 0,assets,133232 if cover else 0):
         if length:size=(size+3)//4*4+length
     raw=bytearray(248)
     struct.pack_into('<HHBBH',raw,0,1,fmt,backend,fallback,sections)
@@ -49,6 +49,12 @@ class Peer:
 
 
 class SectionQueries(unittest.IsolatedAsyncioTestCase):
+    async def test_cover_bit_accounts_for_signed_section_and_alignment(self):
+        peer=Peer();peer.details=details(cover=True)
+        result=await client.app_info(peer,peer.details[8:80])
+        self.assertEqual(result['cover_size'],133232)
+        self.assertEqual(result['section_bits'],15)
+
     async def test_full_details_response_uses_real_mtu23_fragment_decoder(self):
         class Gatt:
             def __init__(self):self.notifications={};self.decoder=client.Decoder();self.peer=Peer();self.fragments=0

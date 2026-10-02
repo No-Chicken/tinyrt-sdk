@@ -18,7 +18,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = {'app_id','title','version','abi_version','permissions','memory_pages','budget','sources'}
-OPTIONAL = {'assets','defines'}
+OPTIONAL = {'assets','defines','cover'}
 
 
 def integer(value, low, high, name):
@@ -73,6 +73,7 @@ def load_manifest(path):
         if item.suffix != '.c' or item in resolved: raise ValueError('sources must be unique C files')
         resolved.append(item)
     if value.get('assets') is not None: local_file(path.parent,value['assets'])
+    if value.get('cover') is not None: local_file(path.parent,value['cover'])
     defines=value.get('defines',{})
     if not isinstance(defines,dict) or len(defines)>32: raise ValueError('defines must be an object with at most 32 entries')
     for name,number in defines.items():
@@ -132,7 +133,8 @@ def build(path,cc=None,output=None):
     cc=str(Path(cc).resolve())
     sources=[local_file(path.parent,name) for name in m['sources']]
     assets=local_file(path.parent,m['assets']) if m.get('assets') is not None else None
-    output=protect_output(output or path.parent/'build'/(m['app_id']+'.wasm'),[path,*sources,assets],'.wasm',b'\0asm\x01\0\0\0')
+    cover=local_file(path.parent,m['cover']) if m.get('cover') is not None else None
+    output=protect_output(output or path.parent/'build'/(m['app_id']+'.wasm'),[path,*sources,assets,cover],'.wasm',b'\0asm\x01\0\0\0')
     output.parent.mkdir(parents=True,exist_ok=True)
     command=([cc,'cc','-target','wasm32-freestanding'] if Path(cc).stem.lower()=='zig'
              else [cc,'--target=wasm32-unknown-unknown'])
@@ -212,7 +214,8 @@ def main(argv=None):
                 path=manifest_path(args.app);m=load_manifest(path)
                 wasm=args.wasm or path.parent/'build'/(m['app_id']+'.wasm')
                 assets=local_file(path.parent,m['assets']) if m.get('assets') is not None else None
-                inputs=[path,wasm,assets,args.key,*[local_file(path.parent,s) for s in m['sources']]]
+                cover=local_file(path.parent,m['cover']) if m.get('cover') is not None else None
+                inputs=[path,wasm,assets,cover,args.key,*[local_file(path.parent,s) for s in m['sources']]]
                 output=protect_output(args.output or path.parent/'build'/(m['app_id']+'.trpkg'),inputs,'.trpkg',b'TRPKG001')
                 if args.aot:
                     if not args.development_key or args.key_id!=1:
@@ -224,6 +227,7 @@ def main(argv=None):
                 key=package.development_key() if args.development_key else serialization.load_pem_private_key(args.key.read_bytes(),None)
                 builder=package.build_package
                 data=builder(package.read_bounded(wasm),package.read_bounded(assets) if assets else b'',
+                    cover=package.read_cover_png(cover) if cover else None,
                     **{k:m[k] for k in REQUIRED-{'sources'}},key_id=args.key_id,private_key=key)
                 write_atomic(output,data)
                 result={'package':str(output),'app_id':m['app_id'],'package_size':len(data),

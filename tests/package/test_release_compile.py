@@ -84,6 +84,19 @@ class ReleaseCompile(unittest.TestCase):
         self.assertEqual(verified['aot_validation'],'not_performed')
         original=self.output.read_bytes();self.compile();self.assertEqual(self.output.read_bytes(),original)
 
+    def test_cover_producer_and_mutation_checked_before_signing(self):
+        from PIL import Image
+        import package
+        Image.new('RGB',(210,210),'blue').save(self.root/'cover.png')
+        app=json.loads(self.manifest.read_text(encoding='utf-8'));app['cover']='cover.png'
+        self.manifest.write_bytes(encoded(app))
+        self.compile();saved=self.output.read_bytes()
+        verified=package.validate_envelope(saved,self.signer.public_key(),7)
+        self.assertEqual(verified['cover']['size'],133232)
+        self.after_compile=lambda:(self.root/'cover.png').write_bytes(b'changed')
+        with self.assertRaises(ValueError):self.compile()
+        self.assertEqual(self.output.read_bytes(),saved)
+
     def test_native_only_package_keeps_source_identity(self):
         self.compile(include_wasm=False)
         import package

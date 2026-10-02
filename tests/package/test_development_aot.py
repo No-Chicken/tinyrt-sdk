@@ -22,6 +22,9 @@ class DevelopmentAOT(unittest.TestCase):
             (root/'main.c').write_text('/* fixture */',encoding='utf-8')
             manifest=root/'app.json';metadata=dict(app_id='demo.game',title='Game',version=1,
                 abi_version=1,permissions=15,memory_pages=4,budget=100000,sources=['main.c'])
+            from PIL import Image
+            Image.new('RGB',(210,210),'red').save(root/'cover.png')
+            metadata['cover']='cover.png'
             manifest.write_text(json.dumps(metadata),encoding='utf-8')
             profile=json.loads(tool.PROFILE.read_text(encoding='utf-8'))
             profile['compiler']['sha256']=hashlib.sha256(compiler.read_bytes()).hexdigest()
@@ -36,6 +39,7 @@ class DevelopmentAOT(unittest.TestCase):
                 tool.pack_development(manifest,wasm,output,compiler)
                 checked=package.validate_envelope(output.read_bytes(),package.development_key().public_key(),1)
                 self.assertEqual(checked['aot']['compat_id'],profile['compat_id'])
+                self.assertEqual(checked['cover']['size'],133232)
                 self.assertEqual(len(calls),1)
                 saved=output.read_bytes();compiler.write_bytes(b'tampered')
                 with self.assertRaises(ValueError):tool.pack_development(manifest,wasm,output,compiler)

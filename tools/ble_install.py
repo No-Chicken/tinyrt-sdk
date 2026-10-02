@@ -219,7 +219,7 @@ async def run(args):
             await link.management(protocol.STOP);print('stopped');return
         if app_id:info=await removal_identity(link,app_id)
         opcode={'query':protocol.QUERY,'launch':protocol.LAUNCH,'uninstall':protocol.UNINSTALL}[args.command]
-        raw=await link.management(opcode,info[:68])
+        raw=await protocol.confirmed_operation(link,opcode,info[:68]) if opcode==protocol.UNINSTALL else await link.management(opcode,info[:68])
         if args.command=='query':
             if raw!=info:raise ValueError('query identity mismatch')
             print(json.dumps(info_json(raw)))

@@ -52,8 +52,11 @@ def pack_development(manifest, wasm, output, wamrc=None):
     paths += [tinyrt.local_file(manifest.parent,name) for name in app['sources']]
     asset=tinyrt.local_file(manifest.parent,app['assets']) if app.get('assets') else None
     if asset:paths.append(asset)
-    snapshots={p.resolve():p.read_bytes() for p in paths}
+    cover=tinyrt.local_file(manifest.parent,app['cover']) if app.get('cover') is not None else None
+    if cover:paths.append(cover)
+    snapshots={p.resolve():package.read_cover_source(p) if p==cover else p.read_bytes() for p in paths}
     source=snapshots[Path(wasm).resolve()];assets=snapshots[asset] if asset else b''
+    cover_bytes=package.encode_cover_png(snapshots[cover]) if cover else None
     metadata={name:app[name] for name in tinyrt.REQUIRED-{'sources'}}
     metadata.update(key_id=1,private_key=package.development_key())
     package.metadata_header(source,assets,**metadata)
@@ -69,14 +72,14 @@ def pack_development(manifest, wasm, output, wamrc=None):
         code=package.read_bounded(native)
         if input_wasm.read_bytes()!=source:raise ValueError('compiler modified its Wasm input')
         for path,raw in snapshots.items():
-            if path.read_bytes()!=raw:raise ValueError('input changed during compilation: '+path.name)
+            if (package.read_cover_source(path) if path==cover else path.read_bytes())!=raw:raise ValueError('input changed during compilation: '+path.name)
         header=bytearray(256);struct.pack_into('<HHII',header,0,1,256,pin['aot_format'],7)
         header[16:32]=b'xtensa'.ljust(16,b'\0');header[32:48]=b'esp32s3'.ljust(16,b'\0')
         for start,name in ((48,'wamr_commit'),(68,'llvm_commit'),(88,'patch_sha256'),
                            (120,'compat_id'),(152,'options_sha256')):
             header[start:start+(20 if start<88 else 32)]=bytes.fromhex(pin[name])
         header[184:216]=bytes.fromhex(pin['compiler']['sha256']);header[216:248]=hashlib.sha256(source).digest()
-        data=package._assemble(source,assets,native=code,native_metadata=header,**metadata)
+        data=package._assemble(source,assets,native=code,native_metadata=header,cover=cover_bytes,**metadata)
         package.validate_envelope(data,package.development_key().public_key(),1)
         output=tinyrt.protect_output(output,paths,'.trpkg',b'TRPKG001');tinyrt.write_atomic(output,data)
     return dict(package=str(output),package_size=len(data),sha256=sha(data),development_key=True,

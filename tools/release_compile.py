@@ -104,6 +104,11 @@ def compile_release(manifest, wasm, source_lock, provenance, release_profile, ru
     app=tinyrt.load_manifest(manifest)
     for source in app['sources']:snapshot(tinyrt.local_file(manifest.parent,source))
     wasm_bytes=snapshot(wasm)
+    cover=None;cover_path=None
+    if app.get('cover') is not None:
+        cover_path=tinyrt.local_file(manifest.parent,app['cover'])
+        cover_source=package.read_cover_source(cover_path);watched[cover_path]=digest(cover_source)
+        cover=package.encode_cover_png(cover_source)
     assets=snapshot(tinyrt.local_file(manifest.parent,app['assets'])) if app.get('assets') is not None else b''
     private=serialization.load_pem_private_key(snapshot(signing_key),password=None)
     if not isinstance(private,ec.EllipticCurvePrivateKey) or not isinstance(private.curve,ec.SECP256R1):
@@ -131,7 +136,7 @@ def compile_release(manifest, wasm, source_lock, provenance, release_profile, ru
         native_bytes=package.read_bounded(native)
         if input_wasm.read_bytes()!=wasm_bytes:raise ValueError('compiler input changed during compilation')
         for path,expected in watched.items():
-            if digest(path.read_bytes())!=expected:raise ValueError('input artifact changed during compilation: '+path.name)
+            if digest(package.read_cover_source(path) if path==cover_path else path.read_bytes())!=expected:raise ValueError('input artifact changed during compilation: '+path.name)
         metadata=bytearray(256)
         struct.pack_into('<HHII',metadata,0,1,256,lock['aot_format_version'],7)
         for start,option in ((16,options[0]),(32,options[1])):
@@ -140,7 +145,7 @@ def compile_release(manifest, wasm, source_lock, provenance, release_profile, ru
         metadata[88:120]=hashlib.sha256(bytes.fromhex(profile['compiler_patch_sha256'])+bytes.fromhex(runtime_hash)).digest()
         metadata[120:152]=bytes.fromhex(compat);metadata[152:184]=bytes.fromhex(options_hash)
         metadata[184:216]=bytes.fromhex(prov['compiler']['sha256']);metadata[216:248]=hashlib.sha256(wasm_bytes).digest()
-        result=package._assemble(wasm_bytes,assets,native=native_bytes,native_metadata=metadata,
+        result=package._assemble(wasm_bytes,assets,native=native_bytes,native_metadata=metadata,cover=cover,
                                    include_wasm=include_wasm,**kwargs)
         package.validate_envelope(result,private.public_key(),profile['signing_key_id'])
         # Recheck replacement rules after the compiler process as well.
