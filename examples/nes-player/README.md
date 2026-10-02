@@ -87,4 +87,4 @@ python examples/nes-player/build.py --cc path/to/zig.exe --native --no-idle-batc
 examples/nes-player/build/nes-player-native.exe examples/nes-player/build/game.nes --trace
 ```
 
-当前设备性能与人工可玩性实测仍待完成，不预先给出 FPS 或流畅性结论。桌面预览的回调耗时、虚拟时钟和原生检查均不能替代设备实测。
+2026-10-02 在 ESP32-S3 诊断固件上，原创滚动 ROM 的两个连续10秒窗口为23.70/23.70 FPS产帧、23.60/23.80 FPS被UI获取；背景与精灵完整重绘。该数值仅代表当前原创ROM、尺寸与设备配置，不是光学面板测量，也不保证其他ROM速度。人工可玩性与主观认可仍待完成。桌面预览的回调耗时、虚拟时钟和原生检查均不能替代设备实测。
