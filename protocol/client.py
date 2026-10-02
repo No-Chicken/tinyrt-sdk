@@ -7,10 +7,11 @@ import zlib
 HELLO, LIST, QUERY, PREPARE, UNINSTALL, LAUNCH, STOP = range(0x10, 0x17)
 LIST_QUARANTINED = 0x17
 LIST_PAGE = 0x18
-STORAGE, APP_INFO = 0x19, 0x1a
+STORAGE, APP_INFO, RUNTIME_INFO = 0x19, 0x1a, 0x1b
 CAP_QUARANTINE = 8
 CAP_PAGED_LIST = 16
 CAP_STORAGE = 32
+CAP_PACKAGE_V2 = 64
 MAX_APPS = 16
 MAX_PACKAGE_SIZE = 0x200000
 SVC = '5377e411-0c9d-42a7-194b-5e8c71d23a6f'
@@ -55,8 +56,10 @@ class Decoder:
             self.reset(); raise ValueError('invalid management frame') from None
 
 def package_info(data):
-    if len(data) < 256 or len(data) > MAX_PACKAGE_SIZE or data[:8] != b'TRPKG001':
+    if len(data) < 256 or len(data) > MAX_PACKAGE_SIZE or data[:8] not in (b'TRPKG001',b'TRPKG002'):
         raise ValueError('invalid TinyRT package header or size')
+    if data[:8]==b'TRPKG002' and struct.unpack_from('<HH',data,8)!=(2,256):
+        raise ValueError('invalid v2 package header')
     total, = struct.unpack_from('<I', data, 12)
     version, = struct.unpack_from('<I', data, 32)
     appid = data[56:88]; name = appid.split(b'\0', 1)[0]
@@ -143,14 +146,14 @@ async def directory_records(link, opcode=LIST, *, hello=None):
             continue
         raise ValueError('directory pagination did not terminate')
 
-async def _query_hello(link):
+async def _query_hello(link, required=CAP_STORAGE):
     raw = await link.management(HELLO)
     if len(raw) != 8:
         raise ValueError('unsupported HELLO')
     abi, maximum, count, flags = struct.unpack('<HIBB', raw)
-    if abi != 1 or not 256 <= maximum <= MAX_PACKAGE_SIZE or not 1 <= count <= MAX_APPS or not flags & CAP_STORAGE:
-        raise ValueError('host does not support storage and app details queries')
-    return maximum, count
+    if abi != 1 or not 256 <= maximum <= MAX_PACKAGE_SIZE or not 1 <= count <= MAX_APPS or flags & required != required:
+        raise ValueError('host does not support the requested query or limits')
+    return maximum, count, flags
 
 
 async def storage_info(link):
@@ -158,7 +161,7 @@ async def storage_info(link):
 
     Unavailable RAM counters are None, never misleading zero measurements.
     """
-    maximum, max_apps = await _query_hello(link)
+    maximum, max_apps, _ = await _query_hello(link)
     raw = await link.management(STORAGE)
     if len(raw) != 92:
         raise ValueError('invalid storage reply length')
@@ -200,7 +203,10 @@ async def app_info(link, identity):
     if len(identity) not in (68,72):
         raise ValueError('invalid app details identity length')
     validate_info(identity if len(identity)==72 else identity+struct.pack('<I',256))
-    maximum, _ = await _query_hello(link)
+    maximum, _, flags = await _query_hello(link)
+    if flags & CAP_PACKAGE_V2:
+        raw = await link.management(APP_INFO, b'\x02\0'+identity[:68])
+        return _app_info_v2(raw, identity, maximum)
     raw = await link.management(APP_INFO, identity[:68])
     if len(raw) != 164:
         raise ValueError('invalid app details reply length')
@@ -219,6 +225,74 @@ async def app_info(link, identity):
     return dict(app_id=name.decode('ascii'),version=struct.unpack_from('<I',raw,32)[0],sha256=raw[36:68].hex(),
                 size=size,title=title,key_id=key_id,abi_version=abi,permissions=permissions,memory_pages=pages,
                 instruction_budget=budget,wasm_size=wasm,assets_size=assets)
+
+
+def _target_text(raw):
+    name=raw.split(b'\0',1)[0]
+    if not re.fullmatch(rb'[a-z0-9_-]{1,15}',name) or raw!=name.ljust(16,b'\0'):
+        raise ValueError('invalid target identifier')
+    return name.decode('ascii')
+
+
+def _app_info_v2(raw, identity, maximum):
+    if len(raw)!=248:raise ValueError('invalid v2 app details length')
+    schema,fmt,backend,fallback,sections=struct.unpack_from('<HHBBH',raw)
+    if schema!=2 or fmt not in (1,2) or backend not in (1,2) or fallback>3 or sections & ~7:
+        raise ValueError('unknown v2 app details schema or flags')
+    name=validate_info(raw[8:80],maximum)
+    if raw[8:8+len(identity)]!=identity:raise ValueError('app details identity or size mismatch')
+    title=raw[80:144];end=title.find(b'\0')
+    if end<1 or any(title[end:]):raise ValueError('noncanonical app title')
+    title=title[:end].decode('utf-8',errors='strict')
+    key_id,abi,permissions,pages,budget,wasm,assets,aot,aot_format,safety=struct.unpack_from('<10I',raw,144)
+    size=struct.unpack_from('<I',raw,76)[0]
+    expected_sections=int(bool(wasm)) | (2 if aot else 0) | (4 if assets else 0)
+    if (abi!=1 or permissions & ~15 or not 1<=pages<=16 or not 1<=budget<=100000
+            or (wasm and wasm<=8) or not (wasm or aot) or sections!=expected_sections):
+        raise ValueError('invalid v2 app details policy or sections')
+    if aot:
+        arch=_target_text(raw[184:200]);cpu=_target_text(raw[200:216])
+        if not aot_format or safety!=7 or not any(raw[216:248]):raise ValueError('invalid AOT metadata')
+    else:
+        arch=cpu=''
+        if any(raw[176:248]):raise ValueError('unexpected AOT metadata')
+    if (backend==2 and (not aot or fallback) or backend==1 and (not wasm or bool(aot)!=bool(fallback))):
+        raise ValueError('inconsistent selected backend or fallback')
+    if fmt==1:
+        if aot or backend!=1 or fallback:raise ValueError('invalid v1 execution metadata')
+        calculated=256+wasm+assets
+    else:
+        calculated=256+16*sections.bit_count()
+        for length in (wasm,256+aot if aot else 0,assets):
+            if length:calculated=(calculated+3)//4*4+length
+    if calculated!=size:raise ValueError('inconsistent package section lengths')
+    return dict(schema=2,package_format=fmt,selected_backend=backend,fallback_reason=fallback,section_bits=sections,
+        app_id=name.decode('ascii'),version=struct.unpack_from('<I',raw,40)[0],sha256=raw[44:76].hex(),
+        size=size,title=title,key_id=key_id,abi_version=abi,permissions=permissions,memory_pages=pages,
+        instruction_budget=budget,wasm_size=wasm,assets_size=assets,aot_size=aot,aot_format=aot_format,
+        safety_flags=safety,target_arch=arch,target_cpu=cpu,compat_id=raw[216:248].hex())
+
+
+async def runtime_info(link):
+    """Read the enabled firmware profile; never infer AOT support from a CPU name."""
+    maximum,max_apps,capabilities=await _query_hello(link,CAP_PACKAGE_V2)
+    raw=await link.management(RUNTIME_INFO)
+    if len(raw)!=136:raise ValueError('invalid runtime info length')
+    schema,formats,backends,aot_format,revision=struct.unpack_from('<HHIII',raw)
+    if schema!=1 or formats!=3 or backends & ~7 or not backends & 1 or backends & 4 and not backends & 2:
+        raise ValueError('unsupported runtime schema, formats or backends')
+    safety=struct.unpack_from('<I',raw,132)[0]
+    if backends & 2:
+        arch=_target_text(raw[16:32]);cpu=_target_text(raw[32:48])
+        if not aot_format or not revision or safety!=7 or any(not any(raw[start:end]) for start,end in ((48,80),(80,112),(112,132))):
+            raise ValueError('incomplete enabled AOT profile')
+    else:
+        arch=cpu=''
+        if any(raw[8:]):raise ValueError('disabled AOT profile must be zero')
+    return dict(schema=schema,package_formats=formats,backends=backends,capabilities=capabilities,package_v2=True,
+        max_package_size=maximum,max_apps=max_apps,aot_enabled=bool(backends & 2),development_aot=bool(backends & 4),
+        aot_format=aot_format,runtime_abi_revision=revision,target_arch=arch,target_cpu=cpu,
+        compat_id=raw[48:80].hex(),options_sha256=raw[80:112].hex(),wamr_commit=raw[112:132].hex(),required_safety_flags=safety)
 
 
 async def installed(link, info, *, allow_repair=False):
@@ -241,7 +315,7 @@ async def install(connect, data, progress=None):
                 hello = await link.management(HELLO)
                 if len(hello) != 8: raise ValueError('unsupported HELLO')
                 abi, maximum, count, flags = struct.unpack('<HIBB', hello)
-                if abi != 1 or maximum < len(data) or count < 1 or not flags & 1:
+                if abi != 1 or maximum < len(data) or count < 1 or not flags & 1 or data[:8]==b'TRPKG002' and not flags & CAP_PACKAGE_V2:
                     raise ValueError('device does not support this package')
                 if await installed(link, info, allow_repair=True): return 'installed' if transfers else 'already-installed'
                 if isinstance(last_error, RemoteError) or transfers >= 2: raise last_error

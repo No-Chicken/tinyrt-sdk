@@ -80,8 +80,9 @@ def read_bounded(path):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    pack = commands.add_parser("pack", help="build a signed TinyRT v1 package")
+    pack = commands.add_parser("pack", help="build a signed TinyRT Wasm package")
     pack.add_argument("--wasm", required=True, type=Path)
+    pack.add_argument("--format", type=int, choices=(1,2), default=1, help="envelope version; developer packages contain Wasm only")
     pack.add_argument("--assets", type=Path)
     pack.add_argument("--output", required=True, type=Path)
     pack.add_argument("--app-id", required=True)
@@ -114,7 +115,11 @@ def main(argv=None):
             print("WARNING: signing with public development key for TESTS ONLY.", file=sys.stderr)
         else:
             key = serialization.load_pem_private_key(args.key.read_bytes(), password=None)
-        data = build_package(read_bounded(args.wasm), read_bounded(args.assets) if args.assets else b"",
+        builder = build_package
+        if args.format == 2:
+            from package_v2 import build_wasm_package
+            builder = build_wasm_package
+        data = builder(read_bounded(args.wasm), read_bounded(args.assets) if args.assets else b"",
             app_id=args.app_id, title=args.title, version=args.version, abi_version=args.abi_version,
             permissions=args.permissions, memory_pages=args.memory_pages, budget=args.budget,
             key_id=args.key_id, private_key=key)

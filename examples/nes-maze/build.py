@@ -33,6 +33,6 @@ def main():
     if a.development_key or a.private_key:
         package=a.out/'nes-maze.trpkg'
         command=[sys.executable,str(SDK/'tools/tinyrt.py'),'pack',str(HERE),'--wasm',str(target),'--output',str(package),'--key-id',str(a.key_id)]
-        command+=['--development-key'] if a.development_key else ['--private-key',str(a.private_key)]
+        command+=['--development-key'] if a.development_key else ['--key',str(a.private_key)]
         subprocess.run(command,check=True)
 if __name__=='__main__':main()

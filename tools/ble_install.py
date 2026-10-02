@@ -195,6 +195,9 @@ async def run(args):
         result=await protocol.install(connect,data,progress)
         print(json.dumps({'result':result,**info_json(info)}));return
     async with connect() as link:
+        if args.command=='runtime':
+            if data is not None:raise ValueError('runtime does not take a package file')
+            print(json.dumps(await protocol.runtime_info(link)));return
         if args.command=='storage':
             if data is not None:raise ValueError('storage does not take a package file')
             print(json.dumps(await protocol.storage_info(link)));return
@@ -227,7 +230,7 @@ async def run(args):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command',nargs='?',default='list',choices=['pair','hello','list','quarantine','install','query','launch','uninstall','stop','storage','info'])
+    parser.add_argument('command',nargs='?',default='list',choices=['pair','hello','list','quarantine','install','query','launch','uninstall','stop','storage','info','runtime'])
     parser.add_argument('package',nargs='?')
     parser.add_argument('--address');parser.add_argument('--scan',action='store_true')
     parser.add_argument('--app-id',help='uninstall or inspect the exact current directory identity without the original package')

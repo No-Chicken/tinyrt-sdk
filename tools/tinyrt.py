@@ -99,9 +99,17 @@ def protect_output(output, inputs, suffix, magic):
             raise ValueError('output must not overwrite an input or signing key')
     if output.exists():
         if not output.is_file(): raise ValueError('output must be a regular artifact file')
+        accepted=magic if isinstance(magic,tuple) else (magic,)
         with output.open('rb') as stream:
-            if stream.read(len(magic))!=magic:
+            prefix=stream.read(max(map(len,accepted)))
+            if prefix not in accepted:
                 raise ValueError(f'existing output is not a {suffix} artifact; choose a new path')
+            if prefix==b'TRPKG002':
+                header=prefix+stream.read(248)
+                if (len(header)!=256 or struct.unpack_from('<HH',header,8)!=(2,256)
+                        or struct.unpack_from('<I',header,12)[0]!=output.stat().st_size
+                        or not 272<=output.stat().st_size<=2097152):
+                    raise ValueError('existing v2 output has an incomplete or inconsistent header')
     return output
 
 
@@ -147,6 +155,9 @@ def build(path,cc=None,output=None):
 
 def validate_envelope(data,public_key,expected_key_id):
     """Authenticate canonical envelope only; does NOT load or execute Wasm."""
+    if data[:8] == b'TRPKG002':
+        import package_v2
+        return package_v2.validate_envelope(data,public_key,expected_key_id)
     import package
     from cryptography.exceptions import InvalidSignature
     from cryptography.hazmat.primitives import hashes
@@ -202,6 +213,7 @@ def main(argv=None):
     compile_cmd.add_argument('app',type=Path);compile_cmd.add_argument('--cc');compile_cmd.add_argument('--output',type=Path)
     pack=commands.add_parser('pack',help='sign package using app.json metadata')
     pack.add_argument('app',type=Path);pack.add_argument('--wasm',type=Path);pack.add_argument('--output',type=Path);signing_options(pack)
+    pack.add_argument('--format',type=int,choices=(1,2),default=1,help='package format; generic packing remains Wasm-only')
     validate=commands.add_parser('validate',help='check authenticated envelope ONLY; no Wasm loading or execution')
     validate.add_argument('package',type=Path);signing_options(validate,True)
     args=parser.parse_args(argv)
@@ -228,9 +240,13 @@ def main(argv=None):
                 wasm=args.wasm or path.parent/'build'/(m['app_id']+'.wasm')
                 assets=local_file(path.parent,m['assets']) if m.get('assets') is not None else None
                 inputs=[path,wasm,assets,args.key,*[local_file(path.parent,s) for s in m['sources']]]
-                output=protect_output(args.output or path.parent/'build'/(m['app_id']+'.trpkg'),inputs,'.trpkg',b'TRPKG001')
+                output=protect_output(args.output or path.parent/'build'/(m['app_id']+'.trpkg'),inputs,'.trpkg',(b'TRPKG001',b'TRPKG002'))
                 key=package.development_key() if args.development_key else serialization.load_pem_private_key(args.key.read_bytes(),None)
-                data=package.build_package(package.read_bounded(wasm),package.read_bounded(assets) if assets else b'',
+                builder=package.build_package
+                if args.format==2:
+                    import package_v2
+                    builder=package_v2.build_wasm_package
+                data=builder(package.read_bounded(wasm),package.read_bounded(assets) if assets else b'',
                     **{k:m[k] for k in REQUIRED-{'sources'}},key_id=args.key_id,private_key=key)
                 write_atomic(output,data)
                 result={'package':str(output),'app_id':m['app_id'],'package_size':len(data),

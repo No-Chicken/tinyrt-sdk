@@ -40,6 +40,7 @@ class Peer:
         if op==26:
             self.asserted=payload
             return self.info
+        if op==27:return struct.pack('<HHI',1,3,1)+bytes(128)
         if op==24:return struct.pack('<QBBB',1,1,0,1)+identity()
         raise AssertionError(op)
 
@@ -126,9 +127,10 @@ class Queries(unittest.IsolatedAsyncioTestCase):
         async def run(args):seen.append((args.command,args.package,args.app_id))
         with patch.object(cli,'run',run):
             self.assertEqual(await asyncio.to_thread(cli.main,['storage','--address','test']),0)
+            self.assertEqual(await asyncio.to_thread(cli.main,['runtime','--address','test']),0)
             self.assertEqual(await asyncio.to_thread(cli.main,['info','--app-id','demo.game','--address','test']),0)
             self.assertEqual(await asyncio.to_thread(cli.main,['info','game.trpkg','--address','test']),0)
-        self.assertEqual(seen,[('storage',None,None),('info',None,'demo.game'),('info','game.trpkg',None)])
+        self.assertEqual(seen,[('storage',None,None),('runtime',None,None),('info',None,'demo.game'),('info','game.trpkg',None)])
 
     async def test_cli_runs_storage_and_both_details_routes_over_mock_transport(self):
         class Device:
@@ -142,14 +144,15 @@ class Queries(unittest.IsolatedAsyncioTestCase):
             package=bytearray(300);package[:8]=b'TRPKG001';struct.pack_into('<I',package,12,300)
             struct.pack_into('<I',package,32,7);package[56:65]=b'demo.game'
             path=Path(folder)/'game.trpkg';path.write_bytes(package)
-            for command,filename,app_id in (('storage',None,None),('info',None,'demo.game'),('info',str(path),None)):
+            for command,filename,app_id in (('storage',None,None),('runtime',None,None),('info',None,'demo.game'),('info',str(path),None)):
                 peer=LinkPeer()
+                if command=='runtime':peer.flags=127
                 if filename:peer.info=client.package_info(package)+peer.info[72:]
                 args=argparse.Namespace(command=command,package=filename,app_id=app_id,address='test',scan=False,pair=False,pin=None,timeout=1,fragment=20)
                 output=io.StringIO()
                 with patch.dict(sys.modules,{'bleak':bleak}),patch.object(cli.protocol,'Link',lambda *a,**k:peer),contextlib.redirect_stdout(output):
                     await cli.run(args)
                 value=json.loads(output.getvalue())
-                self.assertEqual(value['schema'] if command=='storage' else value['title'],1 if command=='storage' else '迷宫 🐍')
+                self.assertEqual(value['schema'] if command in ('storage','runtime') else value['title'],1 if command in ('storage','runtime') else '迷宫 🐍')
 
 if __name__=='__main__':unittest.main()

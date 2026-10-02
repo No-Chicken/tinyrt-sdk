@@ -27,6 +27,20 @@ python tools/tinyrt.py validate examples/pomodoro/build/demo.pomodoro.trpkg --de
 
 底层 `tools/package.py` 保留原来的单独打包和 `development-public-key` 命令。签名工具不读取固件密钥，也不生成或替换生产密钥。
 
+## v2 与受信 AOT 发布
+
+`pack --format 2` 生成包含 Wasm 和可选资源的 TRPKG v2；默认仍生成 v1。两种格式都受完整包 2 MiB 上限约束。通用打包命令仅接受 Wasm，不接受上传者提供的 AOT 或安全选项声明。
+
+受信发布操作方可以使用 `tools/release_compile.py`：
+
+```powershell
+python tools/release_compile.py --manifest path/to/app/app.json --wasm path/to/app/build/app.wasm --source-lock path/to/toolchain/source-lock.json --provenance path/to/compiler/provenance.json --release-profile path/to/release-profile.json --runtime-patch path/to/runtime/0001.patch --runtime-patch path/to/runtime/0002.patch --key path/to/release-signing.pem --output path/to/app/build/app.trpkg
+```
+
+source-lock、provenance、release profile、按序 runtime 补丁和签名钥必须由发布操作方控制。命令按 profile 固定的编译器与选项自行生成 AOT，重新检查全部输入、补丁和编译器摘要后签名；默认附带原始 Wasm，`--without-wasm` 可省略回退。profile 字段、兼容 ID 算法、签名来源绑定、主机 AOT 授权与当前/上一把公钥轮换见 [package-v2.md](specs/package-v2.md)。不内置生产密钥，也不部署发布服务器。
+
+v2 信封校验输出另含 `aot_validation: not_performed`。签名元数据是发布方声明；不能单靠它证明机器码安全。固件仍须核查目标、兼容 ID、ABI、导入、内存和执行取消保护，普通旧信任记录默认无 AOT 权限。
+
 ## app.json
 
 ```json
@@ -96,6 +110,10 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info examples/snake/buil
 `info` 仅查询已验证健康应用。包路径使用该文件的完整身份和大小；`--app-id` 先解析健康目录的当前完整身份，再发 APP_INFO。返回 title、key_id、ABI、permissions、memory_pages、instruction_budget、wasm_size、assets_size 和完整身份，可供网站/手机对照应用目录。标题和 ID 本身不证明“官方”；应结合完整 SHA-256 与受信发布者 key_id。客户端严格检查 92/164 字节布局、schema/保留位、容量关系、身份匹配与 UTF-8，未知能力或畸形回复直接失败。Python 对应 API 为 `storage_info(link)` 和 `app_info(link, identity68_or_info72)`；产品 TypeScript 协议层提供 `storageInfo` / `appInfo`，本轮未增加查询 UI。
 
 信任策略由宿主配置：签名钥可限定 app ID 或末尾点命名空间。开发者应使用所属范围内的 ID；签名合法但越权的包仍被拒绝。公开开发钥只用于明确开启该信任的试验固件。
+
+声明 HELLO bit6（64）的固件支持 v2 协商。客户端自动使用 248 字节 schema2 APP_INFO，输出 `package_format`、`selected_backend`（1=Wasm、2=AOT）、`fallback_reason`（0=无、1=禁用、2=目标、3=兼容 ID/格式）与各 section 大小；旧固件继续使用 164 字节回复。v2 按表项、对齐和 AOT 元数据开销验证总长。含 AOT 但选中 Wasm 时，界面应显示“兼容模式，性能降低”。
+
+`python tools/ble_install.py --address AA:BB:CC:DD:EE:FF runtime` 或 `await runtime_info(link)` 查询实际启用的运行时 profile：包格式、后端、开发 AOT 开关、目标、兼容 ID、选项摘要和源码提交。未启用 AOT 的固件必须将全部 profile 字段置零。客户端拒绝未知 schema/位、尺寸矛盾和不完整 profile；安装 v2 之前先要求 cap64，不会对旧固件开始传输。字段定义见 [v2 BLE 合同](specs/package-v2.md#ble-协商合同)。
 
 Windows 仅在系统发出 PIN 请求后读取控制台，支持退格、Enter、Ctrl-C（取消）和 Ctrl-Z（EOF）。读取使用可取消的异步轮询；系统拒绝配对时会结束读取，不留下阻塞 `input()` 的后台线程。非交互终端必须提供 `--pin`。Python 自动验收可调用 `await windows_pair(address, pin_reader=reader)`，其中 `reader` 是无参数的异步函数，在收到请求后返回六位数字字符串；仍可用原有 `pin` 参数直接提供值。
 
