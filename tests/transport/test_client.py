@@ -4,7 +4,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'protocol'))
 import client
 
 def package():
-    p=bytearray(300);p[:8]=b'TRPKG001';struct.pack_into('<I',p,12,len(p));struct.pack_into('<I',p,32,2);p[56:63]=b'counter'
+    p=bytearray(300);p[:8]=b'TRPKG001';struct.pack_into('<HH5I',p,8,1,256,len(p),256,1,16,0);struct.pack_into('<I',p,12,len(p));struct.pack_into('<I',p,32,2);p[56:63]=b'counter'
     return bytes(p)
 
 class CodecTests(unittest.TestCase):
@@ -33,7 +33,7 @@ class FakePeer:
         self.connections+=1
         yield self
     async def management(self,op,payload=b''):
-        if op==client.HELLO:return struct.pack('<HIBB',1,303104,2,7)
+        if op==client.HELLO:return struct.pack('<HIBB',1,303104,2,71)
         if op==client.QUERY:
             if not self.installed:raise client.RemoteError(8)
             return client.package_info(package())

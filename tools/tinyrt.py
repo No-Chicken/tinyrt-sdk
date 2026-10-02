@@ -104,12 +104,12 @@ def protect_output(output, inputs, suffix, magic):
             prefix=stream.read(max(map(len,accepted)))
             if prefix not in accepted:
                 raise ValueError(f'existing output is not a {suffix} artifact; choose a new path')
-            if prefix==b'TRPKG002':
+            if prefix==b'TRPKG001':
                 header=prefix+stream.read(248)
-                if (len(header)!=256 or struct.unpack_from('<HH',header,8)!=(2,256)
+                if (len(header)!=256 or struct.unpack_from('<HH',header,8)!=(1,256)
                         or struct.unpack_from('<I',header,12)[0]!=output.stat().st_size
                         or not 272<=output.stat().st_size<=2097152):
-                    raise ValueError('existing v2 output has an incomplete or inconsistent header')
+                    raise ValueError('existing format-1 output has an incomplete or inconsistent header')
     return output
 
 
@@ -155,49 +155,12 @@ def build(path,cc=None,output=None):
 
 def validate_envelope(data,public_key,expected_key_id):
     """Authenticate canonical envelope only; does NOT load or execute Wasm."""
-    if data[:8] == b'TRPKG002':
-        import package_v2
-        return package_v2.validate_envelope(data,public_key,expected_key_id)
     import package
-    from cryptography.exceptions import InvalidSignature
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.asymmetric import ec,utils
-    integer(expected_key_id,0,0xffffffff,'key ID')
-    if not isinstance(public_key,ec.EllipticCurvePublicKey) or not isinstance(public_key.curve,ec.SECP256R1):
-        raise ValueError('verification key must be P-256')
-    if not 265 <= len(data) <= package.MAX_PACKAGE_SIZE or data[:8]!=b'TRPKG001':
-        raise ValueError('invalid package size or magic')
-    fields=struct.unpack_from('<HH11I',data,8)
-    fmt,header,total,wo,ws,ao,az,version,abi,permissions,pages,budget,key_id=fields
-    if (fmt!=1 or header!=256 or total!=len(data) or wo!=256 or ws<=8 or
-            ws>len(data)-256 or ao!=256+ws or az!=len(data)-ao):
-        raise ValueError('invalid package layout')
-    for value,low,high,name in [(version,1,0xffffffff,'version'),(abi,1,1,'ABI'),
-        (permissions,0,15,'permissions'),(pages,1,16,'memory pages'),(budget,1,100000,'budget')]:
-        integer(value,low,high,name)
-    if key_id!=expected_key_id: raise ValueError('package key ID is not the explicitly trusted ID')
-    def padded_text(blob,encoding):
-        end=blob.find(b'\0')
-        if end<1 or any(blob[end:]): raise ValueError('noncanonical text padding')
-        try: return blob[:end].decode(encoding,errors='strict')
-        except UnicodeError as error: raise ValueError('invalid package text') from error
-    app_id=padded_text(data[56:88],'ascii');title=padded_text(data[88:152],'utf-8')
-    if re.fullmatch(r'[a-z0-9._-]{1,31}',app_id) is None: raise ValueError('invalid app ID')
-    if any(data[184:192]): raise ValueError('nonzero reserved bytes')
-    if data[256:264]!=b'\0asm\x01\0\0\0': raise ValueError('invalid Wasm magic/version')
-    if hashlib.sha256(data[256:]).digest()!=data[152:184]: raise ValueError('payload hash mismatch')
-    r=int.from_bytes(data[192:224],'big');s=int.from_bytes(data[224:256],'big')
-    if not 0<r<package.P256_ORDER or not 0<s<=package.P256_ORDER//2:
-        raise ValueError('invalid or noncanonical signature')
-    try: public_key.verify(utils.encode_dss_signature(r,s),package.DOMAIN+data[:192],ec.ECDSA(hashes.SHA256()))
-    except InvalidSignature as error: raise ValueError('signature verification failed') from error
-    return {'validation_level':'envelope','wasm_validation':'not_performed','app_id':app_id,
-            'title':title,'version':version,'package_size':len(data),'key_id':key_id,
-            'sha256':hashlib.sha256(data).hexdigest()}
+    return package.validate_envelope(data, public_key, expected_key_id)
 
 
 def signing_options(parser,verify=False):
-    parser.add_argument('--key-id',required=True,type=lambda s:int(s,0))
+    parser.add_argument('--key-id',default=1,type=lambda s:int(s,0),help='trusted key ID; development key uses 1')
     group=parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--public-key' if verify else '--key',type=Path,
                        help='P-256 SEC1 or PEM public key' if verify else 'existing unencrypted P-256 PEM key')
@@ -209,11 +172,18 @@ def main(argv=None):
     commands=parser.add_subparsers(dest='command',required=True)
     new=commands.add_parser('new',help='create a minimal app in a new directory')
     new.add_argument('directory',type=Path);new.add_argument('--app-id',required=True);new.add_argument('--title',default='TinyRT app')
+    new.add_argument('--template',choices=('minimal','game'),default='minimal')
     compile_cmd=commands.add_parser('build',help='compile freestanding C to Wasm without ESP-IDF')
     compile_cmd.add_argument('app',type=Path);compile_cmd.add_argument('--cc');compile_cmd.add_argument('--output',type=Path)
+    preview_cmd=commands.add_parser('run',help='real WAMR desktop preview; timings are not device performance')
+    preview_cmd.add_argument('app',type=Path);preview_cmd.add_argument('--events',type=Path)
+    preview_cmd.add_argument('--frames',default='0,330');preview_cmd.add_argument('--output',type=Path)
+    preview_cmd.add_argument('--runner',type=Path)
+    preview_cmd.add_argument('--step-ms',type=int,help='explicit fixed CLOCK injection; default honors guest clock_interval')
     pack=commands.add_parser('pack',help='sign package using app.json metadata')
     pack.add_argument('app',type=Path);pack.add_argument('--wasm',type=Path);pack.add_argument('--output',type=Path);signing_options(pack)
-    pack.add_argument('--format',type=int,choices=(1,2),default=1,help='package format; generic packing remains Wasm-only')
+    pack.add_argument('--aot',action='store_true',help='compile pinned ESP32-S3 AOT; requires --development-key')
+    pack.add_argument('--wamrc',type=Path,help='local compiler with the exact SDK-pinned SHA-256')
     validate=commands.add_parser('validate',help='check authenticated envelope ONLY; no Wasm loading or execution')
     validate.add_argument('package',type=Path);signing_options(validate,True)
     args=parser.parse_args(argv)
@@ -221,7 +191,7 @@ def main(argv=None):
         if args.command=='new':
             if args.directory.exists(): raise ValueError('destination already exists')
             with tempfile.TemporaryDirectory(prefix='tinyrt-new-') as temp:
-                staged=Path(temp)/'app';shutil.copytree(ROOT/'templates/minimal',staged)
+                staged=Path(temp)/'app';shutil.copytree(ROOT/'templates'/args.template,staged)
                 m=json.loads((staged/'app.json').read_text(encoding='utf-8-sig'))
                 m.update(app_id=args.app_id,title=args.title)
                 (staged/'app.json').write_text(json.dumps(m,indent=2)+'\n',encoding='utf-8')
@@ -229,6 +199,9 @@ def main(argv=None):
                 shutil.copytree(staged,args.directory)
             result={'app':str(args.directory.resolve()),'app_id':args.app_id}
         elif args.command=='build':result=build(args.app,args.cc,args.output)
+        elif args.command=='run':
+            import preview
+            result=preview.run(args.app,args.events,args.frames,args.output,args.runner,args.step_ms)
         else:
             import package
             from cryptography.hazmat.primitives import serialization
@@ -240,12 +213,16 @@ def main(argv=None):
                 wasm=args.wasm or path.parent/'build'/(m['app_id']+'.wasm')
                 assets=local_file(path.parent,m['assets']) if m.get('assets') is not None else None
                 inputs=[path,wasm,assets,args.key,*[local_file(path.parent,s) for s in m['sources']]]
-                output=protect_output(args.output or path.parent/'build'/(m['app_id']+'.trpkg'),inputs,'.trpkg',(b'TRPKG001',b'TRPKG002'))
+                output=protect_output(args.output or path.parent/'build'/(m['app_id']+'.trpkg'),inputs,'.trpkg',b'TRPKG001')
+                if args.aot:
+                    if not args.development_key or args.key_id!=1:
+                        raise ValueError('SDK AOT packing requires --development-key with key ID 1; publishers use release_compile.py')
+                    import development_aot
+                    result=development_aot.pack_development(path,wasm,output,args.wamrc)
+                    print(json.dumps(result,sort_keys=True));return 0
+                if args.wamrc:raise ValueError('--wamrc requires --aot')
                 key=package.development_key() if args.development_key else serialization.load_pem_private_key(args.key.read_bytes(),None)
                 builder=package.build_package
-                if args.format==2:
-                    import package_v2
-                    builder=package_v2.build_wasm_package
                 data=builder(package.read_bounded(wasm),package.read_bounded(assets) if assets else b'',
                     **{k:m[k] for k in REQUIRED-{'sources'}},key_id=args.key_id,private_key=key)
                 write_atomic(output,data)
@@ -258,7 +235,7 @@ def main(argv=None):
                     public=serialization.load_pem_public_key(raw) if raw.startswith(b'-----BEGIN') else ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(),raw)
                 result=validate_envelope(package.read_bounded(args.package),public,args.key_id)
         print(json.dumps(result,sort_keys=True));return 0
-    except (OSError,ValueError,TypeError,UnicodeError,subprocess.CalledProcessError) as error:
+    except (OSError,ValueError,TypeError,UnicodeError,subprocess.SubprocessError) as error:
         parser.exit(2,f'tinyrt: {error}\n')
 
 if __name__=='__main__':raise SystemExit(main())

@@ -23,7 +23,7 @@ python examples/nes-maze/build.py --cc "$zig" --development-key --key-id 1
 if ($LASTEXITCODE) { throw 'Wasm/package build failed' }
 ```
 
-该命令生成 Wasm 与 PUBLIC 演示钥签名包，仅用于开发测试，不能证明生产发布者身份。AOT 的受控编译、签名和 v2 格式见 [包规格](../../specs/package-v2.md)；普通打包入口只接收 Wasm。ESP32-S3 与 ESP32-S31 需要独立的 AOT 产物与目标验收。
+该命令生成 Wasm 与 PUBLIC 演示钥签名包，仅用于开发测试，不能证明生产发布者身份。AOT 的受控编译、签名和格式 1见 [包规格](../../specs/package.md)；普通打包入口只接收 Wasm。ESP32-S3 与 ESP32-S31 需要独立的 AOT 产物与目标验收。
 
 在 MSVC x64 开发环境中编译真实 WAMR runner。下面使用 SDK 同级的 core 和其 WAMR checkout；独立布局需替换 `$core`、`$wamr`。WAMR 必须是 core 要求的固定 commit、干净源码；构建系统准备并核对 runtime 补丁，不要传入已有修改的编译器工作目录。
 

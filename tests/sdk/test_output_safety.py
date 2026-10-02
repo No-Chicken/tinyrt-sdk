@@ -67,7 +67,7 @@ class OutputSafetyTests(unittest.TestCase):
 
     def test_pack_preserves_existing_non_package_even_with_package_suffix(self):
         self.cli('build');output=self.app/'config.trpkg'
-        for original in (b'#define CONFIG 123\n',b'',self.wasm.read_bytes(),b'TRPKG002',b'TRPKG002'+bytes(248)):
+        for original in (b'#define CONFIG 123\n',b'',self.wasm.read_bytes(),b'TRPKG001',b'TRPKG001'+bytes(248)):
             with self.subTest(original=original):
                 output.write_bytes(original)
                 self.cli('pack','--output',output,success=False)

@@ -9,7 +9,7 @@ from cryptography.hazmat.primitives.asymmetric import ec,utils
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'tools'))
 import package
-import package_v2
+import package
 
 WASM=b'\0asm\x01\0\0\0\0\x01\0'
 KEY=ec.derive_private_key(42,ec.SECP256R1())
@@ -18,7 +18,7 @@ KW=dict(app_id='demo.fixture',title='Fixture',version=1,abi_version=1,permission
 
 def signed(raw):
     raw=bytearray(raw);raw[152:184]=hashlib.sha256(raw[256:]).digest()
-    r,s=utils.decode_dss_signature(KEY.sign(package_v2.DOMAIN+raw[:192],ec.ECDSA(hashes.SHA256())))
+    r,s=utils.decode_dss_signature(KEY.sign(package.DOMAIN+raw[:192],ec.ECDSA(hashes.SHA256())))
     raw[192:256]=r.to_bytes(32,'big')+min(s,package.P256_ORDER-s).to_bytes(32,'big')
     return bytes(raw)
 
@@ -28,11 +28,11 @@ def meta(wasm):
     raw[48:216]=bytes(range(1,169));raw[216:248]=hashlib.sha256(wasm).digest()
     return bytes(raw)
 
-class V2Envelope(unittest.TestCase):
-    def verify(self,raw):return package_v2.validate_envelope(raw,KEY.public_key(),42)
+class SectionEnvelope(unittest.TestCase):
+    def verify(self,raw):return package.validate_envelope(raw,KEY.public_key(),42)
 
     def test_signed_table_header_padding_and_tail_rejections(self):
-        good=package_v2.build_wasm_package(WASM,b'asset',**KW)
+        good=package.build_wasm_package(WASM,b'asset',**KW)
         self.verify(good)
         changes=[(8,'H',3),(10,'H',255),(12,'I',len(good)+1),(16,'I',260),(20,'I',0),(20,'I',4),
             (24,'I',20),(28,'I',1),(36,'I',2),(40,'I',16),(44,'I',17),(48,'I',0),
@@ -50,7 +50,7 @@ class V2Envelope(unittest.TestCase):
 
     def test_aot_claims_source_identity_and_native_header(self):
         native=b'\0aot\x05\0\0\0'+b'x'*21
-        good=package_v2._assemble(WASM,b'',native=native,native_metadata=meta(WASM),**KW)
+        good=package._assemble(WASM,b'',native=native,native_metadata=meta(WASM),**KW)
         checked=self.verify(good);self.assertEqual(checked['aot_validation'],'not_performed')
         offset=struct.unpack_from('<I',good,280)[0]
         for position,kind,value in ((0,'H',2),(2,'H',255),(4,'I',0),(8,'I',3),(12,'B',1),(16,'B',65),
@@ -66,9 +66,9 @@ class V2Envelope(unittest.TestCase):
         wasm=WASM+bytes(1048576)
         # The omitted compiler input does not consume package storage.
         assets=bytes(package.MAX_PACKAGE_SIZE-(256+32+256+len(native)+3))
-        raw=package_v2._assemble(wasm,assets,native=native,native_metadata=meta(wasm),include_wasm=False,**KW)
+        raw=package._assemble(wasm,assets,native=native,native_metadata=meta(wasm),include_wasm=False,**KW)
         self.assertEqual(len(raw),package.MAX_PACKAGE_SIZE);self.verify(raw)
         with self.assertRaises(ValueError):
-            package_v2._assemble(wasm,assets+b'x',native=native,native_metadata=meta(wasm),include_wasm=False,**KW)
+            package._assemble(wasm,assets+b'x',native=native,native_metadata=meta(wasm),include_wasm=False,**KW)
 
 if __name__=='__main__':unittest.main()

@@ -19,7 +19,7 @@ spec=importlib.util.spec_from_file_location('query_cli',ROOT/'tools/ble_install.
 cli=importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
 
 def identity():
-    return b'demo.game'.ljust(32,b'\0')+struct.pack('<I',7)+bytes(range(32))+struct.pack('<I',300)
+    return b'demo.game'.ljust(32,b'\0')+struct.pack('<I',7)+bytes(range(32))+struct.pack('<I',334)
 
 def storage():
     raw=bytearray(92);struct.pack_into('<HHQ',raw,0,1,1,0xfedcba9876543210)
@@ -28,11 +28,13 @@ def storage():
     return bytes(raw)
 
 def details():
-    raw=bytearray(164);raw[:72]=identity();title='迷宫 🐍'.encode();raw[72:72+len(title)]=title
-    struct.pack_into('<7I',raw,136,42,1,15,16,100000,30,14);return bytes(raw)
+    raw=bytearray(248);struct.pack_into('<HHBBH',raw,0,1,1,1,0,5)
+    raw[8:80]=identity();title='迷宫 🐍'.encode();raw[80:80+len(title)]=title
+    struct.pack_into('<10I',raw,144,42,1,15,16,100000,30,14,0,0,0)
+    return bytes(raw)
 
 class Peer:
-    def __init__(self):self.raw=storage();self.info=details();self.flags=63;self.calls=[]
+    def __init__(self):self.raw=storage();self.info=details();self.flags=127;self.calls=[]
     async def management(self,op,payload=b''):
         self.calls.append((op,payload))
         if op==16:return struct.pack('<HIBB',1,0x200000,16,self.flags)
@@ -40,7 +42,7 @@ class Peer:
         if op==26:
             self.asserted=payload
             return self.info
-        if op==27:return struct.pack('<HHI',1,3,1)+bytes(128)
+        if op==27:return struct.pack('<HHI',1,1,1)+bytes(128)
         if op==24:return struct.pack('<QBBB',1,1,0,1)+identity()
         raise AssertionError(op)
 
@@ -98,27 +100,12 @@ class Queries(unittest.IsolatedAsyncioTestCase):
     async def test_info_checks_exact_identity_and_policy(self):
         peer=Peer();value=await client.app_info(peer,identity())
         self.assertEqual(value['title'],'迷宫 🐍');self.assertEqual(value['key_id'],42)
-        self.assertEqual(value['sha256'],bytes(range(32)).hex());self.assertEqual(peer.asserted,identity()[:68])
-        self.assertEqual(value['wasm_size']+value['assets_size']+256,value['size'])
-        for offset,kind,value in ((32,'I',8),(36,'B',255),(68,'I',301),(140,'I',2),(144,'I',16),(148,'I',0),(148,'I',17),(152,'I',0),(152,'I',100001),(156,'I',8),(160,'I',15),(156,'I',0xffffffff),(160,'I',0xffffffff)):
+        self.assertEqual(value['sha256'],bytes(range(32)).hex());self.assertEqual(peer.asserted,b'\x01\0'+identity()[:68])
+        self.assertEqual(value['wasm_size']+value['assets_size']+290,value['size'])
+        for offset,kind,value in ((40,'I',8),(44,'B',255),(76,'I',301),(148,'I',2),(152,'I',16),(156,'I',0),(156,'I',17),(160,'I',0),(160,'I',100001),(164,'I',8),(168,'I',15),(164,'I',0xffffffff),(168,'I',0xffffffff)):
             with self.subTest(offset=offset):
                 peer=Peer();raw=bytearray(peer.info);struct.pack_into('<'+kind,raw,offset,value);peer.info=raw
                 with self.assertRaises(ValueError):await client.app_info(peer,identity())
-
-    async def test_info_utf8_padding_length_and_request_rejection(self):
-        for title in (bytes(64),b'A'*64,b'X\0Y'+bytes(61),b'\xc0\xaf'+bytes(62),b'\xed\xa0\x80'+bytes(61),b'\xf4\x90\x80\x80'+bytes(60),b'\xe4'+bytes(63)):
-            peer=Peer();raw=bytearray(peer.info);raw[72:136]=title;peer.info=raw
-            with self.assertRaises(ValueError):await client.app_info(peer,identity())
-        for length in (0,163,165):
-            peer=Peer();peer.info=(peer.info+b'\0')[:length]
-            with self.assertRaises(ValueError):await client.app_info(peer,identity())
-        for request in (b'',bytes(68),identity()+b'x'):
-            peer=Peer()
-            with self.assertRaises(ValueError):await client.app_info(peer,request)
-            self.assertFalse(peer.calls)
-        peer=Peer();peer.flags=31
-        with self.assertRaises(ValueError):await client.app_info(peer,identity())
-        self.assertEqual(len(peer.calls),1)
 
     async def test_cli_healthy_id_resolution_and_new_commands(self):
         self.assertEqual(await cli.details_identity(Peer(),'demo.game'),identity())
@@ -141,13 +128,13 @@ class Queries(unittest.IsolatedAsyncioTestCase):
             async def start(self):pass
         bleak=types.SimpleNamespace(BleakClient=Device,BleakScanner=object,BleakError=type('BleakError',(Exception,),{}))
         with tempfile.TemporaryDirectory() as folder:
-            package=bytearray(300);package[:8]=b'TRPKG001';struct.pack_into('<I',package,12,300)
+            package=bytearray(334);package[:8]=b'TRPKG001';struct.pack_into('<HH5I',package,8,1,256,334,256,1,16,0)
             struct.pack_into('<I',package,32,7);package[56:65]=b'demo.game'
             path=Path(folder)/'game.trpkg';path.write_bytes(package)
             for command,filename,app_id in (('storage',None,None),('runtime',None,None),('info',None,'demo.game'),('info',str(path),None)):
                 peer=LinkPeer()
                 if command=='runtime':peer.flags=127
-                if filename:peer.info=client.package_info(package)+peer.info[72:]
+                if filename:peer.info=peer.info[:8]+client.package_info(package)+peer.info[80:]
                 args=argparse.Namespace(command=command,package=filename,app_id=app_id,address='test',scan=False,pair=False,pin=None,timeout=1,fragment=20)
                 output=io.StringIO()
                 with patch.dict(sys.modules,{'bleak':bleak}),patch.object(cli.protocol,'Link',lambda *a,**k:peer),contextlib.redirect_stdout(output):

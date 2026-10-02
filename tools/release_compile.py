@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile with an operator-pinned toolchain, reverify inputs, then sign v2.
+"""Compile with an operator-pinned toolchain, reverify inputs, then sign format 1.
 
 The release profile, source lock, compiler and signing key belong to the trusted
 release operator. Never accept those paths or their content from an app uploader.
@@ -16,7 +16,6 @@ import tempfile
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 import package
-import package_v2
 import tinyrt
 
 SAFETY_OPTIONS = ['--bounds-checks=1','--stack-bounds-checks=1','--opt-level=3',
@@ -121,7 +120,7 @@ def compile_release(manifest, wasm, source_lock, provenance, release_profile, ru
     # Validate metadata, Wasm envelope and maximum input sizes before any process.
     package.build_package(wasm_bytes,b'',**kwargs)
     if len(assets)>package.MAX_PACKAGE_SIZE:raise ValueError('assets exceed 2 MiB')
-    output=tinyrt.protect_output(output,list(watched),'.trpkg',b'TRPKG002')
+    output=tinyrt.protect_output(output,list(watched),'.trpkg',b'TRPKG001')
     compat=compatibility_identity(lock,prov,profile)
     with tempfile.TemporaryDirectory(prefix='tinyrt-release-') as directory:
         staged=Path(directory);input_wasm=staged/'input.wasm';native=staged/'output.aot'
@@ -141,11 +140,11 @@ def compile_release(manifest, wasm, source_lock, provenance, release_profile, ru
         metadata[88:120]=hashlib.sha256(bytes.fromhex(profile['compiler_patch_sha256'])+bytes.fromhex(runtime_hash)).digest()
         metadata[120:152]=bytes.fromhex(compat);metadata[152:184]=bytes.fromhex(options_hash)
         metadata[184:216]=bytes.fromhex(prov['compiler']['sha256']);metadata[216:248]=hashlib.sha256(wasm_bytes).digest()
-        result=package_v2._assemble(wasm_bytes,assets,native=native_bytes,native_metadata=metadata,
+        result=package._assemble(wasm_bytes,assets,native=native_bytes,native_metadata=metadata,
                                    include_wasm=include_wasm,**kwargs)
-        package_v2.validate_envelope(result,private.public_key(),profile['signing_key_id'])
+        package.validate_envelope(result,private.public_key(),profile['signing_key_id'])
         # Recheck replacement rules after the compiler process as well.
-        output=tinyrt.protect_output(output,list(watched),'.trpkg',b'TRPKG002')
+        output=tinyrt.protect_output(output,list(watched),'.trpkg',b'TRPKG001')
         tinyrt.write_atomic(output,result)
     return dict(package=str(output),package_size=len(result),sha256=digest(result),compat_id=compat,
                 source_wasm_sha256=digest(wasm_bytes),compiler_sha256=prov['compiler']['sha256'],

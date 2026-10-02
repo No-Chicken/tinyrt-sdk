@@ -119,18 +119,17 @@ class SDKTests(unittest.TestCase):
         self.assertEqual(info['validation_level'],'envelope')
         self.assertEqual(info['wasm_validation'],'not_performed')
 
-    def test_pack_v2_and_rebuild_between_supported_formats(self):
+    def test_single_format_rebuild_and_removed_format_option(self):
         import package
         manifest=self.manifest();wasm=self.project/'app.wasm'
         wasm.write_bytes(b'\0asm\x01\0\0\0\0\1\0');output=self.project/'app.trpkg'
-        for version in (2,1,2):
-            self.cli('pack',manifest,'--wasm',wasm,'--output',output,'--format',version,
+        for _ in range(2):
+            self.cli('pack',manifest,'--wasm',wasm,'--output',output,
                      '--development-key','--key-id',1)
-            data=output.read_bytes()
-            self.assertEqual(data[:8],b'TRPKG002' if version==2 else b'TRPKG001')
-            checked=self.sdk.validate_envelope(data,package.development_key().public_key(),1)
-            self.assertEqual(checked['app_id'],'demo.test')
-        self.cli('pack',manifest,'--wasm',wasm,'--aot',wasm,'--development-key','--key-id',1,success=False)
+            checked=self.sdk.validate_envelope(output.read_bytes(),package.development_key().public_key(),1)
+            self.assertEqual(checked['format_version'],1)
+        self.cli('pack',manifest,'--wasm',wasm,'--format',2,
+                 '--development-key','--key-id',1,success=False)
 
     def test_envelope_rejects_corruption_untrusted_id_and_high_s(self):
         import package

@@ -74,8 +74,8 @@ class ReleaseCompile(unittest.TestCase):
 
     def test_compiles_own_output_and_signs_bound_source(self):
         result=self.compile()
-        import package_v2
-        verified=package_v2.validate_envelope(self.output.read_bytes(),self.signer.public_key(),7)
+        import package
+        verified=package.validate_envelope(self.output.read_bytes(),self.signer.public_key(),7)
         self.assertEqual(self.compiles,1)
         self.assertEqual(verified['aot_size'],len(AOT));self.assertEqual(verified['wasm_size'],len(WASM))
         self.assertEqual(verified['aot']['source_wasm_sha256'],sha(WASM))
@@ -86,8 +86,8 @@ class ReleaseCompile(unittest.TestCase):
 
     def test_native_only_package_keeps_source_identity(self):
         self.compile(include_wasm=False)
-        import package_v2
-        verified=package_v2.validate_envelope(self.output.read_bytes(),self.signer.public_key(),7)
+        import package
+        verified=package.validate_envelope(self.output.read_bytes(),self.signer.public_key(),7)
         self.assertEqual(verified['wasm_size'],0)
         self.assertEqual(verified['aot']['source_wasm_sha256'],sha(WASM))
 

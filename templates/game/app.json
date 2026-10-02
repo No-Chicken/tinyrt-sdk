@@ -1,0 +1,10 @@
+{
+  "app_id": "demo.game",
+  "title": "Orbit Runner",
+  "version": 1,
+  "abi_version": 1,
+  "permissions": 11,
+  "memory_pages": 4,
+  "budget": 100000,
+  "sources": ["main.c"]
+}

@@ -107,7 +107,7 @@ class DirectoryTests(unittest.IsolatedAsyncioTestCase):
 
 class PackageTests(unittest.IsolatedAsyncioTestCase):
     def data(self, size):
-        raw = bytearray(size); raw[:8] = b'TRPKG001'
+        raw = bytearray(size); raw[:8] = b'TRPKG001'; struct.pack_into('<HH5I',raw,8,1,256,len(raw),256,1,16,0)
         struct.pack_into('<I', raw, 12, size); struct.pack_into('<I', raw, 32, 1)
         raw[56:60] = b'demo'
         return bytes(raw)

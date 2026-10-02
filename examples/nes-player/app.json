@@ -1,0 +1,11 @@
+{
+  "app_id": "demo.nes-scroll",
+  "title": "NES Sky Trail",
+  "version": 1,
+  "abi_version": 1,
+  "permissions": 11,
+  "memory_pages": 16,
+  "budget": 100000,
+  "sources": ["main.c", "engine.c"],
+  "assets": "build/game.nes"
+}
