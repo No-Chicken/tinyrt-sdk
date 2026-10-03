@@ -1,5 +1,12 @@
 # TinyRT SDK 0.1.0：应用开发速查
 
+## 本项目设备交付约定
+
+默认交付 AOT 包：`pack --aot --development-key --wamrc <匹配编译器>`；网站发布使用
+`release --variant wasm-aot --wamrc <匹配编译器>`。桌面 WAMR 的 Wasm 仅用于预览和测试。
+安装前确认宿主 `aot_enabled=true`，开发包还需要 `development_aot=true`；安装后查询
+APP_INFO，必须 `selected_backend=2`、`fallback_reason=0`，不得以 Wasm 回退作为设备验收。
+
 ## 本地交付网站 ZIP
 
 从 SDK 根目录执行：

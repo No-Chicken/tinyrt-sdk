@@ -286,9 +286,10 @@ async def installed(link, info, *, allow_repair=False):
     return True
 
 async def install(connect, data, progress=None):
-    info = package_info(data); transfers = 0; last_error = None
+    info = package_info(data); transfers = 0; last_error = None; reconcile_only = False
     # Two transfer attempts; a final connection can only resolve the durable result.
     for _ in range(3):
+        confirmed_result = None
         try:
             async with connect() as link:
                 hello = await link.management(HELLO)
@@ -296,8 +297,10 @@ async def install(connect, data, progress=None):
                 abi, maximum, count, flags = struct.unpack('<HIBB', hello)
                 if abi != 1 or maximum < len(data) or count < 1 or not flags & 1 or not flags & CAP_PACKAGE_SECTIONS:
                     raise ValueError('device does not support this package')
-                if await installed(link, info, allow_repair=True): return 'installed' if transfers else 'already-installed'
-                if isinstance(last_error, RemoteError) or transfers >= 2: raise last_error
+                if await installed(link, info, allow_repair=True):
+                    confirmed_result = 'installed' if transfers else 'already-installed'
+                    return confirmed_result
+                if isinstance(last_error, RemoteError) or transfers >= 2 or reconcile_only: raise last_error
                 if flags & CAP_STORAGE:
                     capacity=await storage_info(link)
                     required=(len(data)+4095)//4096*4096
@@ -306,10 +309,19 @@ async def install(connect, data, progress=None):
                 await confirmed_operation(link,PREPARE,info)
                 transfers += 1
                 await link.transfer(data, progress)
-                if await installed(link, info): return 'installed'
+                if await installed(link, info):
+                    confirmed_result = 'installed'
+                    return confirmed_result
                 raise RuntimeError('FINISH acknowledged but package is not committed')
         except (TimeoutError, ConnectionError, RemoteError, RuntimeError) as exc:
             last_error = exc
+        except OSError as exc:
+            # WinRT may cancel a pending GATT operation as the host closes BLE.
+            # Never retransmit after cancellation: only reconcile durable identity.
+            if getattr(exc, 'winerror', None) != -2147023673: raise
+            if confirmed_result is not None: return confirmed_result
+            last_error = exc
+            reconcile_only = True
     raise last_error or RuntimeError('install failed')
 
 class Link:

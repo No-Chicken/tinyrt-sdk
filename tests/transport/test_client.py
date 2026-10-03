@@ -47,6 +47,34 @@ class FakePeer:
         self.installed=True
 
 class InstallTests(unittest.IsolatedAsyncioTestCase):
+    async def test_windows_cancel_after_commit_only_reconciles_identity(self):
+        class WindowsCancel(FakePeer):
+            async def transfer(self,data,progress=None):
+                self.transfers+=1;self.installed=True
+                error=OSError('operation cancelled');error.winerror=-2147023673;raise error
+        p=WindowsCancel('ok')
+        self.assertEqual(await client.install(p.connect,package()),'installed')
+        self.assertEqual(p.transfers,1);self.assertEqual(p.connections,2)
+
+    async def test_windows_cancel_without_commit_does_not_retransmit(self):
+        class WindowsCancel(FakePeer):
+            async def transfer(self,data,progress=None):
+                self.transfers+=1
+                error=OSError('operation cancelled');error.winerror=-2147023673;raise error
+        p=WindowsCancel('ok')
+        with self.assertRaises(OSError):await client.install(p.connect,package())
+        self.assertEqual(p.transfers,1)
+
+    async def test_windows_cancel_during_disconnect_preserves_confirmed_success(self):
+        class WindowsCancel(FakePeer):
+            @contextlib.asynccontextmanager
+            async def connect(self):
+                self.connections+=1;yield self
+                error=OSError('operation cancelled');error.winerror=-2147023673;raise error
+        p=WindowsCancel('ok')
+        self.assertEqual(await client.install(p.connect,package()),'installed')
+        self.assertEqual(p.transfers,1);self.assertEqual(p.connections,1)
+
     async def test_quarantine_can_repair_once_but_final_query_is_strict(self):
         class Quarantined(FakePeer):
             async def management(self,op,payload=b''):
