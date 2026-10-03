@@ -1,0 +1,486 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "app_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9._-]{1,31}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295
+    },
+    "variant": {
+      "enum": [
+        "wasm",
+        "wasm-aot"
+      ]
+    },
+    "requested_channel": {
+      "enum": [
+        "development",
+        "beta",
+        "stable"
+      ]
+    },
+    "publisher_display": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "locale": {
+      "const": "zh-CN"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "category": {
+      "enum": [
+        "game",
+        "tool",
+        "art"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20
+      },
+      "maxItems": 8,
+      "uniqueItems": true
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+      },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "const": 466
+        },
+        "height": {
+          "const": 466
+        },
+        "shape": {
+          "const": "round"
+        },
+        "full_bleed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "shape",
+        "full_bleed"
+      ],
+      "additionalProperties": false
+    },
+    "package": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "const": "package.trpkg"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2097152
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "format_version": {
+          "const": 1
+        },
+        "abi_version": {
+          "const": 1
+        },
+        "permissions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 31
+        },
+        "memory_pages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "budget": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "key_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        }
+      },
+      "required": [
+        "path",
+        "size",
+        "sha256",
+        "format_version",
+        "abi_version",
+        "permissions",
+        "memory_pages",
+        "budget",
+        "key_id"
+      ],
+      "additionalProperties": false
+    },
+    "requirements": {
+      "type": "object",
+      "properties": {
+        "core_contract_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "aot": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "target_arch": {
+                  "const": "xtensa"
+                },
+                "target_cpu": {
+                  "const": "esp32s3"
+                },
+                "compat_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "target_arch",
+                "target_cpu",
+                "compat_id"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "core_contract_revision",
+        "imports",
+        "aot"
+      ],
+      "additionalProperties": false
+    },
+    "signing": {
+      "enum": [
+        "development",
+        "release"
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "native": {
+          "enum": [
+            "passed",
+            "not-run",
+            "failed"
+          ]
+        },
+        "wamr": {
+          "enum": [
+            "passed",
+            "not-run",
+            "failed"
+          ]
+        },
+        "device": {
+          "enum": [
+            "passed",
+            "not-run",
+            "failed"
+          ]
+        }
+      },
+      "required": [
+        "native",
+        "wamr",
+        "device"
+      ],
+      "additionalProperties": false
+    },
+    "rights": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "declared-cleared",
+            "unverified"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "status",
+        "note"
+      ],
+      "additionalProperties": false
+    },
+    "cover": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "const": "cover.png"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "width": {
+          "const": 210
+        },
+        "height": {
+          "const": 210
+        }
+      },
+      "required": [
+        "path",
+        "size",
+        "sha256",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "readme": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "const": "README.md"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "size",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "licenses": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "const": "LICENSES.md"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "size",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^screenshots/0[1-6]\\.png$"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1048576
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "width": {
+            "const": 466
+          },
+          "height": {
+            "const": 466
+          },
+          "capture": {
+            "enum": [
+              "wamr-preview",
+              "device"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "size",
+          "sha256",
+          "width",
+          "height",
+          "capture"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 6
+    }
+  },
+  "required": [
+    "schema_version",
+    "app_id",
+    "title",
+    "version",
+    "variant",
+    "requested_channel",
+    "publisher_display",
+    "locale",
+    "summary",
+    "category",
+    "tags",
+    "controls",
+    "display",
+    "package",
+    "requirements",
+    "signing",
+    "verification",
+    "rights",
+    "cover",
+    "readme",
+    "licenses",
+    "screenshots"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TinyRT website distribution manifest v1",
+  "description": "Website contract proposal. Semantic and trust validation also required; see developer-publishing-v1.md.",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "variant": {
+            "const": "wasm"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "requirements": {
+            "properties": {
+              "aot": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "requirements": {
+            "properties": {
+              "aot": {
+                "type": "object",
+                "properties": {
+                  "target_arch": {
+                    "const": "xtensa"
+                  },
+                  "target_cpu": {
+                    "const": "esp32s3"
+                  },
+                  "compat_id": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "target_arch",
+                  "target_cpu",
+                  "compat_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signing": {
+            "const": "development"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "requested_channel": {
+            "const": "development"
+          },
+          "app_id": {
+            "type": "string",
+            "pattern": "^demo\\.[a-z0-9._-]+$"
+          }
+        }
+      }
+    }
+  ]
+}

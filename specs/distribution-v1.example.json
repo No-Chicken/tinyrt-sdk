@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "app_id": "demo.sky-hop",
+  "title": "Flappy Bird",
+  "version": 2,
+  "variant": "wasm",
+  "requested_channel": "development",
+  "publisher_display": "EEBadge 示例",
+  "locale": "zh-CN",
+  "summary": "经典像素小鸟、管道和音效，适配466×466圆屏的开发预览。",
+  "category": "game",
+  "tags": [
+    "像素",
+    "圆屏",
+    "单键"
+  ],
+  "controls": [
+    "点击屏幕或短按KEY1起跳",
+    "失败后点击橙色OK重开",
+    "宿主返回或KEY1长按退出"
+  ],
+  "display": {
+    "width": 466,
+    "height": 466,
+    "shape": "round",
+    "full_bleed": true
+  },
+  "package": {
+    "path": "package.trpkg",
+    "size": 444248,
+    "sha256": "48a930247222ca5f3a4db8e9b3351090c49b1a27ddd1202380311e13065bf636",
+    "format_version": 1,
+    "abi_version": 1,
+    "permissions": 31,
+    "memory_pages": 4,
+    "budget": 100000,
+    "key_id": 1
+  },
+  "requirements": {
+    "core_contract_revision": "3f9ff9b0e20e293fe386ed7764d5f2a3711880cb",
+    "imports": [
+      "asset_read",
+      "audio_play",
+      "clock_interval",
+      "draw_clear",
+      "draw_rgb565_scaled",
+      "draw_skip",
+      "input_events",
+      "kv_get",
+      "kv_set",
+      "now_ms"
+    ],
+    "aot": null
+  },
+  "signing": "development",
+  "verification": {
+    "native": "passed",
+    "wamr": "passed",
+    "device": "not-run"
+  },
+  "rights": {
+    "status": "unverified",
+    "note": "经典美术和音效来源已列在LICENSES.md，未核实原版权方分发授权，不申请公开正式上架。"
+  },
+  "cover": {
+    "path": "cover.png",
+    "size": 10025,
+    "sha256": "0c405a6043b21bb2e0081a6a32c258827f3f7a5e7edf09317e6613932d9d61e2",
+    "width": 210,
+    "height": 210
+  },
+  "readme": {
+    "path": "README.md",
+    "size": 894,
+    "sha256": "5b09da866ea8a2b2e002077907bce6e5ad776f4070de40da7574ea246247a3e3"
+  },
+  "licenses": {
+    "path": "LICENSES.md",
+    "size": 2746,
+    "sha256": "1b534c43ffa96b55c3bbf5b8267ca2b534d3a7e8e7e3e8d778ee240368ff8781"
+  },
+  "screenshots": [
+    {
+      "path": "screenshots/01.png",
+      "size": 9043,
+      "sha256": "ae00eebba43372cdd1095ca1680bbc87cbf0f13838c80556d0d132f79a98519f",
+      "width": 466,
+      "height": 466,
+      "capture": "wamr-preview"
+    },
+    {
+      "path": "screenshots/02.png",
+      "size": 9481,
+      "sha256": "6292cd64d8ea1c78ba0d7d84d5ff9284799218e77342bc3f6244e0c560605e31",
+      "width": 466,
+      "height": 466,
+      "capture": "wamr-preview"
+    },
+    {
+      "path": "screenshots/03.png",
+      "size": 10115,
+      "sha256": "f0139550722c4e30498aba39042688bb3845db0ea3046958cab933b54c638142",
+      "width": 466,
+      "height": 466,
+      "capture": "wamr-preview"
+    }
+  ]
+}
