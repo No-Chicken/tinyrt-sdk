@@ -238,5 +238,11 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(backups[0].read_bytes(),previous)
         self.assertTrue(archive.is_file())
 
+    def test_release_defaults_to_aot_delivery(self):
+        from contextlib import redirect_stdout
+        with patch.object(self.release,'make_release',return_value={}) as release, redirect_stdout(io.StringIO()):
+            self.assertEqual(tinyrt.main(['release',str(self.app),'--development-key']),0)
+        self.assertEqual(release.call_args.args[0].variant,'wasm-aot')
+
 
 if __name__ == '__main__': unittest.main()

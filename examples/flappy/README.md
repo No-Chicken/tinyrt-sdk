@@ -25,7 +25,7 @@ python tools/tinyrt.py build examples/flappy --cc path/to/zig.exe
 python tools/tinyrt.py run examples/flappy --runner path/to/tinyrt-run.exe --events examples/flappy/events.json --frames 32,990,3300,6600,9900,14000 --output examples/flappy/build/classic-preview
 python tools/tinyrt.py pack examples/flappy --aot --development-key --wamrc path/to/wamrc.exe
 python tools/tinyrt.py validate examples/flappy/build/demo.sky-hop.trpkg --development-key
-python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --development-key
+python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --wamrc path/to/wamrc.exe --development-key
 ```
 
 保留 demo.sky-hop 应用 ID 以便更新旧预览，版本递增到 3。游戏中分数顶部下移到屏幕 y=88，避开宿主返回按钮。旧固件不支持 AUDIO 权限和导入，必须配套更新固件。
@@ -36,9 +36,10 @@ python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner pat
 
 ## 网页交付与素材来源
 
-release/demo.sky-hop-v0.0.1-wasm.zip 包含签名应用包、封面、三张真实 WAMR 截图、README、CHANGELOG、LICENSES、网站 v2 清单和构建报告；同目录保留展开文件夹。
+release/demo.sky-hop-v0.0.1-wasm-aot.zip 是本项目唯一交付 ZIP，包含签名 AOT 应用包、封面、三张真实 WAMR 截图、README、CHANGELOG、LICENSES、网站 v2 清单和构建报告；同目录保留展开文件夹。
 listing.json 提供展示资料与截图时刻，release 自动执行原生测试、编译、预览、签名和自检。
-对外版本从 0.0.1 开始，反复本地构建不自动升版本。默认 Wasm，开发 AOT 额外传 --variant wasm-aot --wamrc path/to/wamrc.exe。
+对外版本从 0.0.1 开始，反复本地构建不自动升版本。release 默认 AOT，需要 --wamrc path/to/wamrc.exe 或 SDK bin/wamrc.exe。
+Wasm 文件用于编译与预览，也保留在 AOT 包内作为回退；独立 Wasm ZIP 不用于交付。匹配开发固件必须允许开发钥和开发 AOT，并确认实际选择 AOT 后端。
 公开开发钥不代表正式发行身份；AOT 需要固件允许对应开发授权。export_web.py 已废弃，website.json 仅保留历史资料。
 
 原始素材和音效保存在 assets/，转换结果为 resources.bin 与 assets_generated.h。来源与版权说明见 [assets/NOTICE.md](assets/NOTICE.md)。原版素材权利并不因仓库代码开源而自动转授；网页资料明确标注素材授权尚未核实。

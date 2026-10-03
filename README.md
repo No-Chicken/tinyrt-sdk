@@ -5,17 +5,18 @@
 安装 requirements.txt 并准备本地工具后，从 SDK 根目录执行：
 
 ```powershell
-python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --development-key
+python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --wamrc path/to/wamrc.exe --development-key
 ```
 
 设置 `TINYRT_CC`、`TINYRT_RUNNER` 后也可执行 `make release APP=examples/flappy`。
 Windows 没有 make 时直接使用 Python 命令。Makefile 默认使用开发钥；正式 Wasm 签名通过
-`RELEASE_ARGS="--key <key> --key-id <id> --channel beta"` 指定。
+`RELEASE_ARGS="--variant wasm --key <key> --key-id <id> --channel beta"` 指定。
 
 命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、签名、网站 v2 清单和 ZIP 自检。
-Flappy 输出 `examples/flappy/release/demo.sky-hop-v0.0.1-wasm.zip` 及同名展开目录。
+本项目只交付 AOT：Flappy 输出 `examples/flappy/release/demo.sky-hop-v0.0.1-wasm-aot.zip` 及同名展开目录。
 ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单和构建报告。
-`--output` 指定输出目录；开发 AOT 额外传 `--variant wasm-aot --wamrc <本地工具>`。
+release 默认为 wasm-aot，`--wamrc` 指定 SDK 固定摘要的本地 ESP32-S3 AOT 编译器；也可放在 SDK bin/wamrc.exe。
+`--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留它用于回退；独立 Wasm ZIP 不作为本项目交付件。
 失败保留此前完整交付件；诊断报告写入应用 `build/release-report.json`（安全可写时）。
 两个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。
 

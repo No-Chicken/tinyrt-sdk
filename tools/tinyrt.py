@@ -188,7 +188,7 @@ def main(argv=None):
     pack.add_argument('--wamrc',type=Path,help='local compiler with the exact SDK-pinned SHA-256')
     release=commands.add_parser('release',help='offline build, preview, sign and export a website v2 ZIP')
     release.add_argument('app',type=Path);release.add_argument('--cc');release.add_argument('--runner',type=Path)
-    release.add_argument('--variant',choices=('wasm','wasm-aot'),default='wasm')
+    release.add_argument('--variant',choices=('wasm','wasm-aot'),default='wasm-aot',help='default wasm-aot for ESP32-S3 delivery; wasm is for interpreter diagnostics')
     release.add_argument('--output',type=Path,help='destination directory; default <app>/release')
     release.add_argument('--channel',choices=('development','beta','stable'),default='development')
     release.add_argument('--preview-ms',type=int,default=60000,help='maximum preview/script time, 0..60000 ms')

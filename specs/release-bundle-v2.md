@@ -83,9 +83,11 @@ build.command is a logical invocation with <app>/<key> placeholders for local
 paths; compiler version is recorded separately. SDK HEAD is recorded. Source
 archives need --sdk-revision plus SOURCE_DATE_EPOCH or --built-at.
 
-Default variant is wasm. --variant wasm-aot --wamrc <local compiler> uses the
+Default variant is wasm-aot. --wamrc <local compiler> uses the
 existing pinned development AOT workflow with Wasm fallback. Production AOT
-remains in controlled release_compile.py. Private-key Wasm uses --key <key>
+remains in controlled release_compile.py. This project's deliverable is the AOT
+ZIP; standalone Wasm ZIPs are interpreter diagnostics, not product deliverables.
+Private-key Wasm diagnostics use --variant wasm --key <key>
 --key-id <id>. --channel defaults to development. Public development scalar
 (also supplied via PEM) requires key ID 1, demo. namespace and development channel.
 

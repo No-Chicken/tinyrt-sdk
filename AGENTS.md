@@ -12,12 +12,13 @@ APP_INFO，必须 `selected_backend=2`、`fallback_reason=0`，不得以 Wasm �
 从 SDK 根目录执行：
 
 ```powershell
-python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --development-key
+python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --wamrc path/to/wamrc.exe --development-key
 ```
 
 设置 TINYRT_CC / TINYRT_RUNNER 后可用 `make release APP=examples/flappy`。
 命令离线完成测试、编译、WAMR 截图、签名、清单、ZIP 与自检。默认输出应用 release/ 下
-的 ZIP 和同名展开目录；默认 wasm，开发 AOT 传 --variant wasm-aot --wamrc <本地固定工具>。
+的 ZIP 和同名展开目录；本项目只交付 AOT，默认 wasm-aot，传 --wamrc <本地固定工具>。
+Wasm 用于编译、预览和包内回退，独立 Wasm ZIP 仅用于解释器诊断。
 生产 AOT 保留受控 release_compile.py 流程。
 
 应用提供 app.json、源码、listing.json、cover.png 和 README.md / CHANGELOG.md / LICENSES.md。
