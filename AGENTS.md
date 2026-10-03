@@ -52,7 +52,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/dem
 | `int32_t tinyrt_render(void)` | 仅提交绘制；每个普通帧从 `draw_clear` 开始，或只调用一次 `draw_skip` |
 | `int32_t tinyrt_stop(void)`（可选） | 正常离场时有界保存；不得绘制；故障和断电不保证调用 |
 
-466×466 圆屏的四角不可见，约 330×330 的中央正方形是安全区（约 x/y=68..397）。留出宿主返回键空间。CLOCK=2；触摸 RELEASE=1、PRESS=3、MOVE=4、CANCEL=5。在 init 调用 `input_events(56)` 订阅完整触摸；mask=0 保留 release 模式。KEY1为事件6（`TINYRT_USER_KEY_EVENT`），x=1、y=1按下/0释放、arg=0；init订阅mask=64，触摸与KEY1合用mask=120。CANCEL只清除触摸状态；实体KEY1保持到自己的release事件。应用认领KEY1后短按/双击用于Guest，长按仍保留Host返回。按住动作在release/cancel时清零，release不自动代表click。使用 `now_ms()` 的无符号差推进时间，禁止 Guest 自己忙等。
+466×466 圆屏的四角不可见，约 330×330 的中央正方形是安全区（约 x/y=68..397）。留出宿主返回键空间。CLOCK=2；触摸 RELEASE=1、PRESS=3、MOVE=4、CANCEL=5。在 init 调用 `input_events(56)` 订阅完整触摸；mask=0 保留 release 模式。KEY1为事件6（`TINYRT_USER_KEY_EVENT`），x=1、y=1按下/0释放、arg=0；init订阅mask=64，触摸与KEY1合用mask=120。CANCEL清除触摸与KEY1按住状态；队列溢出可能丢失KEY1 release，因此取消必须解除所有按住动作。应用认领KEY1后短按/双击用于Guest，长按仍保留Host返回。按住动作在release/cancel时清零，release不自动代表click。使用 `now_ms()` 的无符号差推进时间，禁止 Guest 自己忙等。
 
 ## ABI 1 全部 Host 函数
 
@@ -74,11 +74,12 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/dem
 | `now_ms()` | CLOCK；Host 的 u32 单调毫秒时钟 |
 | `kv_get(key,fallback)` / `kv_set(key,value)` | STORAGE=4；key=0..15，值为 i32，每应用隔离；应用在 init/event/stop 中保存状态 |
 | `asset_read(offset,destination,len)` | 无额外权限；仅 init/event，只读当前包 resources；每次≤4096字节，返回读取长度或-1 |
+| `audio_play(resource_offset,byte_length,sample_rate)` | AUDIO=16；仅init/event；当前签名资源内PCM16 LE单声道，固定16000Hz，偶数字节2..32000（最长1秒）；每回调最多4次；0已排队，1队列满、次数超限或不可用；Host复制，退出清队列并取消在播音效；桌面预览校验资源但静音 |
 | `runtime_backend()` | 无额外权限；0=classic解释器，1=AOT；用于选择有界工作批量，不保证设备速度 |
 
 ## 性能、边界和常见错误
 
-- 清单 `permissions` 是上述位之和，最大15；`memory_pages` 为1..16，每页64 KiB；`budget` 为每回调1..100000条受计量指令。AOT 保留边界、原生栈与循环取消检查，不把指令计量转换成固定设备耗时承诺。
+- 清单 `permissions` 是上述位之和，最大31；`memory_pages` 为1..16，每页64 KiB；`budget` 为每回调1..100000条受计量指令。AOT 保留边界、原生栈与循环取消检查，不把指令计量转换成固定设备耗时承诺。
 - 整包≤2 MiB，含签名、section 表、Wasm、AOT、资源和对齐。runtime 配额2 MiB还包含运行时开销和 AOT 映射预留；16页线性内存不意味着这些额外成本免费。
 - 一帧最多128条命令，两个 RGB565 函数合计最多提交一张图。把像素工作合到一张图后提交；更大内容用 Host 缩放。长计算分片放在 event，单次回调及时返回。
 - render 中调用资源或时钟设置会失败；KV 状态逻辑放在 init/event/stop；普通帧忘记 clear、混用 skip 与绘制、越界文本/像素、无权限 import 都会失败。不得依赖 WASI、libc、构造器或未声明的 import。

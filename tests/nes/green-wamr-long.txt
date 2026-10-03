@@ -1,3 +1,0 @@
-WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51
-WASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51
-WASM PASS checks=282939 budget=100000 wasm_bytes=72429 tracked_peak=362646 slices=70724 calls=141456 total_ms=7468.923 p50_us=12.600 p95_us=124.300 max_us=774.400

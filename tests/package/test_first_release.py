@@ -10,6 +10,13 @@ import tinyrt
 
 
 class FirstRelease(unittest.TestCase):
+    def test_signed_audio_permission_is_accepted(self):
+        raw=package.build_package(b'\0asm\1\0\0\0\0\1\0',b'\0\0',app_id='demo.audio',title='Audio',
+            version=1,abi_version=1,permissions=31,memory_pages=2,budget=100000,key_id=1,
+            private_key=package.development_key())
+        self.assertEqual(struct.unpack_from('<I',raw,40)[0],31)
+        tinyrt.validate_envelope(raw,package.development_key().public_key(),1)
+
     def test_section_table_is_the_only_format_one(self):
         wasm = b'\0asm\1\0\0\0\0\1\0'
         raw = package.build_package(wasm, b'rom', app_id='demo.test', title='Test',

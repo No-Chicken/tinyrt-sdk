@@ -41,7 +41,7 @@ def metadata_header(wasm, assets, *, app_id, title, version, abi_version,
         raise ValueError("title must be 1..63 UTF-8 bytes without NUL")
     if not 1 <= version <= 0xFFFFFFFF or abi_version != 1:
         raise ValueError("version must be positive uint32 and ABI must be 1")
-    if not 0 <= permissions <= 15:
+    if not 0 <= permissions <= 31:
         raise ValueError("unknown permission bits")
     if not 1 <= memory_pages <= 16 or not 1 <= budget <= 100000:
         raise ValueError("memory pages or instruction budget exceed v1 policy")
@@ -166,7 +166,7 @@ def validate_envelope(data, public_key, expected_key_id):
     if (fmt,header,total,table,entry,flags) != (1,256,len(data),256,16,0) or not 1 <= count <= 4:
         raise ValueError('invalid format-1 header')
     version,abi,permissions,pages,budget,key_id = struct.unpack_from('<6I',data,32)
-    if not version or abi!=1 or permissions & ~15 or not 1<=pages<=16 or not 1<=budget<=100000 or any(data[184:192]):
+    if not version or abi!=1 or permissions & ~31 or not 1<=pages<=16 or not 1<=budget<=100000 or any(data[184:192]):
         raise ValueError('invalid package policy')
     if key_id != expected_key_id: raise ValueError('package key ID is not the explicitly trusted ID')
     app_id = _text(data[56:88],'ascii',r'[a-z0-9._-]{1,31}')

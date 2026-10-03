@@ -1,8 +1,0 @@
-Command: python examples/nes/build.py --native --cc <zig> && build/nes-native.exe
-Before bounded step implementation:
-FAIL line=12: until_frame(8)
-Exit code 1
-
-Before atomic frame/CRC publication:
-FAIL line=21: n1_status().frame==8&&n1_status().crc==s.crc
-Exit code 1

@@ -102,7 +102,7 @@ class Queries(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(value['title'],'迷宫 🐍');self.assertEqual(value['key_id'],42)
         self.assertEqual(value['sha256'],bytes(range(32)).hex());self.assertEqual(peer.asserted,b'\x01\0'+identity()[:68])
         self.assertEqual(value['wasm_size']+value['assets_size']+290,value['size'])
-        for offset,kind,value in ((40,'I',8),(44,'B',255),(76,'I',301),(148,'I',2),(152,'I',16),(156,'I',0),(156,'I',17),(160,'I',0),(160,'I',100001),(164,'I',8),(168,'I',15),(164,'I',0xffffffff),(168,'I',0xffffffff)):
+        for offset,kind,value in ((40,'I',8),(44,'B',255),(76,'I',301),(148,'I',2),(152,'I',32),(156,'I',0),(156,'I',17),(160,'I',0),(160,'I',100001),(164,'I',8),(168,'I',15),(164,'I',0xffffffff),(168,'I',0xffffffff)):
             with self.subTest(offset=offset):
                 peer=Peer();raw=bytearray(peer.info);struct.pack_into('<'+kind,raw,offset,value);peer.info=raw
                 with self.assertRaises(ValueError):await client.app_info(peer,identity())

@@ -1,8 +1,0 @@
-Red before implementing the original game ROM (real native CPU/PPU with the old diagnostic ROM):
-FAIL line=10 maze_status().state==0 state=8 player=0,51 held=0 frames=8
-
-Red before replacing four repeated tiles with a single 16x16 player/door:
-AssertionError: pixel mismatch x=50 y=57 (native and WAMR title capture)
-
-Red before adding PPU startup vblank waits:
-AssertionError: 0 != 2 (expected two BIT $2002 / BPL loops before VRAM upload)

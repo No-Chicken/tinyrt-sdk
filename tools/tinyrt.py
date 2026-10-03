@@ -61,7 +61,7 @@ def load_manifest(path):
     title = value['title']
     if not isinstance(title,str) or not 1 <= len(title.encode('utf-8')) <= 63 or '\0' in title:
         raise ValueError('title must be 1..63 UTF-8 bytes without NUL')
-    for key,low,high in [('version',1,0xffffffff),('abi_version',1,1),('permissions',0,15),
+    for key,low,high in [('version',1,0xffffffff),('abi_version',1,1),('permissions',0,31),
                          ('memory_pages',1,16),('budget',1,100000)]:
         integer(value[key],low,high,key)
     sources = value['sources']

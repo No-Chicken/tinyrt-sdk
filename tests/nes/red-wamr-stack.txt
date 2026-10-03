@@ -1,5 +1,0 @@
-Pinned core with unchanged opcode dispatch:
-CONTEXT calls=511 slices=254 frame=0 ready=1 line=0
-FAIL result==TINYRT_OK; guest=Exception: wasm operand stack overflow
--fno-jump-tables diagnostic still failed: FUNCTION 2 blocks=193 stack_cells=5 locals=7
-No TinyRT/WAMR stack limit changed.

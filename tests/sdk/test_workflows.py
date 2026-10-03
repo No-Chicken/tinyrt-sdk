@@ -44,7 +44,7 @@ class SDKTests(unittest.TestCase):
     def test_rejects_policy_and_type_violations(self):
         cases = [('app_id',''),('app_id','A'),('app_id','x'*32),('title',''),('title','中'*22),
                  ('title','a\0b'),('version',0),('version',2**32),('version',True),('version',1.5),
-                 ('abi_version',2),('permissions',16),('permissions',-1),('memory_pages',0),
+                 ('abi_version',2),('permissions',32),('permissions',-1),('memory_pages',0),
                  ('memory_pages',17),('budget',0),('budget',100001),('sources',[]),
                  ('sources',['../outside.c']),('sources',['/absolute.c']),
                  ('sources',['main.c','main.c']),('assets','../outside.bin'),
@@ -163,12 +163,11 @@ class SDKTests(unittest.TestCase):
         self.cli('pack',p,'--wasm',wasm,'--output',wasm,'--development-key','--key-id','1',success=False)
         self.assertEqual(wasm.read_bytes(),b'\0asm\x01\0\0\0\0\1\0')
 
-    def test_pomodoro_source_and_manifests_exist(self):
-        self.assertTrue((ROOT/'examples/pomodoro/main.c').is_file(),'Pomodoro implementation is missing')
-        normal=self.sdk.load_manifest(ROOT/'examples/pomodoro/app.json')
-        fast=self.sdk.load_manifest(ROOT/'examples/pomodoro/app-fast.json')
-        self.assertEqual(normal['permissions'],15)
-        self.assertNotEqual(normal['app_id'],fast['app_id'])
-        self.assertIn('25s',fast['title'])
+    def test_flappy_example_is_the_only_shipped_demo(self):
+        self.assertTrue((ROOT/'examples/flappy/main.c').is_file())
+        app=self.sdk.load_manifest(ROOT/'examples/flappy/app.json')
+        self.assertEqual(app['permissions'],31)
+        self.assertEqual(app['app_id'],'demo.sky-hop')
+        self.assertEqual(sorted(p.name for p in (ROOT/'examples').iterdir() if p.is_dir()),['flappy'])
 
 if __name__=='__main__':unittest.main()

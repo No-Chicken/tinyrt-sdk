@@ -1,1 +1,0 @@
-NATIVE PASS checks=69 frame=8 state=0 player=1,1

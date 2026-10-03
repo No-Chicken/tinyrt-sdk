@@ -1,4 +1,0 @@
-PERF frames=60 instructions=6399 idle_jmp=1599 cpu_ms=0.066 background_ms=0.000 background_lines=0 nmi=60
-PERF PASS
-IDLE EQUIVALENCE PASS checks=17245
-CACHE EQUIVALENCE PASS frames=54

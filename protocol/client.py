@@ -230,7 +230,7 @@ def _app_info_sections(raw, identity, maximum):
     key_id,abi,permissions,pages,budget,wasm,assets,aot,aot_format,safety=struct.unpack_from('<10I',raw,144)
     size=struct.unpack_from('<I',raw,76)[0]
     expected_sections=int(bool(wasm)) | (2 if aot else 0) | (4 if assets else 0)
-    if (abi!=1 or permissions & ~15 or not 1<=pages<=16 or not 1<=budget<=100000
+    if (abi!=1 or permissions & ~31 or not 1<=pages<=16 or not 1<=budget<=100000
             or (wasm and wasm<=8) or not (wasm or aot) or (sections & 7)!=expected_sections):
         raise ValueError('invalid format-1 app details policy or sections')
     if aot:

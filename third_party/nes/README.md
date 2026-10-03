@@ -1,3 +1,5 @@
+> 历史依赖记录：NES 示例及其适配源码已退役，下文路径只描述历史版本。保留上游来源与许可，不作为当前示例构建说明。
+
 # 固定 NES 核心来源
 
 上游：[PeakRacing/nes](https://github.com/PeakRacing/nes)。固定 revision：[`638096ae00d258700779be2af06478d1be5bf8a1`](https://github.com/PeakRacing/nes/tree/638096ae00d258700779be2af06478d1be5bf8a1)。许可：[Apache-2.0](https://github.com/PeakRacing/nes/blob/638096ae00d258700779be2af06478d1be5bf8a1/LICENSE)，本目录保留其完整 [LICENSE](upstream/LICENSE) 和源码版权声明。

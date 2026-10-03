@@ -82,9 +82,14 @@ class SectionQueries(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual((value['wasm_size'],value['aot_size'],value['assets_size']),(wasm,aot,assets))
                 self.assertEqual(value['title'],'原生')
 
+    async def test_audio_permission_is_valid(self):
+        peer=Peer();raw=bytearray(peer.details);struct.pack_into('<I',raw,152,31);peer.details=raw
+        value=await client.app_info(peer,details()[8:80])
+        self.assertEqual(value['permissions'],31)
+
     async def test_unknown_invalid_inconsistent_details_rejected(self):
         mutations=[(0,'H',3),(2,'H',3),(4,'B',0),(4,'B',3),(5,'B',4),(5,'B',1),(6,'H',15),
-            (40,'I',3),(76,'I',1000),(148,'I',2),(152,'I',16),(156,'I',0),(160,'I',100001),
+            (40,'I',3),(76,'I',1000),(148,'I',2),(152,'I',32),(156,'I',0),(160,'I',100001),
             (164,'I',8),(164,'I',0xffffffff),(168,'I',0),(172,'I',0),(176,'I',0),(180,'I',3),
             (184,'B',65),(191,'B',65),(200,'B',255)]
         for offset,kind,value in mutations:

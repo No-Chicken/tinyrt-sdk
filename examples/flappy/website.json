@@ -1,0 +1,45 @@
+{
+  "app_id": "demo.sky-hop",
+  "title": "Flappy Bird",
+  "subtitle": "圆屏 Flappy Bird",
+  "version": 2,
+  "summary": "经典像素小鸟、绿色管道与原版音效，适配466×466圆屏。",
+  "description": "点击屏幕或短按KEY1起跳，穿越管道得分。失败后显示奖牌、得分、最高分与NEW纪录提示，点击橙色OK按钮重开。背景铺满圆屏，保留经典精灵动画。",
+  "category": "game",
+  "tags": [
+    "像素",
+    "单键",
+    "圆屏",
+    "休闲"
+  ],
+  "controls": [
+    "点击起跳",
+    "KEY1短按起跳",
+    "失败后点击橙色OK或短按KEY1重开",
+    "宿主返回或KEY1长按退出"
+  ],
+  "display": {
+    "width": 466,
+    "height": 466,
+    "shape": "round",
+    "full_bleed": true
+  },
+  "sensors": [],
+  "audio": true,
+  "status": "development-preview",
+  "validation": {
+    "native": true,
+    "wamr_interpreter": true,
+    "esp32_device": false
+  },
+  "cover": "cover.png",
+  "screenshots": [
+    "media/round-ready.png",
+    "media/round-playing.png",
+    "media/round-game-over.png"
+  ],
+  "signing": "public-development-key-1",
+  "compatibility_note": "需要支持audio_play及AUDIO权限的匹配TinyRT开发固件；旧固件不能运行此包。尚未完成真机触摸、帧率和扬声器验收。",
+  "asset_rights": "original-game-assets-clearance-unverified",
+  "asset_notice": "ASSET-NOTICE.md"
+}

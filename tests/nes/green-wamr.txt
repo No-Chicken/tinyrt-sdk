@@ -1,5 +1,0 @@
-FUNCTION 4 blocks=22 stack_cells=4 locals=3
-FUNCTION 14 blocks=24 stack_cells=4 locals=2
-WASM round=0 frame=8 crc=7FDD3027 nmi=8 signature=51
-WASM round=1 frame=8 crc=7FDD3027 nmi=8 signature=51
-WASM PASS checks=24082 budget=100000 wasm_bytes=72429 tracked_peak=362646 slices=6010 calls=12028 total_ms=491.760 p50_us=5.100 p95_us=89.200 max_us=527.500
