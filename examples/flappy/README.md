@@ -26,7 +26,7 @@ python tools/tinyrt.py validate examples/flappy/build/demo.sky-hop.trpkg --devel
 python examples/flappy/export_web.py
 ```
 
-保留 demo.sky-hop 应用 ID 以便更新旧预览，版本递增到 2。旧固件不支持 AUDIO 权限和导入，必须配套更新固件。
+保留 demo.sky-hop 应用 ID 以便更新旧预览，版本递增到 3。游戏中分数顶部下移到屏幕 y=88，避开宿主返回按钮。旧固件不支持 AUDIO 权限和导入，必须配套更新固件。
 
 游戏使用 33 ms 固定整数物理与有界补帧；8 ms 时钟分四条带合成 233×233 RGB565 完整帧，再由宿主放大到 466×466。一帧只提交一张图，部分合成帧不显示；像素素材通过包内只读资源读取，避免超出解释器回调预算。32 ms 合成周期是软件目标，不是设备帧率实测结果。
 

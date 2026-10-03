@@ -118,7 +118,7 @@ static int compose_strip(void) {
         if(scene.score>scene.old_best) D(blit(&new_best,130,132,0));
         if(scene.score>=10) D(blit(scene.score>=20?&medal_gold:&medal_silver,56,119,0));
         D(blit(&okay,85,181,0));
-    } else D(draw_number(scene.score,117,30,0,1));
+    } else D(draw_number(scene.score,117,44,0,1));
     stripe++;
     if(stripe==4) { stripe=0;frame_ready=1; }
     return 0;
