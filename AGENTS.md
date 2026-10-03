@@ -1,4 +1,7 @@
-# TinyRT SDK 0.1.0：应用开发速查
+# TinyRT SDK 0.0.1：应用开发速查
+
+SDK 对外版本唯一来源是根目录 VERSION，`python tools/tinyrt.py --version` 查询。
+本次 SDK 与 Flappy 的交付版本均为 0.0.1；不要按构建次数增加版本号。
 
 ## 本项目设备交付约定
 
@@ -38,7 +41,7 @@ export_web.py 已废弃；规则见 specs/release-bundle-v2.md。
 
 ## 从游戏模板到可分享的包
 
-需要 Python 3.10+、Zig 0.13.0 或支持 wasm32 的 Clang。桌面预览还需要真实 WAMR `tinyrt-run.exe`；开发 AOT 需要 SDK 固定 SHA-256 的 ESP32-S3 `wamrc.exe`。当前源码中的v0.1.0编译器与桌面runner下载地址都是待发布位置，不能假定附件已可下载；先用 `--runner`、`--wamrc` 指向匹配的本地工具。命令从 SDK 根目录运行，路径按机器替换。
+需要 Python 3.10+、Zig 0.13.0 或支持 wasm32 的 Clang。桌面预览还需要真实 WAMR `tinyrt-run.exe`；开发 AOT 需要 SDK 固定 SHA-256 的 ESP32-S3 `wamrc.exe`。当前源码中的v0.0.1编译器与桌面runner下载地址都是待发布位置，不能假定附件已可下载；先用 `--runner`、`--wamrc` 指向匹配的本地工具。命令从 SDK 根目录运行，路径按机器替换。
 
 ```powershell
 python -m pip install -r requirements.txt

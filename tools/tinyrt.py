@@ -171,6 +171,7 @@ def signing_options(parser,verify=False):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--version',action='version',version='TinyRT SDK '+(ROOT/'VERSION').read_text(encoding='ascii').strip())
     commands=parser.add_subparsers(dest='command',required=True)
     new=commands.add_parser('new',help='create a minimal app in a new directory')
     new.add_argument('directory',type=Path);new.add_argument('--app-id',required=True);new.add_argument('--title',default='TinyRT app')

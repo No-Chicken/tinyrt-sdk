@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "sdk_version": "0.1.0",
+  "sdk_version": "0.0.1",
   "aot_format": 5,
   "wamr_commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
   "llvm_commit": "344b928e67bfc1d07cb150609c55548e86a9bf19",
@@ -26,7 +26,7 @@
     "sha256": "9d0fc0943dd66a432c3e886efc48127fbbfc70d759def4c64cbda73ecbd78bf4",
     "version": "wamrc 2.4.5",
     "size": 35926016,
-    "url": "https://github.com/No-Chicken/tinyrt-sdk/releases/download/v0.1.0/wamrc-windows-x64.exe"
+    "url": "https://github.com/No-Chicken/tinyrt-sdk/releases/download/v0.0.1/wamrc-windows-x64.exe"
   },
   "sources": {
     "wamr": {

@@ -244,5 +244,13 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(tinyrt.main(['release',str(self.app),'--development-key']),0)
         self.assertEqual(release.call_args.args[0].variant,'wasm-aot')
 
+    def test_sdk_public_version_is_initial_0001(self):
+        from contextlib import redirect_stdout
+        output = io.StringIO()
+        with redirect_stdout(output), self.assertRaises(SystemExit) as result:
+            tinyrt.main(['--version'])
+        self.assertEqual(result.exception.code,0)
+        self.assertEqual(output.getvalue().strip(),'TinyRT SDK 0.0.1')
+
 
 if __name__ == '__main__': unittest.main()
