@@ -47,9 +47,28 @@ class Peer:
         raise AssertionError(op)
 
 class Queries(unittest.IsolatedAsyncioTestCase):
+    async def test_device_info_new_opcode_empty_request_and_schema(self):
+        class VersionPeer:
+            async def management(self,op,payload=b''):
+                self.calls=(op,payload)
+                return b'{"schema":1,"firmware":"0.1.0","tinyrt":"0.1.0","sdk":"0.0.1","transports":["ble","usb"]}'
+        peer=VersionPeer()
+        result=await client.device_info(peer)
+        self.assertEqual(peer.calls,(0x1e,b''))
+        self.assertEqual(result['transports'],['ble','usb'])
+        self.assertEqual(result['sdk'],'0.0.1')
+
+    async def test_device_info_old_host_and_unknown_schema(self):
+        class OldPeer:
+            async def management(self,op,payload=b''):raise client.RemoteError(2)
+        with self.assertRaises(client.RemoteError):await client.device_info(OldPeer())
+        class NewPeer:
+            async def management(self,op,payload=b''):return b'{"schema":2}'
+        with self.assertRaisesRegex(ValueError,'schema'):await client.device_info(NewPeer())
+
     async def test_empty_full_fragmented_and_sixteen_app_space(self):
         for count,used,allocated,largest,quarantined in ((0,0,0,0x4de000,0),(5,0x4de000,0x4de000,0,1),
-                (3,0x2de000,0x2de000,0x100000,1),(16,4800,65536,0x4ce000,2)):
+                (3,0x1de000,0x1de000,0x100000,1),(16,4800,65536,0x3ce000,2)):
             peer=Peer();raw=bytearray(peer.raw)
             struct.pack_into('<4I',raw,20,used,allocated,0x4de000-allocated,largest)
             struct.pack_into('<2H',raw,42,count,quarantined);peer.raw=raw

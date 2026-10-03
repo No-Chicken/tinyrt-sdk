@@ -1,5 +1,6 @@
 """TinyRT v1 transport. Success requires an exact committed identity query."""
 import asyncio
+import json
 import hashlib
 import re
 import struct
@@ -9,6 +10,7 @@ LIST_QUARANTINED = 0x17
 LIST_PAGE = 0x18
 STORAGE, APP_INFO, RUNTIME_INFO = 0x19, 0x1a, 0x1b
 APP_COVER, MOBILE_STATUS = 0x1c, 0x1d
+GET_DEVICE_INFO = 0x1e
 CAP_COVER_MOBILE_CONFIRM = 128
 CAP_QUARANTINE = 8
 CAP_PAGED_LIST = 16
@@ -250,6 +252,15 @@ def _app_info_sections(raw, identity, maximum):
         size=size,title=title,key_id=key_id,abi_version=abi,permissions=permissions,memory_pages=pages,
         instruction_budget=budget,wasm_size=wasm,assets_size=assets,aot_size=aot,cover_size=133232 if sections & 8 else 0,aot_format=aot_format,
         safety_flags=safety,target_arch=arch,target_cpu=cpu,compat_id=raw[216:248].hex())
+
+
+async def device_info(link):
+    """Build-bound device module versions; unknown old hosts report RemoteError."""
+    raw = await link.management(GET_DEVICE_INFO)
+    value = json.loads(raw.decode('utf-8'))
+    if not isinstance(value, dict) or value.get('schema') != 1:
+        raise ValueError('unsupported device info schema')
+    return value
 
 
 async def runtime_info(link):
