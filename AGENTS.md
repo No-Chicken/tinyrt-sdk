@@ -95,7 +95,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/dem
 | `draw_rgb565(x,y,w,h,pixels,len)` | DRAW；源宽≤256、高≤240；len=w×h×2，小端 RGB565 |
 | `draw_rgb565_scaled(x,y,dst_w,dst_h,src_w,src_h,pixels,len)` | DRAW；源宽≤256、高≤240，len=src_w×src_h×2；目标完整落在画布；Host 最近邻缩放 |
 | `draw_skip()` | DRAW；render 的唯一操作；保留上一帧 |
-| `input_events(mask)` | INPUT=2；仅 init；允许0/56/64/120，分别为release/触摸生命周期/KEY1/两者 |
+| `input_events(mask)` | INPUT=2；仅 init；允许0/56/64/120，可附加运动位0x80（128/184/192/248）；见 specs/motion.md |
 | `clock_interval(ms)` | CLOCK=8；init/event；1..1000 ms，默认100；Host 无补偿突发回调 |
 | `now_ms()` | CLOCK；Host 的 u32 单调毫秒时钟 |
 | `kv_get(key,fallback)` / `kv_set(key,value)` | STORAGE=4；key=0..15，值为 i32，每应用隔离；应用在 init/event/stop 中保存状态 |

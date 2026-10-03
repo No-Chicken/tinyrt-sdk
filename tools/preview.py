@@ -125,8 +125,13 @@ def run(app,events=None,frames='0,330',output=None,runner=None,step_ms=None):
     if not isinstance(scripted,list) or len(scripted)>2000:raise ValueError('events must be a list with at most 2000 entries')
     points={ms:[] for ms in captures}
     for event in scripted:
-        if not isinstance(event,dict) or set(event)!={'ms','kind','x','y'}:raise ValueError('event requires ms, kind, x, y')
+        if not isinstance(event,dict):raise ValueError('event must be an object')
+        expected={'ms','kind','x','y','arg'} if event.get('kind')=='motion' else {'ms','kind','x','y'}
+        if set(event)!=expected:raise ValueError('event has missing or unexpected fields')
         ms=tinyrt.integer(event['ms'],0,captures[-1],'event time')
+        if event['kind']=='motion':
+            values=[tinyrt.integer(event[name],-16000,16000,name) for name in ('x','y','arg')]
+            points.setdefault(ms,[]).append('motion '+' '.join(map(str,values)));continue
         if event['kind'] in ('key_press','key_release'):
             x=tinyrt.integer(event['x'],1,1,'key identity')
             pressed=1 if event['kind']=='key_press' else 0
