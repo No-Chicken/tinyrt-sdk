@@ -163,11 +163,13 @@ class SDKTests(unittest.TestCase):
         self.cli('pack',p,'--wasm',wasm,'--output',wasm,'--development-key','--key-id','1',success=False)
         self.assertEqual(wasm.read_bytes(),b'\0asm\x01\0\0\0\0\1\0')
 
-    def test_flappy_example_is_the_only_shipped_demo(self):
+    def test_shipped_demos_match_the_catalog(self):
         self.assertTrue((ROOT/'examples/flappy/main.c').is_file())
         app=self.sdk.load_manifest(ROOT/'examples/flappy/app.json')
         self.assertEqual(app['permissions'],31)
         self.assertEqual(app['app_id'],'demo.sky-hop')
-        self.assertEqual(sorted(p.name for p in (ROOT/'examples').iterdir() if p.is_dir()),['flappy'])
+        self.assertEqual(sorted(p.name for p in (ROOT/'examples').iterdir() if p.is_dir()),['flappy','wave_sim'])
+        wave=self.sdk.load_manifest(ROOT/'examples/wave_sim/app.json')
+        self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',1))
 
 if __name__=='__main__':unittest.main()

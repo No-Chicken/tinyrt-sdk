@@ -1,0 +1,11 @@
+{
+  "app_id": "demo.wave-sim",
+  "title": "Wave Simulator",
+  "version": 1,
+  "abi_version": 1,
+  "permissions": 11,
+  "memory_pages": 4,
+  "budget": 100000,
+  "sources": ["main.c", "wave_physics.c"],
+  "cover": "cover.png"
+}
