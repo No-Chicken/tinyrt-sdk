@@ -1,5 +1,53 @@
 # TinyRT SDK 0.1.0
 
+## 一键生成网站交付 ZIP
+
+安装 requirements.txt 并准备本地工具后，从 SDK 根目录执行：
+
+```powershell
+python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --development-key
+```
+
+设置 `TINYRT_CC`、`TINYRT_RUNNER` 后也可执行 `make release APP=examples/flappy`。
+Windows 没有 make 时直接使用 Python 命令。Makefile 默认使用开发钥；正式 Wasm 签名通过
+`RELEASE_ARGS="--key <key> --key-id <id> --channel beta"` 指定。
+
+命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、签名、网站 v2 清单和 ZIP 自检。
+Flappy 输出 `examples/flappy/release/demo.sky-hop-v0.0.1-wasm.zip` 及同名展开目录。
+ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单和构建报告。
+`--output` 指定输出目录；开发 AOT 额外传 `--variant wasm-aot --wamrc <本地工具>`。
+失败保留此前完整交付件；诊断报告写入应用 `build/release-report.json`（安全可写时）。
+两个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。
+
+开发者维护 listing.json、三个 Markdown 和封面。完整 listing 示例：
+
+```json
+{
+  "summary": "圆屏像素游戏",
+  "category": "game",
+  "tags": ["像素"],
+  "controls": ["点击起跳", "KEY1 长按退出"],
+  "publisher_display": "开发者",
+  "release_notes": "0.0.1：首次开发预览。",
+  "full_bleed": true,
+  "rights": {"status": "unverified", "note": "来源与许可见 LICENSES.md"},
+  "device_verified": false,
+  "display_version": "0.0.1",
+  "screenshots": [{"at_ms": 32, "caption": "准备"}, {"at_ms": 3300, "caption": "运行"}]
+}
+```
+
+截图也可用 `{"file":"screenshots/device.png","caption":"真机"}`，必须原本为 466×466 单帧 PNG。
+at_ms 与 file 二选一，1–6 张。封面必须为 210×210 RGB/RGBA PNG、≤64 KiB。
+三个 Markdown 必须 UTF-8 无 BOM、LF、各≤64 KiB。未知字段、重复键、超时和错误尺寸都报错。
+`display_version` 为对外 `0.0.1 → 0.0.2` 标签；包与网站清单 version 保留现有整数升级编号。
+只有实际分发更新才递增版本，反复本地构建不自动涨版本。
+
+构建时间固定取 SDK 提交时间，可用 SOURCE_DATE_EPOCH 或 --built-at 覆盖；同样输入和工具环境产出相同字节。
+无 Git 的源码分发须传 --sdk-revision 和固定时间。export_web.py 已废弃。
+规范见 [v2 发布规则](specs/release-bundle-v2.md) 和 [listing Schema](specs/listing.schema.json)。
+本地自检不包含网站账号、公钥登记与发布审核，在线验收仍需上传联调。
+
 独立开发、编译、预览和签名 TinyRT ABI 1 的 C/Wasm 应用。当前是开发预览：包格式、store 与 BLE schema 都为 1，公开开发钥仅用于开发固件。普通 C/Wasm 构建不依赖 ESP-IDF；桌面预览使用真实 WAMR runner，开发 AOT 使用固定目标与来源的编译器。权威契约与运行验证属于 TinyRT core。
 
 ## 开发者：创建、预览、打包

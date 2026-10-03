@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TinyRT local listing v1",
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "category": {
+      "enum": [
+        "game",
+        "tool",
+        "art"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20
+      },
+      "maxItems": 8,
+      "uniqueItems": true
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+      },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "publisher_display": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "release_notes": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "rights": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "declared-cleared",
+            "unverified"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "status",
+        "note"
+      ],
+      "additionalProperties": false
+    },
+    "full_bleed": {
+      "type": "boolean"
+    },
+    "device_verified": {
+      "type": "boolean"
+    },
+    "display_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "maxLength": 32
+    },
+    "screenshots": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "properties": {
+          "at_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 60000
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "caption": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "at_ms"
+            ],
+            "not": {
+              "required": [
+                "file"
+              ]
+            }
+          },
+          {
+            "required": [
+              "file"
+            ],
+            "not": {
+              "required": [
+                "at_ms"
+              ]
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "category",
+    "tags",
+    "controls",
+    "publisher_display",
+    "release_notes",
+    "rights",
+    "full_bleed",
+    "device_verified",
+    "screenshots"
+  ],
+  "additionalProperties": false
+}

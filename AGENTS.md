@@ -1,5 +1,31 @@
 # TinyRT SDK 0.1.0：应用开发速查
 
+## 本地交付网站 ZIP
+
+从 SDK 根目录执行：
+
+```powershell
+python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --development-key
+```
+
+设置 TINYRT_CC / TINYRT_RUNNER 后可用 `make release APP=examples/flappy`。
+命令离线完成测试、编译、WAMR 截图、签名、清单、ZIP 与自检。默认输出应用 release/ 下
+的 ZIP 和同名展开目录；默认 wasm，开发 AOT 传 --variant wasm-aot --wamrc <本地固定工具>。
+生产 AOT 保留受控 release_compile.py 流程。
+
+应用提供 app.json、源码、listing.json、cover.png 和 README.md / CHANGELOG.md / LICENSES.md。
+三个 Markdown 用 UTF-8 无 BOM、LF、各≤64 KiB；封面为 210×210 单帧 RGB/RGBA PNG。
+listing 包含 summary/category/tags/controls/publisher_display/release_notes/full_bleed/rights/device_verified/screenshots，
+可选 display_version（0.0.1 等）；完整例子在 README“一键生成网站交付 ZIP”。
+拒绝未知字段和重复键。截图 at_ms 与 file 二选一、1–6 项；真机图必须原本为 466×466。
+截图/events 时间受 --preview-ms 限制，默认最多 60000 ms。没有真机验证不填 device_verified=true，
+授权未确认保留 rights.status=unverified。两个 new 模板均带完整资料与占位封面。
+
+对外版本从 0.0.1 开始，实际分发更新才递增；现有整数 version 仍用于设备升级，
+release.json 必须与签名包相同。不要往 app.json 或网站 v2 清单添加显示版本字段。
+构建时间取 SOURCE_DATE_EPOCH / --built-at / SDK 提交时间，本地构建不自动升版本。
+export_web.py 已废弃；规则见 specs/release-bundle-v2.md。
+
 这是开发预览版。Guest ABI、包格式、存储布局与 BLE schema 均为 1；应用 `version` 是从 1 开始的独立整数。先读本页，再修改应用目录中的 C 文件和 `app.json`。生成的 `include/tinyrt.h` 由 core 契约同步，不手工修改。详细说明见 [README](README.md) 和 [包规格](specs/package.md)。
 
 ## 从游戏模板到可分享的包

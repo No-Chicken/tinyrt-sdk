@@ -6,5 +6,8 @@
   "permissions": 11,
   "memory_pages": 4,
   "budget": 100000,
-  "sources": ["main.c"]
+  "sources": [
+    "main.c"
+  ],
+  "cover": "cover.png"
 }

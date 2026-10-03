@@ -1,5 +1,7 @@
 # Flappy Bird · 466×466 圆屏演示
 
+对外版本：0.0.1；设备内部仍保留 app.json 中现有的整数升级编号。
+
 采用经典 Flappy Bird 小鸟、管道、背景、像素数字、Game Over 计分板和橙色 OK 按钮。画面铺满圆屏，小鸟三帧扇翼、地面滚动，失败后下落并显示得分、最高分、NEW 纪录提示；10 分银牌、20 分金牌。封面也来自游戏内实际素材。
 
 ## 操作
@@ -23,7 +25,7 @@ python tools/tinyrt.py build examples/flappy --cc path/to/zig.exe
 python tools/tinyrt.py run examples/flappy --runner path/to/tinyrt-run.exe --events examples/flappy/events.json --frames 32,990,3300,6600,9900,14000 --output examples/flappy/build/classic-preview
 python tools/tinyrt.py pack examples/flappy --aot --development-key --wamrc path/to/wamrc.exe
 python tools/tinyrt.py validate examples/flappy/build/demo.sky-hop.trpkg --development-key
-python examples/flappy/export_web.py
+python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --development-key
 ```
 
 保留 demo.sky-hop 应用 ID 以便更新旧预览，版本递增到 3。游戏中分数顶部下移到屏幕 y=88，避开宿主返回按钮。旧固件不支持 AUDIO 权限和导入，必须配套更新固件。
@@ -34,7 +36,10 @@ python examples/flappy/export_web.py
 
 ## 网页交付与素材来源
 
-build/sky-hop-web-release.zip 包含应用包、210×210 封面、三张圆屏截图、介绍、目录元数据与素材说明。website.json 标为开发预览，导出目录中的 catalog.json 记录包大小与 SHA-256。公开开发钥不代表正式发行身份；AOT 需要固件允许对应开发授权。
+release/demo.sky-hop-v0.0.1-wasm.zip 包含签名应用包、封面、三张真实 WAMR 截图、README、CHANGELOG、LICENSES、网站 v2 清单和构建报告；同目录保留展开文件夹。
+listing.json 提供展示资料与截图时刻，release 自动执行原生测试、编译、预览、签名和自检。
+对外版本从 0.0.1 开始，反复本地构建不自动升版本。默认 Wasm，开发 AOT 额外传 --variant wasm-aot --wamrc path/to/wamrc.exe。
+公开开发钥不代表正式发行身份；AOT 需要固件允许对应开发授权。export_web.py 已废弃，website.json 仅保留历史资料。
 
 原始素材和音效保存在 assets/，转换结果为 resources.bin 与 assets_generated.h。来源与版权说明见 [assets/NOTICE.md](assets/NOTICE.md)。原版素材权利并不因仓库代码开源而自动转授；网页资料明确标注素材授权尚未核实。
 

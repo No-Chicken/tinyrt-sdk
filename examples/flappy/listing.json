@@ -1,0 +1,37 @@
+{
+  "summary": "圆屏像素小鸟，点击起跳穿越管道。",
+  "category": "game",
+  "tags": [
+    "像素",
+    "圆屏",
+    "单键"
+  ],
+  "controls": [
+    "点击屏幕或短按 KEY1 起跳",
+    "失败后点击橙色 OK 重开",
+    "KEY1 长按或宿主返回退出"
+  ],
+  "publisher_display": "EEBadge 示例",
+  "release_notes": "0.0.1：首次交付，包含像素场景、音效和最高分保存。",
+  "full_bleed": true,
+  "rights": {
+    "status": "unverified",
+    "note": "素材来源见 LICENSES.md；原版美术和音效的分发授权尚未核实。"
+  },
+  "device_verified": false,
+  "display_version": "0.0.1",
+  "screenshots": [
+    {
+      "at_ms": 32,
+      "caption": "准备"
+    },
+    {
+      "at_ms": 9900,
+      "caption": "飞行中"
+    },
+    {
+      "at_ms": 14000,
+      "caption": "结算"
+    }
+  ]
+}

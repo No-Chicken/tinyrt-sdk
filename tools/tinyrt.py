@@ -186,6 +186,15 @@ def main(argv=None):
     pack.add_argument('app',type=Path);pack.add_argument('--wasm',type=Path);pack.add_argument('--output',type=Path);signing_options(pack)
     pack.add_argument('--aot',action='store_true',help='compile pinned ESP32-S3 AOT; requires --development-key')
     pack.add_argument('--wamrc',type=Path,help='local compiler with the exact SDK-pinned SHA-256')
+    release=commands.add_parser('release',help='offline build, preview, sign and export a website v2 ZIP')
+    release.add_argument('app',type=Path);release.add_argument('--cc');release.add_argument('--runner',type=Path)
+    release.add_argument('--variant',choices=('wasm','wasm-aot'),default='wasm')
+    release.add_argument('--output',type=Path,help='destination directory; default <app>/release')
+    release.add_argument('--channel',choices=('development','beta','stable'),default='development')
+    release.add_argument('--preview-ms',type=int,default=60000,help='maximum preview/script time, 0..60000 ms')
+    release.add_argument('--wamrc',type=Path);signing_options(release)
+    release.add_argument('--sdk-revision',help='SDK commit for a source distribution without Git metadata')
+    release.add_argument('--built-at',help='fixed UTC timestamp YYYY-MM-DDTHH:MM:SSZ; default SOURCE_DATE_EPOCH or SDK commit time')
     validate=commands.add_parser('validate',help='check authenticated envelope ONLY; no Wasm loading or execution')
     validate.add_argument('package',type=Path);signing_options(validate,True)
     args=parser.parse_args(argv)
@@ -196,7 +205,7 @@ def main(argv=None):
                 staged=Path(temp)/'app';shutil.copytree(ROOT/'templates'/args.template,staged)
                 m=json.loads((staged/'app.json').read_text(encoding='utf-8-sig'))
                 m.update(app_id=args.app_id,title=args.title)
-                (staged/'app.json').write_text(json.dumps(m,indent=2)+'\n',encoding='utf-8')
+                (staged/'app.json').write_bytes((json.dumps(m,indent=2)+'\n').encode('utf-8'))
                 load_manifest(staged)
                 shutil.copytree(staged,args.directory)
             result={'app':str(args.directory.resolve()),'app_id':args.app_id}
@@ -204,6 +213,9 @@ def main(argv=None):
         elif args.command=='run':
             import preview
             result=preview.run(args.app,args.events,args.frames,args.output,args.runner,args.step_ms)
+        elif args.command=='release':
+            import release_bundle
+            result=release_bundle.make_release(args)
         else:
             import package
             from cryptography.hazmat.primitives import serialization

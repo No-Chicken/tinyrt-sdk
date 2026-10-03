@@ -1,8 +1,8 @@
-# TinyRT minimal application
+# TinyRT game application
 
 Version: 0.0.1.
 
-A greeting rendered on the 466x466 round display. Use host back to exit.
+Hold the screen to move the pixel character; release to stop. Use host back to exit.
 
 ## Build a website ZIP
 

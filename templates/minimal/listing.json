@@ -1,0 +1,28 @@
+{
+  "summary": "TinyRT greeting",
+  "category": "art",
+  "tags": [],
+  "controls": [
+    "View the greeting",
+    "Use host back to exit"
+  ],
+  "publisher_display": "Developer",
+  "release_notes": "0.0.1: initial development preview.",
+  "full_bleed": true,
+  "rights": {
+    "status": "unverified",
+    "note": "Review code and media permissions in LICENSES.md before public distribution."
+  },
+  "device_verified": false,
+  "display_version": "0.0.1",
+  "screenshots": [
+    {
+      "at_ms": 0,
+      "caption": "Start"
+    },
+    {
+      "at_ms": 330,
+      "caption": "Preview"
+    }
+  ]
+}
