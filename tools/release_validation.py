@@ -127,6 +127,13 @@ def file_record(path, raw, **extra):
     return dict(path=path, size=len(raw), sha256=digest(raw), **extra)
 
 
+def core_contract_revision():
+    revision=json.loads((tinyrt.ROOT/'contracts/source.json').read_bytes())['core_revision']
+    if not isinstance(revision,str) or re.fullmatch('[0-9a-f]{40}',revision) is None:
+        raise ValueError('SDK core contract revision is pending; finalize the committed contract pin before release')
+    return revision
+
+
 def inspect_package(raw, public_key, key_id):
     info = package.validate_envelope(raw, public_key, key_id)
     parts = sections(raw)
@@ -136,7 +143,7 @@ def inspect_package(raw, public_key, key_id):
                            abi_version=abi, permissions=permissions, memory_pages=pages,
                            budget=budget, key_id=actual_key)
     aot = info['aot']
-    requirements = dict(core_contract_revision=json.loads((tinyrt.ROOT/'contracts/source.json').read_bytes())['core_revision'],
+    requirements = dict(core_contract_revision=core_contract_revision(),
                         imports=wasm_imports(parts[1], permissions),
                         aot={name:aot[name] for name in ('target_arch','target_cpu','compat_id')} if aot else None)
     return info, parts, metadata, requirements

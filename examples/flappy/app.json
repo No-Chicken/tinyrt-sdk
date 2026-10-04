@@ -1,7 +1,7 @@
 {
   "app_id": "demo.sky-hop",
   "title": "Flappy Bird",
-  "version": 3,
+  "version": 4,
   "abi_version": 1,
   "permissions": 31,
   "memory_pages": 4,
@@ -10,5 +10,6 @@
     "main.c"
   ],
   "cover": "cover.png",
-  "assets": "resources.bin"
+  "assets": "resources.bin",
+  "graphics": "raster"
 }

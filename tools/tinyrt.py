@@ -18,7 +18,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = {'app_id','title','version','abi_version','permissions','memory_pages','budget','sources'}
-OPTIONAL = {'assets','defines','cover'}
+OPTIONAL = {'assets','defines','cover','graphics'}
 
 
 def integer(value, low, high, name):
@@ -74,6 +74,8 @@ def load_manifest(path):
         resolved.append(item)
     if value.get('assets') is not None: local_file(path.parent,value['assets'])
     if value.get('cover') is not None: local_file(path.parent,value['cover'])
+    if value.get('graphics','immediate') not in ('immediate','raster','framebuffer'):
+        raise ValueError('unsupported graphics requirement; use immediate, raster or framebuffer')
     defines=value.get('defines',{})
     if not isinstance(defines,dict) or len(defines)>32: raise ValueError('defines must be an object with at most 32 entries')
     for name,number in defines.items():
@@ -124,6 +126,44 @@ def write_atomic(output,data):
         if os.path.exists(temp): os.unlink(temp)
 
 
+def check_graphics_imports(wasm):
+    """Reject unknown graphics requirements before signing; core validates ABI.
+
+    Requirement names remain in signed Wasm imports, so package format stays 1.
+    An older runtime rejects unsupported imports during preflight installation.
+    """
+    if not wasm.startswith(b'\0asm\x01\0\0\0'):raise ValueError('invalid Wasm magic')
+    contract=json.loads((ROOT/'contracts/abi-v1.json').read_text(encoding='utf-8'))
+    known={entry['name'] for entry in contract['imports']}
+    def number(raw,at):
+        result=0
+        for shift in range(0,35,7):
+            if at>=len(raw):raise ValueError('truncated Wasm graphics import section')
+            byte=raw[at];at+=1;result|=(byte&127)<<shift
+            if not byte&128:return result,at
+        raise ValueError('oversized Wasm import integer')
+    def name(raw,at):
+        size,at=number(raw,at)
+        if size>len(raw)-at:raise ValueError('truncated Wasm import name')
+        return raw[at:at+size].decode('utf-8'),at+size
+    offset=8
+    while offset<len(wasm):
+        kind=wasm[offset];size,start=number(wasm,offset+1);offset=start+size
+        if offset>len(wasm):raise ValueError('truncated Wasm section')
+        if kind!=2:continue
+        raw=wasm[start:offset];count,at=number(raw,0)
+        for _ in range(count):
+            module,at=name(raw,at);field,at=name(raw,at)
+            if at>=len(raw):raise ValueError('truncated Wasm import kind')
+            import_kind=raw[at];at+=1
+            if module=='tinyrt' and (field.startswith('gfx_') or field.startswith('fb_')) and field not in known:
+                raise ValueError(f'unsupported graphics import {field}; update the SDK/core contract')
+            if import_kind!=0:
+                raise ValueError('non-function Wasm imports are unsupported')
+            _,at=number(raw,at)
+        if at!=len(raw):raise ValueError('trailing bytes in Wasm import section')
+
+
 def build(path,cc=None,output=None):
     path=manifest_path(path);m=load_manifest(path)
     cc=cc or os.environ.get('TINYRT_CC') or shutil.which('clang') or shutil.which('zig')
@@ -151,7 +191,8 @@ def build(path,cc=None,output=None):
     with tempfile.TemporaryDirectory(prefix='tinyrt-build-',dir=output.parent) as temp:
         compiled=Path(temp)/'app.wasm'
         subprocess.run(command+list(map(str,sources))+['-o',str(compiled)],check=True,env=env)
-        write_atomic(output,compiled.read_bytes())
+        compiled_bytes=compiled.read_bytes();check_graphics_imports(compiled_bytes)
+        write_atomic(output,compiled_bytes)
     return {'app_id':m['app_id'],'wasm':str(output),'wasm_size':output.stat().st_size}
 
 
@@ -226,6 +267,7 @@ def main(argv=None):
             if args.command=='pack':
                 path=manifest_path(args.app);m=load_manifest(path)
                 wasm=args.wasm or path.parent/'build'/(m['app_id']+'.wasm')
+                check_graphics_imports(package.read_bounded(wasm))
                 assets=local_file(path.parent,m['assets']) if m.get('assets') is not None else None
                 cover=local_file(path.parent,m['cover']) if m.get('cover') is not None else None
                 inputs=[path,wasm,assets,cover,args.key,*[local_file(path.parent,s) for s in m['sources']]]

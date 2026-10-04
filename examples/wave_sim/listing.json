@@ -1,0 +1,34 @@
+{
+  "summary": "圆形灯珠水波，倾斜设备晃动，轻点掀浪。",
+  "category": "game",
+  "tags": [
+    "水波",
+    "重力",
+    "圆屏"
+  ],
+  "controls": [
+    "倾斜设备改变重力",
+    "点击屏幕或短按 KEY1 掀浪",
+    "触摸长按 500 ms 切换主题",
+    "KEY1 长按或宿主返回退出"
+  ],
+  "publisher_display": "EEBadge 示例",
+  "release_notes": "0.0.2：20×20 索引网格由宿主绘制，130 粒子、60 真实步/秒和五种主题；支持 40×40/400 粒子比较配置。",
+  "full_bleed": true,
+  "rights": {
+    "status": "unverified",
+    "note": "设计与素材授权说明见 LICENSES.md。"
+  },
+  "device_verified": false,
+  "display_version": "0.0.2",
+  "screenshots": [
+    {
+      "at_ms": 990,
+      "caption": "水波"
+    },
+    {
+      "at_ms": 3300,
+      "caption": "切换主题"
+    }
+  ]
+}

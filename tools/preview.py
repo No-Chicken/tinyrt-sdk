@@ -91,6 +91,12 @@ def raster(frame):
             image=Image.frombytes('RGB',(sw,sh),raw,'raw','BGR;16',0,1)
             if kind==8:image=floor_scale(image,w,h)
             canvas.paste(image,(x,y))
+        elif kind==9:
+            if 'raster_pixels_hex' not in frame:
+                raise ValueError('desktop runner lacks graphics capture; use a matching SDK 0.0.2 runner')
+            raw=bytes.fromhex(frame['raster_pixels_hex'])
+            if len(raw)!=466*466*2:raise ValueError('runtime raster payload must be 466x466 RGB565')
+            canvas.paste(Image.frombytes('RGB',(466,466),raw,'raw','BGR;16',0,1),(0,0))
         elif kind==5:
             r=c['radius'];draw.arc((x-r,y-r,x+r,y+r),c['start_angle'],c['end_angle'],fill=rgb,width=c['thickness'])
         elif kind in (3,6):

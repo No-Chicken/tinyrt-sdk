@@ -1,7 +1,7 @@
-# TinyRT SDK 0.0.1：应用开发速查
+# TinyRT SDK 0.0.2：应用开发速查
 
 SDK 对外版本唯一来源是根目录 VERSION，`python tools/tinyrt.py --version` 查询。
-本次 SDK 与 Flappy 的交付版本均为 0.0.1；不要按构建次数增加版本号。
+本次 SDK、Bird 与 Wave 的交付版本均为 0.0.2；不要按构建次数增加版本号。
 
 ## 本项目设备交付约定
 
@@ -41,7 +41,7 @@ export_web.py 已废弃；规则见 specs/release-bundle-v2.md。
 
 ## 从游戏模板到可分享的包
 
-需要 Python 3.10+、Zig 0.13.0 或支持 wasm32 的 Clang。桌面预览还需要真实 WAMR `tinyrt-run.exe`；开发 AOT 需要 SDK 固定 SHA-256 的 ESP32-S3 `wamrc.exe`。当前源码中的v0.0.1编译器与桌面runner下载地址都是待发布位置，不能假定附件已可下载；先用 `--runner`、`--wamrc` 指向匹配的本地工具。命令从 SDK 根目录运行，路径按机器替换。
+需要 Python 3.10+、Zig 0.13.0 或支持 wasm32 的 Clang。桌面预览还需要真实 WAMR `tinyrt-run.exe`；开发 AOT 需要 SDK 固定 SHA-256 的 ESP32-S3 `wamrc.exe`。当前源码中的编译器与桌面 runner 下载地址都是待发布位置，不能假定附件已可下载；先用 `--runner`、`--wamrc` 指向匹配的本地工具。命令从 SDK 根目录运行，路径按机器替换。
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -92,6 +92,9 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/dem
 466×466 圆屏的四角不可见，约 330×330 的中央正方形是安全区（约 x/y=68..397）。留出宿主返回键空间。CLOCK=2；触摸 RELEASE=1、PRESS=3、MOVE=4、CANCEL=5。在 init 调用 `input_events(56)` 订阅完整触摸；mask=0 保留 release 模式。KEY1为事件6（`TINYRT_USER_KEY_EVENT`），x=1、y=1按下/0释放、arg=0；init订阅mask=64，触摸与KEY1合用mask=120。CANCEL清除触摸与KEY1按住状态；队列溢出可能丢失KEY1 release，因此取消必须解除所有按住动作。应用认领KEY1后短按/双击用于Guest，长按仍保留Host返回。按住动作在release/cancel时清零，release不自动代表click。使用 `now_ms()` 的无符号差推进时间，禁止 Guest 自己忙等。
 
 ## ABI 1 全部 Host 函数
+
+0.0.2 的新增 `gfx_*` / `fb_*` import、能力位和二进制记录见生成的
+`include/tinyrt_gfx.h` 与 [图形契约](specs/graphics-v1.md)。旧函数约束如下。
 
 所有函数在模块 `tinyrt` 中；整数为 i32/u32，像素和文本传 Guest 线性内存地址。`now_ms`返回u32，其余返回i32；`kv_get`返回存储值，`asset_read`返回长度；绘制和设置通常以0表示成功，失败会令当前回调失败。
 

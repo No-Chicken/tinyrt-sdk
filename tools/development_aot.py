@@ -56,6 +56,7 @@ def pack_development(manifest, wasm, output, wamrc=None):
     if cover:paths.append(cover)
     snapshots={p.resolve():package.read_cover_source(p) if p==cover else p.read_bytes() for p in paths}
     source=snapshots[Path(wasm).resolve()];assets=snapshots[asset] if asset else b''
+    tinyrt.check_graphics_imports(source)
     cover_bytes=package.encode_cover_png(snapshots[cover]) if cover else None
     metadata={name:app[name] for name in tinyrt.REQUIRED-{'sources'}}
     metadata.update(key_id=1,private_key=package.development_key())

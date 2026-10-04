@@ -75,8 +75,9 @@ class SDKTests(unittest.TestCase):
         cc=os.environ.get('TINYRT_CC') or shutil.which('clang') or shutil.which('zig')
         if not cc: self.skipTest('set TINYRT_CC to run real freestanding build')
         isolated=self.project/'sdk'
-        for part in ('tools','include','templates'):
+        for part in ('tools','include','templates','contracts'):
             shutil.copytree(ROOT/part,isolated/part,ignore=shutil.ignore_patterns('__pycache__'))
+        shutil.copyfile(ROOT/'VERSION',isolated/'VERSION')
         project=self.project/'app'
         command=[sys.executable,str(isolated/'tools/tinyrt.py')]
         def run(*args):
@@ -170,6 +171,7 @@ class SDKTests(unittest.TestCase):
         self.assertEqual(app['app_id'],'demo.sky-hop')
         self.assertEqual(sorted(p.name for p in (ROOT/'examples').iterdir() if p.is_dir()),['flappy','wave_sim'])
         wave=self.sdk.load_manifest(ROOT/'examples/wave_sim/app.json')
-        self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',1))
+        self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',7))
+        self.assertEqual(app['version'],4)
 
 if __name__=='__main__':unittest.main()

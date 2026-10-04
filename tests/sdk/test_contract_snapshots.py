@@ -21,6 +21,7 @@ class ContractSnapshotTests(unittest.TestCase):
         self.core=Path(temp.name)/'core';self.sdk=Path(temp.name)/'sdk'
         (self.core/'contracts').mkdir(parents=True);self.sdk.mkdir()
         (self.core/'contracts/guest-v1.h').write_bytes(b'#ifndef GUEST_H\n#define GUEST_H\n#endif\n')
+        (self.core/'contracts/guest-gfx-v1.h').write_bytes(b'#ifndef GFX_H\n#define GFX_H\n#endif\n')
         for name in ('abi-v1.json','wire-v1.json'):
             (self.core/'contracts'/name).write_bytes(b'{"version": 1}\n')
         self.run_git('init','--quiet')

@@ -1,4 +1,5 @@
 #include "tinyrt.h"
+#include "tinyrt_gfx.h"
 
 /* Round-native scene: Host clips the full 466-square canvas to the display. */
 #define BIRD_X 160
@@ -6,11 +7,31 @@
 #define GAP_HALF 82
 #define GROUND_Y 396
 typedef struct { uint16_t x,width; uint32_t offset; } span_t;
-typedef struct { int width,height; const uint16_t *rows; const span_t *spans; } sprite_t;
+typedef struct { int width,height; const uint16_t *rows; const span_t *spans; int atlas_x,atlas_y,opaque; } sprite_t;
 #include "assets_generated.h"
 #define SFX(name) do { if(audio_play(SOUND_##name##_OFFSET,SOUND_##name##_LENGTH,16000)<0) return -1; } while(0)
 static int compose_strip(void);
-static uint8_t pixels[233*233*2];
+#define BIRD_PIXEL_BYTES (233u*233u*2u)
+#if defined(__wasm__)
+static uint8_t *pixels;
+extern unsigned char __heap_base;
+static int allocate_legacy_frame(void){
+    uintptr_t start=((uintptr_t)&__heap_base+3u)&~(uintptr_t)3u;
+    uint32_t pages=(uint32_t)((start+BIRD_PIXEL_BYTES+65535u)/65536u);
+    uint32_t current=(uint32_t)__builtin_wasm_memory_size(0);
+    if(pages>current&&__builtin_wasm_memory_grow(0,pages-current)==(size_t)-1)return -1;
+    pixels=(uint8_t *)start;return 0;
+}
+#else
+static uint8_t pixels[BIRD_PIXEL_BYTES];
+static int allocate_legacy_frame(void){return 0;}
+#endif
+static int sprite_backend;
+#ifndef BIRD_LEGACY_GRAPHICS
+#define BIRD_LEGACY_GRAPHICS 0
+#endif
+static union {uint32_t align;uint8_t bytes[4096];} graphics;
+static uint32_t graphics_length;
 static int stripe,frame_ready,die_sound,run_best;
 #define D(call) do { if ((call) != 0) return -1; } while (0)
 enum { READY, RUNNING, GAME_OVER };
@@ -58,6 +79,19 @@ typedef struct { pipe_t pipes[3];int state,y,score,best,old_best,animation,scrol
 static scene_t scene;
 static int strip_top,strip_bottom;
 static int blit(const sprite_t *image,int x,int y,int flip) {
+    if(sprite_backend){
+        int left=x<0?0:x,top=y<strip_top?strip_top:y;
+        int right=x+image->width,bottom=y+image->height;
+        if(right>233)right=233;if(bottom>strip_bottom)bottom=strip_bottom;
+        if(right<=left||bottom<=top)return 0;
+        if(graphics_length+sizeof(tinyrt_gfx_sprite_t)>sizeof(graphics.bytes))return -1;
+        tinyrt_gfx_sprite_t record={TINYRT_GFX_SPRITE,sizeof(record),left*2,top*2,(right-left)*2,(bottom-top)*2,
+            0,(uint32_t)(image->atlas_x+left-x),(uint32_t)(image->atlas_y+(flip?image->height-(bottom-y):top-y)),
+            (uint32_t)(right-left),(uint32_t)(bottom-top),(image->opaque?0:TINYRT_GFX_TRANSPARENT)|(flip?TINYRT_GFX_FLIP_Y:0),0,0};
+        const uint8_t *p=(const uint8_t *)&record;
+        for(unsigned i=0;i<sizeof(record);i++)graphics.bytes[graphics_length+i]=p[i];
+        graphics_length+=sizeof(record);return 0;
+    }
     int first=strip_top-y,last=strip_bottom-y;
     if(first<0) first=0;if(last>image->height) last=image->height;
     for(int row=first;row<last;row++) {
@@ -84,7 +118,9 @@ static int draw_number(int value,int anchor,int y,int small,int center) {
     return 0;
 }
 static int compose_strip(void) {
+    if(sprite_backend&&stripe){if(++stripe==4){stripe=0;frame_ready=1;}return 0;}
     if(stripe==0) {
+        if(sprite_backend)graphics_length=0;
         for(int i=0;i<3;i++) scene.pipes[i]=pipes[i];
         scene.state=state;scene.y=bird_y/512;scene.score=score;scene.best=best;
         scene.old_best=run_best;scene.scroll=(int)(scenery*3u/2u%168u);
@@ -92,8 +128,9 @@ static int compose_strip(void) {
         scene.show_panel=state==GAME_OVER && (uint32_t)(now_ms()-died_ms)>=600u;
     }
     strip_top=stripe*59;strip_bottom=strip_top+59;if(strip_bottom>233) strip_bottom=233;
+    if(sprite_backend){strip_top=0;strip_bottom=233;D(blit(&background,0,0,0));}
     uint32_t start=(uint32_t)strip_top*466,end=(uint32_t)strip_bottom*466;
-    for(uint32_t offset=start;offset<end;) {
+    for(uint32_t offset=start;!sprite_backend&&offset<end;) {
         uint32_t count=end-offset;if(count>4096) count=4096;
         if(asset_read(offset,pixels+offset,count)!=(int32_t)count) return -1;
         offset+=count;
@@ -125,8 +162,10 @@ static int compose_strip(void) {
 }
 int32_t tinyrt_render(void) {
     if(!frame_ready) return draw_skip();
-    frame_ready=0;D(draw_clear(0x70c5ceu));
-    return draw_rgb565_scaled(0,0,466,466,233,233,pixels,sizeof(pixels));
+    frame_ready=0;
+    if(sprite_backend){D(gfx_begin(0));D(gfx_submit(graphics.bytes,graphics_length));return gfx_end();}
+    D(draw_clear(0x70c5ceu));
+    return draw_rgb565_scaled(0,0,466,466,233,233,pixels,BIRD_PIXEL_BYTES);
 }
 int32_t tinyrt_stop(void) { touch_down=key_down=0;return save_best(); }
 static int tick_game(void) {
@@ -148,6 +187,14 @@ static int tick_game(void) {
 }
 int32_t tinyrt_init(int32_t width,int32_t height) {
     if(width!=466 || height!=466) return -1;
+    sprite_backend=!BIRD_LEGACY_GRAPHICS&&(gfx_caps()&TINYRT_GFX_CAP_SPRITE)!=0;
+    if(sprite_backend){
+        uint16_t palette[256];
+        D(asset_read(RESIDENT_PALETTE_OFFSET,palette,RESIDENT_PALETTE_COUNT*2)!=(int32_t)(RESIDENT_PALETTE_COUNT*2));
+        D(gfx_pal_upload(0,0,RESIDENT_PALETTE_COUNT,palette));
+        D(gfx_tex_upload(0,TINYRT_GFX_INDEX8,RESIDENT_ATLAS_WIDTH,RESIDENT_ATLAS_HEIGHT,
+            (const void *)(uintptr_t)RESIDENT_ATLAS_OFFSET,RESIDENT_ATLAS_LENGTH,TINYRT_GFX_FROM_ASSET));
+    }else D(allocate_legacy_frame());
     best=kv_get(0,0);if(best<0 || best>9999) best=0;
     saved_best=best;state=READY;touch_down=key_down=0;reset_game();
     D(input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_INPUT_USER_KEY_MASK));

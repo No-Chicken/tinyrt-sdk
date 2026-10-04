@@ -11,7 +11,12 @@ out=root/'build/tests/wave_sim';out.mkdir(parents=True,exist_ok=True)
 env=os.environ.copy();env.setdefault('ZIG_GLOBAL_CACHE_DIR',str(out/'zig-cache'))
 cc=str(Path(args.cc).resolve())
 command=[cc]+(['cc'] if Path(cc).stem=='zig' else [])
-for variant,defines in [('wave',[]),('wave-metrics',['-DWAVE_METRICS=1'])]:
+for variant,defines in [('wave',[]),('wave-metrics',['-DWAVE_METRICS=1']),
+                        ('wave-s31',['-DWAVE_IMU_MOUNT_DEG=0']),
+                        ('wave-400',['-DWAVE_N=400']),
+                        ('wave-coarse',['-DWAVE_GRID=20','-DWAVE_N=130']),
+                        ('wave-coarse-metrics',['-DWAVE_GRID=20','-DWAVE_N=130','-DWAVE_METRICS=1']),
+                        ('wave-coarse-s31',['-DWAVE_GRID=20','-DWAVE_N=130','-DWAVE_IMU_MOUNT_DEG=0'])]:
     executable=out/f'test-{variant}.exe'
     subprocess.run(command+['-std=c11','-O2','-UNDEBUG','-Wall','-Wextra','-Werror']+defines+[
         '-I',str(root/'include'),str(root/'tests/wave_sim/test_wave.c'),

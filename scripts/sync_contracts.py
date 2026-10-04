@@ -16,7 +16,7 @@ import sys
 import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
-FILES=('guest-v1.h','abi-v1.json','wire-v1.json')
+FILES=('guest-v1.h','guest-gfx-v1.h','abi-v1.json','wire-v1.json')
 
 
 def core_git(core,*args):
@@ -76,7 +76,7 @@ def read_lock(path):
     if not isinstance(lock,dict) or set(lock)!={'format_version','core_revision','files'} or lock['format_version']!=1:
         raise ValueError('invalid contract source lock')
     if not isinstance(lock['files'],dict) or set(lock['files'])!=set(FILES):
-        raise ValueError('contract lock must record exactly three file hashes')
+        raise ValueError('contract lock must record exactly four file hashes')
     for value in lock['files'].values():
         if not isinstance(value,str) or re.fullmatch('[0-9a-f]{64}',value) is None:
             raise ValueError('invalid contract source hash')
@@ -111,6 +111,7 @@ def sync_contracts(core,sdk=ROOT,*,revision=None,check=False):
     lock={'format_version':1,'core_revision':revision,'files':hashes}
     outputs={sdk/'contracts'/name:data for name,data in contents.items()}
     outputs[sdk/'include/tinyrt.h']=contents['guest-v1.h']
+    outputs[sdk/'include/tinyrt_gfx.h']=contents['guest-gfx-v1.h']
     if check:
         for path,data in outputs.items():
             if not path.is_file() or path.read_bytes()!=data:

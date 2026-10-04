@@ -104,6 +104,7 @@ def compile_release(manifest, wasm, source_lock, provenance, release_profile, ru
     app=tinyrt.load_manifest(manifest)
     for source in app['sources']:snapshot(tinyrt.local_file(manifest.parent,source))
     wasm_bytes=snapshot(wasm)
+    tinyrt.check_graphics_imports(wasm_bytes)
     cover=None;cover_path=None
     if app.get('cover') is not None:
         cover_path=tinyrt.local_file(manifest.parent,app['cover'])

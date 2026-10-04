@@ -4,4 +4,4 @@
 *.wasm -text
 *.trpkg -text
 *.nes -text
-*.bin -text
+*.bin binary

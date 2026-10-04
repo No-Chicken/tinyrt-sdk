@@ -12,14 +12,14 @@
     "KEY1 长按或宿主返回退出"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "0.0.1：首次交付，包含像素场景、音效和最高分保存。",
+  "release_notes": "0.0.2：驻留调色板精灵与批量绘制，保留音效、输入和最高分。",
   "full_bleed": true,
   "rights": {
     "status": "unverified",
     "note": "素材来源见 LICENSES.md；原版美术和音效的分发授权尚未核实。"
   },
   "device_verified": false,
-  "display_version": "0.0.1",
+  "display_version": "0.0.2",
   "screenshots": [
     {
       "at_ms": 32,

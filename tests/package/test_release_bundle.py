@@ -27,6 +27,9 @@ class ReleaseTests(unittest.TestCase):
     def setUp(self):
         import release_bundle
         self.release = release_bundle
+        # Isolate bundle behavior from a developer's deliberately pending lock.
+        contract_pin=patch('release_validation.core_contract_revision',return_value='b'*40)
+        contract_pin.start();self.addCleanup(contract_pin.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.app = Path(self.temp.name) / 'app'
@@ -250,7 +253,7 @@ class ReleaseTests(unittest.TestCase):
         with redirect_stdout(output), self.assertRaises(SystemExit) as result:
             tinyrt.main(['--version'])
         self.assertEqual(result.exception.code,0)
-        self.assertEqual(output.getvalue().strip(),'TinyRT SDK 0.0.1')
+        self.assertEqual(output.getvalue().strip(),'TinyRT SDK '+(ROOT/'VERSION').read_text().strip())
 
 
 if __name__ == '__main__': unittest.main()

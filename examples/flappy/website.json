@@ -2,7 +2,7 @@
   "app_id": "demo.sky-hop",
   "title": "Flappy Bird",
   "subtitle": "圆屏 Flappy Bird",
-  "version": 3,
+  "version": 4,
   "summary": "经典像素小鸟、绿色管道与原版音效，适配466×466圆屏。",
   "description": "点击屏幕或短按KEY1起跳，穿越管道得分。失败后显示奖牌、得分、最高分与NEW纪录提示，点击橙色OK按钮重开。背景铺满圆屏，保留经典精灵动画。",
   "category": "game",
