@@ -1,7 +1,7 @@
-# TinyRT SDK 0.0.2：应用开发速查
+# TinyRT SDK 0.0.3：应用开发速查
 
 SDK 对外版本唯一来源是根目录 VERSION，`python tools/tinyrt.py --version` 查询。
-本次 SDK、Bird 与 Wave 的交付版本均为 0.0.2；不要按构建次数增加版本号。
+本次 SDK 交付版本为 0.0.3，Bird 与 Wave 显示版本保持 0.0.2；不要按构建次数增加版本号。
 
 ## 本项目设备交付约定
 

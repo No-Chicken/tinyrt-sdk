@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "sdk_version": "0.0.2",
+  "sdk_version": "0.0.3",
   "platform": "windows-x64",
   "engine": "WAMR classic interpreter",
   "wamr_commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
-  "sha256": "98415f79762a652495a27eb687c9f1c9bcaa40daa435a12d95e91a290f3726a7",
-  "size": 701440,
-  "url": "https://github.com/No-Chicken/tinyrt-sdk/releases/download/v0.0.2/tinyrt-run-windows-x64.exe"
+  "sha256": "0e65a56f5d9558b80ae2a893833b30bade5e68f59feed829c513d059bddbe403",
+  "size": 709632,
+  "url": "https://github.com/No-Chicken/tinyrt-sdk/releases/download/v0.0.3/tinyrt-run-windows-x64.exe"
 }

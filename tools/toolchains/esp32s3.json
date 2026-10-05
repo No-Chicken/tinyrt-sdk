@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "sdk_version": "0.0.2",
+  "sdk_version": "0.0.3",
   "aot_format": 5,
   "wamr_commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
   "llvm_commit": "344b928e67bfc1d07cb150609c55548e86a9bf19",
