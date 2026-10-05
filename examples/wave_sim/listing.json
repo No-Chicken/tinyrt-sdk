@@ -13,14 +13,13 @@
     "KEY1 长按或宿主返回退出"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "0.0.2：20×20 索引网格由宿主绘制，130 粒子、60 真实步/秒和五种主题；支持 40×40/400 粒子比较配置。",
+  "release_notes": "v7：20×20 索引网格由宿主绘制，130 粒子、60 真实步/秒和五种主题；支持 40×40/400 粒子比较配置。",
   "full_bleed": true,
   "rights": {
     "status": "unverified",
     "note": "设计与素材授权说明见 LICENSES.md。"
   },
   "device_verified": false,
-  "display_version": "0.0.2",
   "screenshots": [
     {
       "at_ms": 990,

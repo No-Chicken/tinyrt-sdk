@@ -1,6 +1,6 @@
 # Flappy Bird · 466×466 圆屏演示
 
-对外版本：0.0.2；设备升级编号为 4，后续构建不自动递增。
+应用发布版本：4，唯一来源为 app.json.version，后续构建不自动递增。
 
 采用经典 Flappy Bird 小鸟、管道、背景、像素数字、Game Over 计分板和橙色 OK 按钮。画面铺满圆屏，小鸟三帧扇翼、地面滚动，失败后下落并显示得分、最高分、NEW 纪录提示；10 分银牌、20 分金牌。封面也来自游戏内实际素材。
 
@@ -36,9 +36,9 @@ python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner pat
 
 ## 网页交付与素材来源
 
-release/demo.sky-hop-v0.0.1-wasm-aot.zip 是本项目唯一交付 ZIP，包含签名 AOT 应用包、封面、三张真实 WAMR 截图、README、CHANGELOG、LICENSES、网站 v2 清单和构建报告；同目录保留展开文件夹。
+release/demo.sky-hop-v4-wasm-aot.zip 是本项目唯一交付 ZIP，包含签名 AOT 应用包、封面、三张真实 WAMR 截图、README、CHANGELOG、LICENSES、网站 v2 清单和构建报告；同目录保留展开文件夹。
 listing.json 提供展示资料与截图时刻，release 自动执行原生测试、编译、预览、签名和自检。
-对外版本从 0.0.1 开始，反复本地构建不自动升版本。release 默认 AOT，需要 --wamrc path/to/wamrc.exe 或 SDK bin/wamrc.exe。
+应用版本只使用 app.json.version 整数，反复本地构建不自动升版本。release 默认 AOT，需要 --wamrc path/to/wamrc.exe 或 SDK bin/wamrc.exe。
 Wasm 文件用于编译与预览，也保留在 AOT 包内作为回退；独立 Wasm ZIP 不用于交付。匹配开发固件必须允许开发钥和开发 AOT，并确认实际选择 AOT 后端。
 公开开发钥不代表正式发行身份；AOT 需要固件允许对应开发授权。export_web.py 已废弃，website.json 仅保留历史资料。
 

@@ -14,14 +14,12 @@ without BOM, use LF and be at most 64 KiB each. Cover is a single-frame RGB/RGBA
 [listing.schema.json](listing.schema.json); unknown fields, duplicate keys and
 nonstandard JSON numbers are errors. The handoff's "four Markdown files" is a typo.
 
-Optional `display_version` uses `0.0.1`, `0.0.2`, etc. It labels the ZIP,
-README/CHANGELOG and report; it is not an extra website manifest field.
-app.json.version and release.json.version retain the same uint32 upgrade counter
-required by the signed package and website. Flappy starts its public label at
-0.0.1 while retaining its existing package counter. Increment the label and
-counter for an actual distributed update, not each local rebuild. A structured
-public version field requires a separate website schema change. Schema 2,
-ABI 1 and package format 1 are independent protocol versions.
+app.json.version is the sole positive uint32 application release version.
+ZIP names, signed package metadata and release.json.version use that integer.
+listing.json rejects display_version. Application Hall does not display versions.
+Increment for distributed application updates, not repeated local builds.
+Schema 2, ABI 1 and package format 1 are independent protocol versions.
+See [version-management.md](version-management.md) for compatibility and identity.
 
 Screenshot entries require exactly one of at_ms and file; caption is optional.
 1-6 entries appear in listing order as screenshots/01.png ... 06.png. at_ms is
@@ -44,9 +42,8 @@ PNGs; preview images retain the existing round-screen alpha mask.
    validation; local checks do not replace all device/core compatibility checks.
 6. Generate manifest/report, archive and self-inspect, then commit local output.
 
-Default destination is <app>/release/<app_id>-v<display_version>-<variant>.zip
-and its same-named unpacked directory. Without display_version use the package
-integer counter. --output changes the destination directory. Fixed entry order:
+Default destination is <app>/release/<app_id>-v<app.json.version>-<variant>.zip
+and its same-named unpacked directory. --output changes the destination directory. Fixed entry order:
 
 ```text
 release.json

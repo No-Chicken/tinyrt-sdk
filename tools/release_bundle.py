@@ -255,7 +255,7 @@ def make_release(args):
             if not path.is_file(): raise ValueError('release needs local pinned AOT compiler; pass --wamrc')
             wamrc = development_aot.compiler_path(json.loads(development_aot.PROFILE.read_bytes()),path)
         revision, built_at = build_identity(args)
-        version = listing.get('display_version',str(app['version']))
+        version = str(app['version'])
         name = f'{app["app_id"]}-v{version}-{args.variant}'
         output = Path(args.output).absolute() if args.output else root/'release'
         folder, archive = output/name, output/(name+'.zip')
@@ -337,7 +337,7 @@ def make_release(args):
             screenshots=screenshots,release_notes=listing['release_notes'],changelog=file_record('CHANGELOG.md',assets['CHANGELOG.md']),
             build=dict(sdk_revision=revision,toolchain=toolchain,built_at=built_at,command=command,report=None))
         check_schema(manifest,'release-v2.schema.json')
-        passed(stage,detail='display_version='+version)
+        passed(stage,detail='package_version='+version)
         for path,raw in snapshots.items():
             if path.read_bytes() != raw: raise ValueError('release input changed during build: '+path.name)
         if package.read_bounded(wasm) != wasm_raw: raise ValueError('Wasm changed during preview')
@@ -359,7 +359,7 @@ def make_release(args):
         validate_bundle(raw_zip,key.public_key(),args.key_id)
         stage = 'delivery'
         deliver(files,raw_zip,folder,archive,snapshots,key.public_key(),args.key_id)
-        return dict(zip=str(archive),directory=str(folder),sha256=digest(raw_zip),display_version=version,
+        return dict(zip=str(archive),directory=str(folder),sha256=digest(raw_zip),
                     package_version=info['version'],variant=manifest['variant'])
     except (OSError,ValueError,TypeError,UnicodeError,subprocess.SubprocessError):
         # Fixed relative report path and stage name; subprocess stderr may contain keys/paths.

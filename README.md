@@ -1,7 +1,7 @@
-# TinyRT SDK 0.0.3
+# TinyRT SDK 0.0.4
 
 SDK 对外版本以根目录 VERSION 为准，用 `python tools/tinyrt.py --version` 查询。
-本次 SDK 交付版本为 0.0.3，Bird 与 Wave 显示版本保持 0.0.2；反复编译不自动升版本。
+本次 SDK 交付版本为 0.0.4，Bird 与 Wave 的整数发布版本分别为 4、7；反复编译不自动升版本。
 
 图形批次、GRID、驻留精灵与兼容要求见 [graphics-v1.md](specs/graphics-v1.md)。
 
@@ -38,7 +38,6 @@ release 默认为 wasm-aot，`--wamrc` 指定 SDK 固定摘要的本地 ESP32-S3
   "full_bleed": true,
   "rights": {"status": "unverified", "note": "来源与许可见 LICENSES.md"},
   "device_verified": false,
-  "display_version": "0.0.2",
   "screenshots": [{"at_ms": 32, "caption": "准备"}, {"at_ms": 3300, "caption": "运行"}]
 }
 ```
@@ -46,7 +45,7 @@ release 默认为 wasm-aot，`--wamrc` 指定 SDK 固定摘要的本地 ESP32-S3
 截图也可用 `{"file":"screenshots/device.png","caption":"真机"}`，必须原本为 466×466 单帧 PNG。
 at_ms 与 file 二选一，1–6 张。封面必须为 210×210 RGB/RGBA PNG、≤64 KiB。
 三个 Markdown 必须 UTF-8 无 BOM、LF、各≤64 KiB。未知字段、重复键、超时和错误尺寸都报错。
-`display_version` 为对外 `0.0.1 → 0.0.2` 标签；包与网站清单 version 保留现有整数升级编号。
+应用版本唯一来源是 app.json.version；ZIP 名称、签名包和 release.json 使用同一个整数。listing 不允许 display_version。
 只有实际分发更新才递增版本，反复本地构建不自动涨版本。
 
 构建时间固定取 SDK 提交时间，可用 SOURCE_DATE_EPOCH 或 --built-at 覆盖；同样输入和工具环境产出相同字节。
@@ -75,7 +74,7 @@ python tools/tinyrt.py validate my-game/build/demo.my-game.trpkg --development-k
 
 `app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为签名 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入 2 MiB 上限。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
 
-`run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。该v0.0.3下载位置尚待发布，当前使用显式本地runner。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
+`run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。该v0.0.4下载位置尚待发布，当前使用显式本地runner。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
 
 `pack --aot --development-key` 限定非空`demo.`子命名空间与key_id=1。它用SDK pin校验编译器SHA-256，固定ESP32-S3目标与bounds/stack/loop-poll检查，自行生成AOT，打入格式1包并保留Wasm回退。通用入口不接受上传者提供的AOT或自报安全参数。`--wamrc`也必须匹配固定摘要。当前`tools/toolchains/esp32s3.json`内的v0.0.1附件URL是待发布位置，尚不能声称可下载；现阶段需使用匹配的本地编译器。自动下载代码只支持Windows x64，其他系统须显式提供匹配工具。
 
@@ -213,3 +212,5 @@ python scripts/sync_contracts.py --core path/to/tinyrt --check
 同步器验证该路径本身是 core Git 根目录、HEAD 与请求 revision 一致，四件权威契约在该提交中均为普通文件。生成内容直接读取固定 commit 的 Git blob，同时逐字节比对工作区源文件；即使设置 assume-unchanged 或 skip-worktree 也不能隐藏未提交修改。它记录 `contracts/source.json` 中的来源 revision，以及 `guest-v1.h`、`guest-gfx-v1.h`、`abi-v1.json`、`wire-v1.json` 的 SHA-256；生成的 `include/tinyrt.h` 和 `include/tinyrt_gfx.h` 必须与对应权威 guest 头逐字节相同。`--check` 校验 revision、源摘要、快照及生成头，不写文件。SDK 为这些文件固定 LF 换行，不受本机 autocrlf 设置影响。输出写前检查路径，并通过同目录临时文件与原子替换断开已有硬链接，避免改写 SDK 外共用同一文件内容的路径。
 
 尚未创建 core 首次提交时，可以显式使用 `--revision pending` 准备开发快照；此状态不会通过 `--check`，发布前必须换成实际 commit。除显式更新 revision 外，普通同步也要求锁定的来源 hash 一致。同步方向始终为 core → SDK，核心构建不读取 SDK。
+
+应用版本、ZIP 命名和兼容性注意事项见 [版本管理](specs/version-management.md)。

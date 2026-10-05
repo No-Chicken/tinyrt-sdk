@@ -1,7 +1,7 @@
-# TinyRT SDK 0.0.3：应用开发速查
+# TinyRT SDK 0.0.4：应用开发速查
 
 SDK 对外版本唯一来源是根目录 VERSION，`python tools/tinyrt.py --version` 查询。
-本次 SDK 交付版本为 0.0.3，Bird 与 Wave 显示版本保持 0.0.2；不要按构建次数增加版本号。
+本次 SDK 交付版本为 0.0.4，Bird 与 Wave 的整数发布版本分别为 4、7；不要按构建次数增加版本号。
 
 ## 本项目设备交付约定
 
@@ -27,12 +27,12 @@ Wasm 用于编译、预览和包内回退，独立 Wasm ZIP 仅用于解释器�
 应用提供 app.json、源码、listing.json、cover.png 和 README.md / CHANGELOG.md / LICENSES.md。
 三个 Markdown 用 UTF-8 无 BOM、LF、各≤64 KiB；封面为 210×210 单帧 RGB/RGBA PNG。
 listing 包含 summary/category/tags/controls/publisher_display/release_notes/full_bleed/rights/device_verified/screenshots，
-可选 display_version（0.0.1 等）；完整例子在 README“一键生成网站交付 ZIP”。
+不允许 display_version；完整例子在 README“一键生成网站交付 ZIP”。
 拒绝未知字段和重复键。截图 at_ms 与 file 二选一、1–6 项；真机图必须原本为 466×466。
 截图/events 时间受 --preview-ms 限制，默认最多 60000 ms。没有真机验证不填 device_verified=true，
 授权未确认保留 rights.status=unverified。两个 new 模板均带完整资料与占位封面。
 
-对外版本从 0.0.1 开始，实际分发更新才递增；现有整数 version 仍用于设备升级，
+应用发布版本是从 1 开始的整数，实际分发更新才递增；version 用于设备升级，
 release.json 必须与签名包相同。不要往 app.json 或网站 v2 清单添加显示版本字段。
 构建时间取 SOURCE_DATE_EPOCH / --built-at / SDK 提交时间，本地构建不自动升版本。
 export_web.py 已废弃；规则见 specs/release-bundle-v2.md。
@@ -125,3 +125,5 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/dem
 - render 中调用资源或时钟设置会失败；KV 状态逻辑放在 init/event/stop；普通帧忘记 clear、混用 skip 与绘制、越界文本/像素、无权限 import 都会失败。不得依赖 WASI、libc、构造器或未声明的 import。
 - `kv_set` 成功先更新 RAM。Host 普通保存按全局5秒合并，正常 stop 强制刷新；断电可能丢失尚未保存的状态。仅保存实际变化。
 - `validate` 仅认证信封，不运行 Wasm/AOT，也不证明玩法正确。改清单版本后重建重打；同ID更新必须递增。旧内部包和目录与当前格式不兼容，需重新构建包并按设备部署流程处理旧媒体。
+
+应用版本、ZIP 命名和兼容性注意事项见 [版本管理](specs/version-management.md)。

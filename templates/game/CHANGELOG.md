@@ -1,5 +1,5 @@
 # Changelog
 
-## 0.0.1
+## v1
 
 - Initial development preview.

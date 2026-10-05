@@ -41,7 +41,7 @@ class ReleaseTests(unittest.TestCase):
                             controls=['Tap'], publisher_display='Tester',
                             release_notes='Initial release', full_bleed=True,
                             rights=dict(status='unverified', note='See LICENSES.md'),
-                            device_verified=False, display_version='0.0.1',
+                            device_verified=False,
                             screenshots=[dict(at_ms=32, caption='Start')])
         self.write_json('app.json', self.manifest)
         self.write_json('listing.json', self.listing)
@@ -93,7 +93,15 @@ class ReleaseTests(unittest.TestCase):
                                            'screenshots/01.png', 'build/report.json'])
             for name in ('release.json', 'build/report.json'):
                 self.assertNotIn(str(self.app).encode(), z.read(name))
-        self.assertIn('v0.0.1-wasm.zip', archive.name)
+        self.assertEqual(archive.name, 'demo.test-v1-wasm.zip')
+        self.assertEqual(result['package_version'], 1)
+        self.assertNotIn('display_version', result)
+
+    def test_independent_display_version_is_rejected(self):
+        self.listing['display_version'] = '0.0.1'
+        self.write_json('listing.json', self.listing)
+        with self.assertRaises(ValueError):
+            self.run_release()
 
     def test_required_negative_inputs_fail_before_build(self):
         cases = [('missing changelog', 'CHANGELOG.md'), ('unknown field', 'unknown'),
