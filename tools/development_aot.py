@@ -15,6 +15,15 @@ PROFILE=Path(__file__).resolve().parent/'toolchains/esp32s3.json'
 OPTIONS=['--target=xtensa','--cpu=esp32s3','--bounds-checks=1','--stack-bounds-checks=1',
          '--opt-level=3','--size-level=0','--disable-simd','--disable-ref-types','--enable-loop-poll']
 
+def target_options(target):
+    if target=='esp32s3':return list(OPTIONS)
+    if target=='esp32s31':
+        options=['--target=riscv32','--cpu=generic-rv32',*OPTIONS[2:],
+                 '--target-abi=ilp32f','--cpu-features=+m,+a,+c,+f,-d']
+        options[5]='--size-level=3'
+        return options
+    raise ValueError('unsupported AOT target: '+str(target))
+
 
 def sha(raw):return hashlib.sha256(raw).hexdigest()
 
@@ -30,6 +39,8 @@ def compiler_path(pin, override=None):
             compiler=Path.home()/'.cache/tinyrt'/pin['compiler']['sha256']/'wamrc.exe'
             if not compiler.exists():
                 compiler.parent.mkdir(parents=True,exist_ok=True)
+                if not pin['compiler'].get('url'):
+                    raise ValueError('this toolchain is local only; pass --wamrc with the pinned compiler')
                 with urllib.request.urlopen(pin['compiler']['url'],timeout=60) as response:
                     data=response.read(64*1024*1024+1)
                 if sha(data)!=pin['compiler']['sha256']:
@@ -40,15 +51,17 @@ def compiler_path(pin, override=None):
     return compiler
 
 
-def pack_development(manifest, wasm, output, wamrc=None):
+def pack_development(manifest, wasm, output, wamrc=None, target='esp32s3'):
     manifest=tinyrt.manifest_path(manifest);app=tinyrt.load_manifest(manifest)
     if not app['app_id'].startswith('demo.') or len(app['app_id'])<=5:
         raise ValueError('development AOT app_id must be a demo. descendant')
-    pin_bytes=PROFILE.read_bytes();pin=json.loads(pin_bytes)
-    if pin['schema']!=1 or pin['options']!=OPTIONS or pin['options_sha256']!=sha(json.dumps(OPTIONS,separators=(',',':')).encode()):
+    options=target_options(target)
+    profile_path=PROFILE if target=='esp32s3' else PROFILE.with_name('esp32s31.json')
+    pin_bytes=profile_path.read_bytes();pin=json.loads(pin_bytes)
+    if pin['schema']!=1 or pin['options']!=options or pin['options_sha256']!=sha(json.dumps(options,separators=(',',':')).encode()):
         raise ValueError('SDK toolchain profile must enable bounds, stack and loop-poll checks')
     compiler=compiler_path(pin,wamrc)
-    paths=[manifest,Path(wasm).resolve(),PROFILE,compiler]
+    paths=[manifest,Path(wasm).resolve(),profile_path,compiler]
     paths += [tinyrt.local_file(manifest.parent,name) for name in app['sources']]
     asset=tinyrt.local_file(manifest.parent,app['assets']) if app.get('assets') else None
     if asset:paths.append(asset)
@@ -67,7 +80,7 @@ def pack_development(manifest, wasm, output, wamrc=None):
     with tempfile.TemporaryDirectory(prefix='tinyrt-dev-aot-') as directory:
         staged=Path(directory);input_wasm=staged/'input.wasm';native=staged/'output.aot'
         input_wasm.write_bytes(source)
-        subprocess.run([str(compiler),*OPTIONS,'-o',str(native),str(input_wasm)],
+        subprocess.run([str(compiler),*options,'-o',str(native),str(input_wasm)],
                        check=True,capture_output=True,timeout=300)
         if native.is_symlink() or not native.is_file():raise ValueError('compiler did not produce a regular AOT artifact')
         code=package.read_bounded(native)
@@ -75,7 +88,8 @@ def pack_development(manifest, wasm, output, wamrc=None):
         for path,raw in snapshots.items():
             if (package.read_cover_source(path) if path==cover else path.read_bytes())!=raw:raise ValueError('input changed during compilation: '+path.name)
         header=bytearray(256);struct.pack_into('<HHII',header,0,1,256,pin['aot_format'],7)
-        header[16:32]=b'xtensa'.ljust(16,b'\0');header[32:48]=b'esp32s3'.ljust(16,b'\0')
+        header[16:32]=options[0].split('=',1)[1].encode().ljust(16,b'\0')
+        header[32:48]=options[1].split('=',1)[1].encode().ljust(16,b'\0')
         for start,name in ((48,'wamr_commit'),(68,'llvm_commit'),(88,'patch_sha256'),
                            (120,'compat_id'),(152,'options_sha256')):
             header[start:start+(20 if start<88 else 32)]=bytes.fromhex(pin[name])

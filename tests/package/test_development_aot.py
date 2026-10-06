@@ -14,6 +14,15 @@ import tinyrt
 
 
 class DevelopmentAOT(unittest.TestCase):
+    def test_s31_options_preserve_safety_and_soft_float_calling_convention(self):
+        import development_aot as tool
+        options=tool.target_options('esp32s31')
+        self.assertEqual(options[:2],['--target=riscv32','--cpu=generic-rv32'])
+        expected=list(tool.OPTIONS[2:]);expected[3]='--size-level=3'
+        self.assertEqual(options[2:9],expected)
+        self.assertEqual(options[9:],['--target-abi=ilp32f','--cpu-features=+m,+a,+c,+f,-d'])
+        self.assertEqual(tool.target_options('esp32s3'),tool.OPTIONS)
+        with self.assertRaises(ValueError):tool.target_options('unknown')
     def test_fixed_profile_own_compilation_and_tamper_rejection(self):
         import development_aot as tool
         with tempfile.TemporaryDirectory() as directory:

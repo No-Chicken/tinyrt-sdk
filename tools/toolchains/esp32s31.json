@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "sdk_version": "0.0.3",
+  "aot_format": 5,
+  "wamr_commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
+  "llvm_commit": "344b928e67bfc1d07cb150609c55548e86a9bf19",
+  "source_lock_sha256": "57bff42ced57d6dc7e4c89fde606b6def1ddb672d7dfe89253cdf5d6a8f917d4",
+  "compiler_patch_sha256": "76dcf328f12555dda85a023fecfbd6296d94587b1e8e7506c66307cf269fe8e7",
+  "runtime_patch_sha256": "7e24e36feb030f28dcfe7193718564e92d65c75687204086a69d28b6957c2e44",
+  "runtime_abi_revision": 1,
+  "options": [
+    "--target=riscv32",
+    "--cpu=generic-rv32",
+    "--bounds-checks=1",
+    "--stack-bounds-checks=1",
+    "--opt-level=3",
+    "--size-level=3",
+    "--disable-simd",
+    "--disable-ref-types",
+    "--enable-loop-poll",
+    "--target-abi=ilp32f",
+    "--cpu-features=+m,+a,+c,+f,-d"
+  ],
+  "options_sha256": "c7f3d342b011369f83b06d7988d02bc234005b7610edaa62d920ec1a98df38bf",
+  "compat_id": "4da7807470d6df3e05b2519132b9a8e836b4df20e6d568e72d714f9d8dd8a32c",
+  "patch_sha256": "98c37c763a258ca281bdc474ec66ba74e2c975d7fd6131c48447304e74fb887b",
+  "compiler": {
+    "sha256": "9b7c129f2db705f56ab660d89c16ec0325f740d6d762fa14ec746554973934e8",
+    "version": "wamrc 2.4.5",
+    "size": 42041856
+  },
+  "sources": {
+    "wamr": {
+      "url": "https://github.com/bytecodealliance/wasm-micro-runtime.git",
+      "commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605"
+    },
+    "llvm": {
+      "url": "https://github.com/espressif/llvm-project.git",
+      "commit": "344b928e67bfc1d07cb150609c55548e86a9bf19",
+      "upstream_branch": "xtensa_release_18.1.2",
+      "version": "18.1.2"
+    }
+  },
+  "patches": [
+    {
+      "name": "loop-poll.patch",
+      "sha256": "89c3fd33e9cf17c0ba0505a198237722b5d01beac58976115539baccf9f71f73"
+    },
+    {
+      "name": "../../patches/wamr/0001-exec-env-cancellation.patch",
+      "sha256": "a0908c084ba2613ca9aa6e10cdba6090f6ff74d47b88f68a66ed2c24b1fd7b18"
+    },
+    {
+      "name": "../../patches/wamr/0002-aot-dbus-writes.patch",
+      "sha256": "4668d7c87b0eb7deb7c1d8ea7b8ea27f802de70db09221b501c6dacea6755cd2"
+    },
+    {
+      "name": "../../patches/wamr/0003-aot-mapping-budget.patch",
+      "sha256": "74b01171b39278e2d9d3f6f5fa935bb344a5549f5641ea4154952ac41b6a82ac"
+    },
+    {
+      "name": "../../patches/wamr/0004-esp-idf-native-stack.patch",
+      "sha256": "b54f79fa4d653450cfd59aa79cb6f0605cd044f8e1b7a086201c25623b300164"
+    }
+  ]
+}

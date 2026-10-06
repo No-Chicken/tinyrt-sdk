@@ -226,7 +226,8 @@ def main(argv=None):
     preview_cmd.add_argument('--step-ms',type=int,help='explicit fixed CLOCK injection; default honors guest clock_interval')
     pack=commands.add_parser('pack',help='sign package using app.json metadata')
     pack.add_argument('app',type=Path);pack.add_argument('--wasm',type=Path);pack.add_argument('--output',type=Path);signing_options(pack)
-    pack.add_argument('--aot',action='store_true',help='compile pinned ESP32-S3 AOT; requires --development-key')
+    pack.add_argument('--aot',action='store_true',help='compile pinned target AOT; requires --development-key')
+    pack.add_argument('--target',choices=('esp32s3','esp32s31'),default='esp32s3',help='AOT device target')
     pack.add_argument('--wamrc',type=Path,help='local compiler with the exact SDK-pinned SHA-256')
     release=commands.add_parser('release',help='offline build, preview, sign and export a website v2 ZIP')
     release.add_argument('app',type=Path);release.add_argument('--cc');release.add_argument('--runner',type=Path)
@@ -276,7 +277,7 @@ def main(argv=None):
                     if not args.development_key or args.key_id!=1:
                         raise ValueError('SDK AOT packing requires --development-key with key ID 1; publishers use release_compile.py')
                     import development_aot
-                    result=development_aot.pack_development(path,wasm,output,args.wamrc)
+                    result=development_aot.pack_development(path,wasm,output,args.wamrc,target=args.target)
                     print(json.dumps(result,sort_keys=True));return 0
                 if args.wamrc:raise ValueError('--wamrc requires --aot')
                 key=package.development_key() if args.development_key else serialization.load_pem_private_key(args.key.read_bytes(),None)
