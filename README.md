@@ -1,7 +1,9 @@
 # TinyRT SDK 0.0.4
 
+游戏模板默认使用 `clock_interval(33)`，约 30 Hz。每次 `TINYRT_CLOCK_EVENT` 更新游戏逻辑，随后在 `tinyrt_render()` 提交一张完整帧；静止画面可以 `draw_skip()`。不要靠累计多次 CLOCK 才提交来控制帧率。物理固定步长应保留实际经过时间的余数补偿；需要更高帧率的应用可显式请求其他周期，实际显示频率受宿主和送屏能力限制。
+
 SDK 对外版本以根目录 VERSION 为准，用 `python tools/tinyrt.py --version` 查询。
-本次 SDK 交付版本为 0.0.4，Bird 与 Wave 的整数发布版本分别为 4、7；反复编译不自动升版本。
+本次 SDK 交付版本为 0.0.4，Bird 与 Wave 的整数发布版本分别为 5、7；反复编译不自动升版本。
 
 图形批次、GRID、驻留精灵与兼容要求见 [graphics-v1.md](specs/graphics-v1.md)。
 

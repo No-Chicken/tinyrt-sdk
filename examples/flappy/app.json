@@ -1,7 +1,7 @@
 {
   "app_id": "demo.sky-hop",
   "title": "Flappy Bird",
-  "version": 4,
+  "version": 5,
   "abi_version": 1,
   "permissions": 31,
   "memory_pages": 4,

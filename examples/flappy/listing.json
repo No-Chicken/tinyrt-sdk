@@ -12,7 +12,7 @@
     "KEY1 长按或宿主返回退出"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "v4：驻留调色板精灵与批量绘制，保留音效、输入和最高分。",
+  "release_notes": "v5：精灵后端每 33 ms 提交完整帧，保留物理、音效、输入和最高分。",
   "full_bleed": true,
   "rights": {
     "status": "unverified",

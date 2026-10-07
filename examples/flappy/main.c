@@ -74,7 +74,7 @@ static int collide(void) {
     }
     return 0;
 }
-/* 每次时钟只合成四分之一画面，完整帧才提交，避免解释器预算超限。 */
+/* Sprite submits a complete frame per 33 ms clock. Legacy keeps four strips. */
 typedef struct { pipe_t pipes[3];int state,y,score,best,old_best,animation,scroll,show_panel; } scene_t;
 static scene_t scene;
 static int strip_top,strip_bottom;
@@ -118,7 +118,6 @@ static int draw_number(int value,int anchor,int y,int small,int center) {
     return 0;
 }
 static int compose_strip(void) {
-    if(sprite_backend&&stripe){if(++stripe==4){stripe=0;frame_ready=1;}return 0;}
     if(stripe==0) {
         if(sprite_backend)graphics_length=0;
         for(int i=0;i<3;i++) scene.pipes[i]=pipes[i];
@@ -156,8 +155,8 @@ static int compose_strip(void) {
         if(scene.score>=10) D(blit(scene.score>=20?&medal_gold:&medal_silver,56,119,0));
         D(blit(&okay,85,181,0));
     } else D(draw_number(scene.score,117,44,0,1));
-    stripe++;
-    if(stripe==4) { stripe=0;frame_ready=1; }
+    if(sprite_backend) { stripe=0;frame_ready=1; }
+    else if(++stripe==4) { stripe=0;frame_ready=1; }
     return 0;
 }
 int32_t tinyrt_render(void) {
@@ -198,7 +197,7 @@ int32_t tinyrt_init(int32_t width,int32_t height) {
     best=kv_get(0,0);if(best<0 || best>9999) best=0;
     saved_best=best;state=READY;touch_down=key_down=0;reset_game();
     D(input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_INPUT_USER_KEY_MASK));
-    stripe=frame_ready=0;return clock_interval(8);
+    stripe=frame_ready=0;return clock_interval(sprite_backend?33:8);
 }
 int32_t tinyrt_event(int32_t kind,int32_t x,int32_t y,int32_t arg) {
     (void)arg;

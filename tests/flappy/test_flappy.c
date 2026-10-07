@@ -11,7 +11,7 @@ static uint32_t time_ms;
 static int stored_best, commands, saves;
 uint32_t now_ms(void) { return time_ms; }
 int32_t input_events(uint32_t mask) { assert(mask==120); return 0; }
-int32_t clock_interval(int32_t ms) { assert(ms==8); return 0; }
+int32_t clock_interval(int32_t ms) { assert(ms==((test_caps&TINYRT_GFX_CAP_SPRITE)?33:8)); return 0; }
 int32_t kv_get(uint32_t key,int32_t fallback) { assert(key==0); (void)fallback; return stored_best; }
 int32_t kv_set(uint32_t key,int32_t value) { assert(key==0); stored_best=value;saves++;return 0; }
 int32_t draw_clear(uint32_t rgb) { (void)rgb;commands=1;return 0; }
@@ -90,7 +90,12 @@ int main(int argc,char **argv) {
     assert(tinyrt_init(466,466)==0&&best>=earned);
     time_ms=0xfffffff0u;last_ms=time_ms;press_tap();step();assert(state==RUNNING);
     test_caps=TINYRT_GFX_CAP_SPRITE;assert(tinyrt_init(466,466)==0&&sprite_backend);
-    for(unsigned i=0;i<4;i++)step();assert(graphics_length&&tinyrt_render()==0);
+    /* Sprite backend publishes every 33 ms clock; legacy keeps four strips. */
+    for(unsigned i=0;i<4;i++) {
+        time_ms+=33;assert(tinyrt_event(TINYRT_CLOCK_EVENT,0,0,0)==0);
+        assert(frame_ready && stripe==0 && graphics_length);
+        assert(tinyrt_render()==0 && !frame_ready);
+    }
     puts("PASS resident/legacy pixel equality (108 scenes), input lifecycle, retry guard, round viewport bounds, scoring, persistence and clock wrap");
     return 0;
 }

@@ -1,5 +1,7 @@
 # TinyRT game application
 
+The default clock is 33 ms (~30 Hz). Each CLOCK updates the game and the next render submits one complete frame. Skip unchanged frames; request a different interval explicitly when a game needs a higher rate. Device display throughput still limits the visible frame rate.
+
 Version: 0.0.1.
 
 Hold the screen to move the pixel character; release to stop. Use host back to exit.

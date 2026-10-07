@@ -1,6 +1,7 @@
 #include "tinyrt.h"
 
-/* Host drives callbacks. Compute in event, submit graphics in render. */
+/* Default: 33 ms (~30 Hz), one CLOCK update followed by one complete frame.
+ * Compute in event, submit graphics in render; skip unchanged frames. */
 static uint16_t pixels[32 * 32];
 static int32_t player_x, player_y, pointer_x, pointer_y, held, dirty;
 static uint32_t previous_ms;
