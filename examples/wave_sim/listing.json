@@ -1,8 +1,8 @@
 {
-  "summary": "圆形灯珠水波，倾斜设备晃动，轻点掀浪。",
+  "summary": "600 个立体小球，倾斜设备晃动，长按切换配色。",
   "category": "game",
   "tags": [
-    "水波",
+    "粒子",
     "重力",
     "圆屏"
   ],
@@ -13,7 +13,7 @@
     "KEY1 长按或宿主返回退出"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "v7：20×20 索引网格由宿主绘制，130 粒子、60 真实步/秒和五种主题；支持 40×40/400 粒子比较配置。",
+  "release_notes": "v8：600 个透视立体小球、深度明暗与高光；60 Hz 出帧，保留五种配色和长按换色。需要支持 SPRITE_BATCH 的宿主。",
   "full_bleed": true,
   "rights": {
     "status": "unverified",
@@ -23,11 +23,11 @@
   "screenshots": [
     {
       "at_ms": 990,
-      "caption": "水波"
+      "caption": "立体小球（桌面预览）"
     },
     {
       "at_ms": 3300,
-      "caption": "切换主题"
+      "caption": "切换配色（桌面预览）"
     }
   ]
 }

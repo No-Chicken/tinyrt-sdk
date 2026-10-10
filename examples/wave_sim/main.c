@@ -97,8 +97,8 @@ static int metrics_draw(uint32_t now){
 }
 #endif
 static void next_theme(uint32_t now){theme=(theme+1)%5;toast_ms=now;theme_changed=1;}
-/* 俯视 IMU：0 度为 1 号脚左上，180 度为右下。
- * S3 的实测修正为 X 正向、Y 反向；S31 旋转 180 度后两轴同时反转。 */
+/* 旧模型的轴向覆盖仅供回归测试。当前 BSP 已归一化安装方向，
+ * 正常应用统一使用默认 X 正向、Y 反向，无需按芯片重复旋转。 */
 #ifndef WAVE_IMU_MOUNT_DEG
 #define WAVE_IMU_MOUNT_DEG 180
 #endif

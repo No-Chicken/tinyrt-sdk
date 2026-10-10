@@ -22,3 +22,14 @@ for variant,defines in [('wave',[]),('wave-metrics',['-DWAVE_METRICS=1']),
         '-I',str(root/'include'),str(root/'tests/wave_sim/test_wave.c'),
         str(root/'examples/wave_sim/wave_physics.c'),'-o',str(executable)],check=True,env=env)
     subprocess.run([str(executable)],check=True,timeout=120)
+
+# Exercise the 3D model at the normal and high-density limits, including
+# cooperative execution and the actual application's projection/input code.
+for count in (600, 800, 1200):
+    for test in ('test_balls', 'test_balls_app'):
+        executable=out/f'{test}-{count}.exe'
+        subprocess.run(command+['-std=c11','-O2','-UNDEBUG','-Wall','-Wextra','-Werror',
+            f'-DWAVE_BALL_COUNT={count}','-I',str(root/'include'),
+            str(root/f'tests/wave_sim/{test}.c'),
+            str(root/'examples/wave_sim/wave_balls.c'),'-o',str(executable)],check=True,env=env)
+        subprocess.run([str(executable)],check=True,timeout=120)

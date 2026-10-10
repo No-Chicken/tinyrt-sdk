@@ -1,12 +1,14 @@
-# Wave v7
+# Wave v8
 
-圆屏粒子水面应用，正式配置为 20×20 网格、130 粒子。五主题为 OCEAN、NEON、TOXIC、LAVA、MONO。倾斜改变重力，触摸长按 500 ms 切换主题，短按 KEY1 掀浪，长按 KEY1 退出；触摸取消不触发换色。S3 安装角 180°、X 正向、Y 反向；S31 安装角 0°、X 反向、Y 正向。
+600 个立体小球在 466×466 圆屏中运动。透视投影、远暗近亮和高光提供深度感；速度增大时颜色趋近白色。保留 OCEAN、NEON、TOXIC、LAVA、MONO 五种配色，触摸长按 500 ms 切换，触摸取消不触发动作；轻点或短按 KEY1 扰动小球，长按 KEY1 由宿主退出。
 
-宿主绘制 400 字节 GRID 索引与调色板，整帧几何为 1484 字节。逻辑灯面 9 像素、间隔 1 像素、中心 16 像素，宿主放大两倍。加速路径不分配 Guest 完整图像；能力不足时动态使用旧完整帧路径。图形接口见 [graphics-v1](../../specs/graphics-v1.md)，输入见 [motion](../../specs/motion.md)。
+正式清单使用 `balls_main.c`、`wave_balls.c` 和 `WAVE_BALL_COUNT=600`。旧水面模型保留在 `main.c`、`wave_physics.c`，供原有回归测试使用。应用版本唯一来源为 `app.json.version`，仅最终分发时递增。
 
-物理使用固定步 Verlet、两轮邻域约束和 3×3 哈希邻域。网格比例 `WAVE_GRID/40` 缩放圆域、重力、掀浪、扰动及速度白色阈值；单元邻接、密度、抖色和调色板规则保留。20 网格半径为 9.7 单元、重力 19，阻尼 0.995、反射系数 0.276。AOT 每秒 60 个真实步，H=1/30，以两倍时间推进；暂停最多累积 100 ms，每次最多八步。解释器分片用于控制回调长度，不能据其耗时推断设备性能。
+应用使用已有 ABI 1 的 `SPRITE_BATCH`，要求宿主支持对应能力。初始化生成 16 级深度、64 级速度颜色表；驻留 INDEX8 图集采用 7 档速度，包含球体和高光。深度桶从远到近提交，投影直接使用 466 坐标。前后覆盖区域并集擦除旧像素，第一帧完整刷新。
 
-源码默认 `WAVE_GRID=40`，正式清单覆盖为 20/130；比较时覆盖 `WAVE_GRID=40,WAVE_N=400`。应用发布版本唯一来源是 app.json.version，不随构建次数增加；正式 ZIP 为 release/demo.wave-sim-v7-wasm-aot.zip。
+物理状态采用 12 字节紧凑粒子、连续邻居网格和实际 dt（最多 50 ms）；17/17/16 ms 出帧节奏平均为 60 Hz。宿主负责双核调度、不可变帧租约、圆屏裁剪、双条带 DMA 缓冲和退出清理。应用不创建系统任务，也不直接访问面板或 IMU。BSP 统一新旧板的 IMU 安装方向，应用使用 X=ax、Y=-ay。
+
+设备交付使用目标芯片的 AOT；桌面 Wasm 分片运行只验证功能，不代表真机性能。S31 三种合成姿态的 30 秒窗口约 60 fps；真实手感、物理方向和撕裂仍需人工观察。S3 性能尚未在本轮实测。完整数据保存在 SDK 源码的 `examples/wave_sim/VALIDATION-v8.md`。
 
 从 SDK 根目录执行：
 
@@ -14,16 +16,8 @@
 python tests/wave_sim/run_native.py --cc path/to/zig.exe
 python tools/tinyrt.py build examples/wave_sim --cc path/to/zig.exe
 python tools/tinyrt.py run examples/wave_sim --runner path/to/tinyrt-run.exe --events examples/wave_sim/events.json --frames 990,3300,6000
-python tools/tinyrt.py pack examples/wave_sim --aot --development-key --wamrc path/to/wamrc.exe
+python tools/tinyrt.py pack examples/wave_sim --aot --target esp32s31 --development-key --wamrc path/to/wamrc.exe
 python tools/tinyrt.py validate examples/wave_sim/build/demo.wave-sim.trpkg --development-key
 ```
 
-临时性能包使用同一应用 ID 和 revision，增加 metrics 显示：
-
-```powershell
-python examples/wave_sim/tools/build_debug.py
-python tools/tinyrt.py build build/diagnostic-wave --cc path/to/zig.exe
-python tools/tinyrt.py pack build/diagnostic-wave --aot --development-key --wamrc path/to/wamrc.exe
-```
-
-测量结束恢复普通包，不安装额外应用。metrics 的 P/R 为毫秒分辨率的 Guest 物理和组合时间，提交 FPS 与真实面板帧率不同。最终 build13 连续运动真实面板约 29.77 FPS，平稳及主题约 30.07–30.34 FPS，达到已测连续运动场景的 25 FPS 目标。原生绘制稳定约 4.58–4.72 ms。输入软件注入与五主题验证通过，人工手感仍待确认；完整证据和限制见 [VALIDATION](VALIDATION.md)，设备操作见 [HARDWARE_TEST](HARDWARE_TEST.md)。
+S3 打包时选择 `--target esp32s3`。两种 AOT 机器码不能互换；桌面预览不执行设备 AOT。

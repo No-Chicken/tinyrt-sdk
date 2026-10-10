@@ -1,18 +1,17 @@
 {
   "app_id": "demo.wave-sim",
   "title": "Wave Simulator",
-  "version": 7,
+  "version": 8,
   "abi_version": 1,
   "permissions": 11,
   "memory_pages": 4,
   "budget": 100000,
   "defines": {
-    "WAVE_N": 130,
-    "WAVE_GRID": 20
+    "WAVE_BALL_COUNT": 600
   },
   "sources": [
-    "main.c",
-    "wave_physics.c"
+    "balls_main.c",
+    "wave_balls.c"
   ],
   "cover": "cover.png",
   "graphics": "raster"
