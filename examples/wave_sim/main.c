@@ -98,7 +98,7 @@ static int metrics_draw(uint32_t now){
 #endif
 static void next_theme(uint32_t now){theme=(theme+1)%5;toast_ms=now;theme_changed=1;}
 /* 俯视 IMU：0 度为 1 号脚左上，180 度为右下。
- * S3 的实测修正为 X 正向、Y 反向；S31 旋转 180 度后两轴同时反转。 */
+ * S3 与 S31 V2 实测均为 180 度：X 正向、Y 反向（S31 于 2026-10-11 确认）。 */
 #ifndef WAVE_IMU_MOUNT_DEG
 #define WAVE_IMU_MOUNT_DEG 180
 #endif

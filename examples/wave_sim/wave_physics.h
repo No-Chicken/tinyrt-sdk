@@ -10,7 +10,7 @@
 #define WAVE_RATIO ((float)WAVE_GRID/40.0f)
 #define WAVE_CENTER ((float)WAVE_GRID*0.5f)
 #ifndef WAVE_N
-#define WAVE_N 520
+#define WAVE_N 400
 #endif
 #define WAVE_R (19.4f*WAVE_RATIO)
 typedef struct {

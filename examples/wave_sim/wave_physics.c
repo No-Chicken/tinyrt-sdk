@@ -93,7 +93,8 @@ int wave_work(wave_state_t *s,int batch) {
                 if(vn>0){s->ox[i]+=vn*nx*1.276f;s->oy[i]+=vn*ny*1.276f;}
             }
         }
-        s->iteration++;s->stage=s->iteration<2?1:4;return 0;
+        /* 400 粒子深堆积需要四轮约束，避免位置修正持续转化为速度。 */
+        s->iteration++;s->stage=s->iteration<4?1:4;return 0;
     }
     for(int i=0;i<WAVE_N;i++){float dx=s->px[i]-s->ox[i],dy=s->py[i]-s->oy[i];s->speed[i]=wave_sqrt(dx*dx+dy*dy);}
     return 1;

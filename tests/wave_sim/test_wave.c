@@ -115,7 +115,8 @@ int main(void) {
     advance(1);assert(accumulator==20u);assert(fluid.dt==1.0f/30.0f);
     advance(16);advance(17);assert(images);
     assert(tinyrt_event(7,700,0,700)==0);assert(fluid.tx*WAVE_X_SIGN>0.99f);
-    assert(tinyrt_event(7,0,0,1000)==0);assert(fluid.tx*WAVE_X_SIGN>0.99f);
+    /* 平放（面内加速度低于阈值）保留上一次倾斜方向，避免静置时重力方向抖动。 */
+    assert(tinyrt_event(7,0,0,1000)==0);assert(fluid.tx*WAVE_X_SIGN>0.99f&&fluid.ty==0);
     assert(tinyrt_event(7,0,700,700)==0);assert(fluid.ty*WAVE_Y_SIGN>0.99f);
     unsigned before=theme;
     tinyrt_event(3,200,200,0);advance(499);assert(theme==before);
