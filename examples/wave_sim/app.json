@@ -1,7 +1,7 @@
 {
   "app_id": "demo.wave-sim",
   "title": "Wave Simulator",
-  "version": 8,
+  "version": 9,
   "abi_version": 1,
   "permissions": 11,
   "memory_pages": 4,

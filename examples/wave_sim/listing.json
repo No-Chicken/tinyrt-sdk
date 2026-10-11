@@ -1,5 +1,5 @@
 {
-  "summary": "600 个立体小球，倾斜设备晃动，长按切换配色。",
+  "summary": "600 个立体小球在完整圆屏中流动，倾斜晃动，长按换色。",
   "category": "game",
   "tags": [
     "粒子",
@@ -13,7 +13,7 @@
     "KEY1 长按或宿主返回退出"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "v8：600 个透视立体小球、深度明暗与高光；60 Hz 出帧，保留五种配色和长按换色。需要支持 SPRITE_BATCH 的宿主。",
+  "release_notes": "v9：完整 466 圆屏容器、600 个独立立体球、球面分层光照与远近遮挡；稳定粒子快照插值，物理分片推进。需要支持 SPRITE_BATCH 的宿主。",
   "full_bleed": true,
   "rights": {
     "status": "unverified",

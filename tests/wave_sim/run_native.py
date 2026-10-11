@@ -25,7 +25,7 @@ for variant,defines in [('wave',[]),('wave-metrics',['-DWAVE_METRICS=1']),
 
 # Exercise the 3D model at the normal and high-density limits, including
 # cooperative execution and the actual application's projection/input code.
-for count in (600, 800, 1200):
+for count in (600, 900, 1200):
     for test in ('test_balls', 'test_balls_app'):
         executable=out/f'{test}-{count}.exe'
         subprocess.run(command+['-std=c11','-O2','-UNDEBUG','-Wall','-Wextra','-Werror',
