@@ -3,9 +3,9 @@
 游戏模板默认使用 `clock_interval(33)`，约 30 Hz。每次 `TINYRT_CLOCK_EVENT` 更新游戏逻辑，随后在 `tinyrt_render()` 提交一张完整帧；静止画面可以 `draw_skip()`。不要靠累计多次 CLOCK 才提交来控制帧率。物理固定步长应保留实际经过时间的余数补偿；需要更高帧率的应用可显式请求其他周期，实际显示频率受宿主和送屏能力限制。
 
 SDK 对外版本以根目录 VERSION 为准，用 `python tools/tinyrt.py --version` 查询。
-本次 SDK 交付版本为 0.0.5，Bird 与 Wave 的整数发布版本分别为 5、8；反复编译不自动升版本。
+本次 SDK 交付版本为 0.0.5，Bird 与 Wave 的整数发布版本分别为 5、11；反复编译不自动升版本。
 
-Wave 8 的三维小球与宿主条带路径见 [高速画布 V1](specs/fast-canvas-v1.md)；该路径不增加 Guest ABI 或 import。
+Wave v11 当前为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](examples/wave_sim/README.md)。高速画布条带通路说明见 [高速画布 V1](specs/fast-canvas-v1.md)，其中三维球体描述属于实验实现，不能当作当前 Wave 的发布效果。
 
 图形批次、GRID、驻留精灵与兼容要求见 [graphics-v1.md](specs/graphics-v1.md)。
 
@@ -22,7 +22,7 @@ Windows 没有 make 时直接使用 Python 命令。Makefile 默认使用开发�
 `RELEASE_ARGS="--variant wasm --key <key> --key-id <id> --channel beta"` 指定。
 
 命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、签名、网站 v2 清单和 ZIP 自检。
-本项目只交付 AOT：Flappy 输出 `examples/flappy/release/demo.sky-hop-v0.0.2-wasm-aot.zip` 及同名展开目录。
+本项目只交付 AOT：Flappy 输出 `examples/flappy/release/demo.sky-hop-v5-wasm-aot.zip` 及同名展开目录。
 ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单和构建报告。
 release 默认为 wasm-aot，`--wamrc` 指定 SDK 固定摘要的本地 ESP32-S3 AOT 编译器；也可放在 SDK bin/wamrc.exe。
 `--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留它用于回退；独立 Wasm ZIP 不作为本项目交付件。
@@ -133,7 +133,7 @@ source-lock、provenance、release profile、按序runtime补丁和签名钥由�
 | `title` | 1..63 字节严格 UTF-8，不含 NUL |
 | `version` | 1..4294967295 的整数；同 ID 更新必须递增 |
 | `abi_version` | 当前只能为 1 |
-| `permissions` | 0..15；draw=1、input=2、storage=4、clock=8 |
+| `permissions` | 0..31；draw=1、input=2、storage=4、clock=8、audio=16 |
 | `memory_pages` | 1..16，页面为 64 KiB；这是 Wasm 线性内存上限 |
 | `budget` | 每回调 1..100000 条受计量指令 |
 | `sources` | 1..64 个不重复的本地 `.c` 相对路径 |
@@ -154,7 +154,8 @@ source-lock、provenance、release profile、按序runtime补丁和签名钥由�
 
 ## 示例和安装
 
-- [Flappy Bird / 圆屏 Flappy Bird](examples/flappy/README.md)：466×466 满屏像素场景，触摸或 KEY1 起跳、碰撞重试、最高分保存。当前唯一开发示例，使用经典精灵与音效；素材授权状态见示例 NOTICE。
+- [Flappy Bird / 圆屏 Flappy Bird](examples/flappy/README.md)：466×466 满屏像素场景，触摸或 KEY1 起跳、碰撞重试、最高分保存。应用版本 5，使用经典精灵与音效；素材授权状态见示例 NOTICE。
+- [Wave](examples/wave_sim/README.md)：应用版本 11，圆屏二维粒子水面，支持 IMU 重力、长按换色与 KEY1 掀浪。
 - 旧 counter、color、pomodoro、snake、nes、nes-maze、nes-player 及其专用测试已退役，可从 Git 历史恢复。通用 SDK、包、传输与 core 回归继续保留。
 
 BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需要 Bleak；Windows 配对还需要对应 WinRT Python 包。设备配对、信任集和具体传输 profile 由产品配置提供，应用构建不依赖这些包。
