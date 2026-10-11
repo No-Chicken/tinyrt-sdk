@@ -1,14 +1,14 @@
 {
   "app_id": "demo.wave-sim",
   "title": "Wave Simulator",
-  "version": 7,
+  "version": 11,
   "abi_version": 1,
   "permissions": 11,
   "memory_pages": 4,
   "budget": 100000,
   "defines": {
-    "WAVE_N": 130,
-    "WAVE_GRID": 20
+    "WAVE_N": 400,
+    "WAVE_GRID": 40
   },
   "sources": [
     "main.c",

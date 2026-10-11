@@ -141,7 +141,7 @@ static void compose_begin(void){
     if(grid_backend){
         graphics_length=0;gfx_failed=0;
         if(!palette_valid||palette_theme!=theme){
-            uint16_t palette[8]={0,themes[theme].off};
+            uint16_t palette[8]={0,themes[theme].bg};
             for(unsigned i=0;i<6;i++)palette[i+2]=themes[theme].c[i];
             if(gfx_pal_upload(0,0,8,palette)!=0)gfx_failed=1;
             else {palette_valid=1;palette_theme=theme;}
@@ -175,7 +175,7 @@ static int compose_chunk(void) {
     for(int y=compose_row;y<end;y++)for(int x=0;x<WAVE_GRID;x++) {
         float dx=x+0.5f-WAVE_CENTER,dy=y+0.5f-WAVE_CENTER;
         float radius=19.8f*WAVE_RATIO;if(dx*dx+dy*dy>radius*radius)continue;
-        int c=y*WAVE_GRID+x;uint16_t color=t->off;
+        int c=y*WAVE_GRID+x;uint16_t color=t->bg;
         if(counts[c]) {
             unsigned level=counts[c]<3?counts[c]:3;
             int nx=x+ux,ny=y+uy;

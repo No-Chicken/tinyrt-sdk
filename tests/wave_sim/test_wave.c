@@ -72,6 +72,13 @@ int main(void) {
         frame--;background_valid=0;compose();
         for(unsigned i=0;i<sizeof(pixels);i++)assert(cached[i]==pixels[i]);
         frame--;grid_backend=1;compose();assert(!gfx_failed);
+        /* 无水格子必须与画布同色；水移动后不能留下暗灯珠背景。 */
+        for(unsigned cell=0;cell<WAVE_CELLS;cell++)if(grid_cells[cell]==1){
+            unsigned x=cell%WAVE_GRID,y=cell/WAVE_GRID;
+            unsigned offset=((16+y*WAVE_LED_CELL+1)*233+16+x*WAVE_LED_CELL+1)*2;
+            assert(cached[offset]==(uint8_t)themes[t].bg);
+            assert(cached[offset+1]==(uint8_t)(themes[t].bg>>8));
+        }
         assert(graphics_length==1084u+WAVE_CELLS);
         assert(graphics.bytes[0]==TINYRT_GFX_CLEAR&&graphics.bytes[2]==8);
         assert(gfx_begin(0)==0&&gfx_submit(graphics.bytes,graphics_length)==0&&gfx_end()==0);
