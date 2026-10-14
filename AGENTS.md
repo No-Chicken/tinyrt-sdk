@@ -1,7 +1,7 @@
-# TinyRT SDK 0.0.5：应用开发速查
+# TinyRT SDK：应用开发速查
 
 SDK 对外版本唯一来源是根目录 VERSION，`python tools/tinyrt.py --version` 查询。
-本次 SDK 交付版本为 0.0.5，Bird 与 Wave 的整数发布版本分别为 5、11；不要按构建次数增加版本号。
+应用发布版本见各自 `app.json.version`；反复编译不自动升版本。
 
 ## 本项目设备交付约定
 
@@ -35,13 +35,13 @@ listing 包含 summary/category/tags/controls/publisher_display/release_notes/fu
 应用发布版本是从 1 开始的整数，实际分发更新才递增；version 用于设备升级，
 release.json 必须与签名包相同。不要往 app.json 或网站 v2 清单添加显示版本字段。
 构建时间取 SOURCE_DATE_EPOCH / --built-at / SDK 提交时间，本地构建不自动升版本。
-export_web.py 已废弃；规则见 specs/release-bundle-v2.md。
+规则见 specs/release-bundle-v2.md。
 
 这是开发预览版。Guest ABI、包格式、存储布局与 BLE schema 均为 1；应用 `version` 是从 1 开始的独立整数。先读本页，再修改应用目录中的 C 文件和 `app.json`。生成的 `include/tinyrt.h` 由 core 契约同步，不手工修改。详细说明见 [README](README.md) 和 [包规格](specs/package.md)。
 
 ## 从游戏模板到可分享的包
 
-需要 Python 3.10+、Zig 0.13.0 或支持 wasm32 的 Clang。桌面预览还需要真实 WAMR `tinyrt-run.exe`；开发 AOT 需要 SDK 固定 SHA-256 的 ESP32-S3 `wamrc.exe`。当前源码中的编译器与桌面 runner 下载地址都是待发布位置，不能假定附件已可下载；先用 `--runner`、`--wamrc` 指向匹配的本地工具。命令从 SDK 根目录运行，路径按机器替换。
+需要 Python 3.10+、Zig 0.13.0 或支持 wasm32 的 Clang。桌面预览还需要真实 WAMR `tinyrt-run.exe`；开发 AOT 需要 SDK 固定 SHA-256 的 ESP32-S3 `wamrc.exe`。用 `--runner`、`--wamrc` 指向匹配的本地工具；使用下载工具时须核对发布附件和固定摘要。命令从 SDK 根目录运行，路径按机器替换。
 
 ```powershell
 python -m pip install -r requirements.txt

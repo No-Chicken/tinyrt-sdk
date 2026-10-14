@@ -1,11 +1,11 @@
-# TinyRT SDK 0.0.5
+# TinyRT SDK
 
 游戏模板默认使用 `clock_interval(33)`，约 30 Hz。每次 `TINYRT_CLOCK_EVENT` 更新游戏逻辑，随后在 `tinyrt_render()` 提交一张完整帧；静止画面可以 `draw_skip()`。不要靠累计多次 CLOCK 才提交来控制帧率。物理固定步长应保留实际经过时间的余数补偿；需要更高帧率的应用可显式请求其他周期，实际显示频率受宿主和送屏能力限制。
 
 SDK 对外版本以根目录 VERSION 为准，用 `python tools/tinyrt.py --version` 查询。
-本次 SDK 交付版本为 0.0.5，Bird 与 Wave 的整数发布版本分别为 5、11；反复编译不自动升版本。
+应用发布版本见各自 `app.json.version`；反复编译不自动升版本。
 
-Wave v11 当前为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](examples/wave_sim/README.md)。高速画布条带通路说明见 [高速画布 V1](specs/fast-canvas-v1.md)，其中三维球体描述属于实验实现，不能当作当前 Wave 的发布效果。
+Wave 为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](examples/wave_sim/README.md)。高速画布条带通路说明见 [高速画布 V1](specs/fast-canvas-v1.md)，其中三维球体描述属于实验实现，不能当作当前 Wave 的发布效果。
 
 图形批次、GRID、驻留精灵与兼容要求见 [graphics-v1.md](specs/graphics-v1.md)。
 
@@ -22,7 +22,7 @@ Windows 没有 make 时直接使用 Python 命令。Makefile 默认使用开发�
 `RELEASE_ARGS="--variant wasm --key <key> --key-id <id> --channel beta"` 指定。
 
 命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、签名、网站 v2 清单和 ZIP 自检。
-本项目只交付 AOT：Flappy 输出 `examples/flappy/release/demo.sky-hop-v5-wasm-aot.zip` 及同名展开目录。
+本项目只交付 AOT：Flappy 输出 `examples/flappy/release/<app_id>-v<version>-wasm-aot.zip` 及同名展开目录。
 ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单和构建报告。
 release 默认为 wasm-aot，`--wamrc` 指定 SDK 固定摘要的本地 ESP32-S3 AOT 编译器；也可放在 SDK bin/wamrc.exe。
 `--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留它用于回退；独立 Wasm ZIP 不作为本项目交付件。
@@ -53,7 +53,7 @@ at_ms 与 file 二选一，1–6 张。封面必须为 210×210 RGB/RGBA PNG、�
 只有实际分发更新才递增版本，反复本地构建不自动涨版本。
 
 构建时间固定取 SDK 提交时间，可用 SOURCE_DATE_EPOCH 或 --built-at 覆盖；同样输入和工具环境产出相同字节。
-无 Git 的源码分发须传 --sdk-revision 和固定时间。export_web.py 已废弃。
+无 Git 的源码分发须传 --sdk-revision 和固定时间。
 规范见 [v2 发布规则](specs/release-bundle-v2.md) 和 [listing Schema](specs/listing.schema.json)。
 本地自检不包含网站账号、公钥登记与发布审核，在线验收仍需上传联调。
 
@@ -78,7 +78,7 @@ python tools/tinyrt.py validate my-game/build/demo.my-game.trpkg --development-k
 
 `app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为签名 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入 2 MiB 上限。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
 
-`run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。该v0.0.4下载位置尚待发布，当前使用显式本地runner。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
+`run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
 
 `pack --aot --development-key` 限定非空`demo.`子命名空间与key_id=1。它用SDK pin校验编译器SHA-256，默认ESP32-S3，也可用`--target esp32s31`生成S31开发包；目标ABI与bounds/stack/loop-poll检查均固定，自行生成AOT并保留源Wasm。S31首板固件要求匹配AOT才启动游戏。通用入口不接受上传者提供的AOT或自报安全参数。`--wamrc`也必须匹配固定摘要。S3附件URL仍待发布，S31目前仅提供本机构建的固定编译器，需要显式传`--wamrc`；详见[设备目标](specs/device-targets.md)。自动下载代码只支持Windows x64，其他系统须显式提供匹配工具。
 
@@ -154,9 +154,8 @@ source-lock、provenance、release profile、按序runtime补丁和签名钥由�
 
 ## 示例和安装
 
-- [Flappy Bird / 圆屏 Flappy Bird](examples/flappy/README.md)：466×466 满屏像素场景，触摸或 KEY1 起跳、碰撞重试、最高分保存。应用版本 5，使用经典精灵与音效；素材授权状态见示例 NOTICE。
-- [Wave](examples/wave_sim/README.md)：应用版本 11，圆屏二维粒子水面，支持 IMU 重力、长按换色与 KEY1 掀浪。
-- 旧 counter、color、pomodoro、snake、nes、nes-maze、nes-player 及其专用测试已退役，可从 Git 历史恢复。通用 SDK、包、传输与 core 回归继续保留。
+- [Flappy Bird / 圆屏 Flappy Bird](examples/flappy/README.md)：466×466 满屏像素场景，触摸或 KEY1 起跳、碰撞重试、最高分保存。使用经典精灵与音效；素材授权状态见示例 NOTICE。
+- [Wave](examples/wave_sim/README.md)：圆屏二维粒子水面，支持 IMU 重力、长按换色与 KEY1 掀浪。
 
 BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需要 Bleak；Windows 配对还需要对应 WinRT Python 包。设备配对、信任集和具体传输 profile 由产品配置提供，应用构建不依赖这些包。
 
@@ -178,7 +177,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info examples/flappy/bui
 
 `storage` 输出实际包字节、4 KiB 对齐占用、总空闲、最大连续空闲、健康和隔离总数及容量限制；总空闲不保证能暂存同样大小的连续更新。传输中返回 BUSY。generation 在 JSON 中是精确的 16 位十六进制字符串，表示 wire 小端 u64 的数值，来源与分页 token 相同。BSP RAM 有效位未设置时，六项 internal/external RAM 指标输出 null；runtime heap 的 limit/used/peak 独立有效，始终校验 used≤peak≤limit。
 
-`info` 仅查询已验证健康应用。包路径使用该文件的完整身份和大小；`--app-id` 先解析健康目录的当前完整身份，再发 APP_INFO。返回 title、key_id、ABI、permissions、memory_pages、instruction_budget、wasm_size、assets_size 和完整身份，可供网站/手机对照应用目录。标题和 ID 本身不证明“官方”；应结合完整 SHA-256 与受信发布者 key_id。客户端严格检查 STORAGE 92 字节与 APP_INFO 248 字节布局、schema/保留位、容量关系、身份匹配与 UTF-8，未知能力或畸形回复直接失败。Python 对应 API 为 `storage_info(link)` 和 `app_info(link, identity68_or_info72)`；产品 TypeScript 协议层提供 `storageInfo` / `appInfo`，本轮未增加查询 UI。
+`info` 仅查询已验证健康应用。包路径使用该文件的完整身份和大小；`--app-id` 先解析健康目录的当前完整身份，再发 APP_INFO。返回 title、key_id、ABI、permissions、memory_pages、instruction_budget、wasm_size、assets_size 和完整身份，可供网站/手机对照应用目录。标题和 ID 本身不证明“官方”；应结合完整 SHA-256 与受信发布者 key_id。客户端严格检查 STORAGE 92 字节与 APP_INFO 248 字节布局、schema/保留位、容量关系、身份匹配与 UTF-8，未知能力或畸形回复直接失败。Python 对应 API 为 `storage_info(link)` 和 `app_info(link, identity68_or_info72)`。
 
 信任策略由宿主配置：签名钥可限定 app ID 或末尾点命名空间。开发者应使用所属范围内的 ID；签名合法但越权的包仍被拒绝。公开开发钥只用于明确开启该信任的试验固件。
 

@@ -4,7 +4,7 @@
 
 本文规定从开发应用、准备 PNG 素材、构建签名包，到上传 ZIP、网站解析、审核、下载和设备安装的完整流程。网站接收一个 ZIP，设备只接收其中的 `.trpkg`。v1 采用一个 ZIP 对应一个应用版本的一种构建产物。
 
-**实施状态**：TinyRT/SDK 的 `.trpkg` 格式、签名、Wasm/AOT、封面与 BLE 工具已经存在；本文的 `release.json`、上传 ZIP 布局、Schema、网站 API 和审核状态是本次制定的对接契约，网站尚未实现。随附 ZIP 是可用于开发解析器的真实样例，不是已经上线的发布服务。旧 `export_web.py` 产生的 `catalog.json` 交付目录属于旧格式，不符合本规范；不要直接当作 v1 上传包。
+本文定义 release.json、上传 ZIP 布局与网站对接契约；v2 增量见 [release-bundle-v2.md](release-bundle-v2.md)。
 
 ## 1. Wasm 包和 AOT 包的区别
 
@@ -16,11 +16,10 @@
 | 执行 | WAMR 解释器 | 条件满足时执行目标 AOT，否则按严格规则决定是否回退 |
 | 兼容性 | 要求正确 ABI、权限、导入和签名信任 | 还要求目标 CPU、兼容 ID、编译来源及 AOT 签名授权 |
 | 性能 | 需要在设备实测 | 通常减少解释开销，仍须实测，不能承诺固定 FPS |
-| 当前示例大小 | 444248 字节 | 468388 字节 |
 
 两个文件都是完整且带签名的包。“裸的”只是文件名没有 `-wasm`，不是未编译、未签名或裸二进制。网站必须解析 section，不得按文件名猜后端。
 
-**回退限制**：包含 AOT 的包即使带 Wasm，若签名钥没有 AOT 授权，也会拒绝整包；只有授权、结构与来源检查先通过，后端禁用或目标/兼容 ID 不匹配时才可能回退。本次安装错误 28681（0x7009）为 `TINYRT_VERIFY_FAILED`，原构建既没有受信任应用公钥，也未配置开发 AOT，不能依靠改文件名解决。
+**回退限制**：包含 AOT 的包即使带 Wasm，若签名钥没有 AOT 授权，也会拒绝整包；只有授权、结构与来源检查先通过，后端禁用或目标/兼容 ID 不匹配时才可能回退。签名未授权 AOT 或宿主未信任公钥时返回 `TINYRT_VERIFY_FAILED`，修改文件名无法绕过。
 
 v1 网站默认支持 Wasm；可增加 `wasm+aot` 变体。暂不接收 AOT-only。纯 Wasm 不等于任何固件都能运行，新音频导入仍需匹配固件。
 
@@ -132,7 +131,7 @@ demo.sky-hop-v2-wasm.zip
 
 ## 7. release.json 契约
 
-机器约束见 `distribution-v1.schema.json`；语义、字节数、跨文件一致性与信任检查见本文。JSON Schema 通过不代表可以发布或运行。
+v2 机器约束见 `release-v2.schema.json`；v1 语义、字节数、跨文件一致性与信任检查见本文。JSON Schema 通过不代表可以发布或运行。
 
 | 字段 | 规则 |
 |---|---|
@@ -158,7 +157,7 @@ demo.sky-hop-v2-wasm.zip
 
 `requirements.imports` 从真实 Wasm 导入表提取，必须等于包内全集；不得有 WASI 或未支持模块。`wasm` 要求 AOT section 不存在且 requirements.aot=null；`wasm-aot` 要求两种 section 均存在，requirements.aot 与 AOT 元数据一致。不要用权限位推断所有导入能力，例如同为 DRAW，不同固件不一定支持同样绘制函数。
 
-未知字段按 v1 拒绝。新增字段通过新版 Schema 演进，不依赖各端忽略陌生字段。本次样例的完整 JSON 在随附上传 ZIP 根目录，不使用占位哈希。
+未知字段按 v1 拒绝。新增字段通过新版 Schema 演进，不依赖各端忽略陌生字段。
 
 ## 8. 开发者从源码到上传
 
@@ -198,7 +197,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF runtime
 
 必须在真机验收触摸/按键、退出重开、最高分、声音/静音、运行持续性和帧率，再把 device 标为 passed。安装成功不等于游玩通过，桌面时间不等于设备 FPS。
 
-最后准备符合规范的 PNG、README、LICENSES，复制选定 `.trpkg` 为 ZIP 内的 `package.trpkg`；解析包元数据、计算每文件 SHA/size、生成 release.json，再使用 ZIP 工具按白名单路径归档。打 ZIP 不重新编译或重签 `.trpkg`。**当前 SDK 尚未提供通用 v1 ZIP 导出命令**；网站/SDK 团队按随附规范实现，不能把旧 `export_web.py` 宣称为通用发布器。
+使用 `python tools/tinyrt.py release my-game --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --wamrc path/to/wamrc.exe --development-key` 生成并自检网站 v2 ZIP；布局与参数见 [release-bundle-v2.md](release-bundle-v2.md)。本文保留 v1 契约供对接参考。
 
 ## 9. 正式签名与发布职责
 
@@ -283,7 +282,3 @@ v1 ZIP 是**已构建已签名分发物上传协议**。平台代编译/代签�
 ## 13. 网站实施验收清单
 
 必须通过：合法样例解析；PNG尺寸错误；缺文件；伪造hash/size；元数据与签名包不符；未知schema；未知公钥；demo钥请求stable；AOT无权限但带Wasm；同版本不同内容冲突；相同内容幂等；路径穿越/反斜杠/大小写碰撞/重复JSON键；超额解压；未知文件或私钥混入；缺权限/未知Wasm导入；原子发布失败回滚。
-
-实际已交付：本文、JSON Schema、Flappy Bird 完整清单示例和符合文件布局的真实 Wasm ZIP。本次只本地生成；尚未实现网站服务、通用SDK ZIP导出器、生产签名服务，也未完成这款游戏的真机游玩验收。
-
-源依据：SDK `AGENTS.md`、`specs/package.md`、`tools/tinyrt.py`、`tools/release_compile.py`、`tools/ble_install.py`；固件 `tools/TINYRT_DEVELOPER_RELEASE.md`。这些规则中包内约束来自现有实现，上传ZIP与网站行为是本次新增规范。
