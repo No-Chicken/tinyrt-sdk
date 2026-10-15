@@ -112,6 +112,15 @@ python tools/release_compile.py --manifest path/to/app/app.json --wasm path/to/a
 
 source-lock、provenance、release profile、按序runtime补丁和签名钥由发布方控制。工具固定编译器及选项，重新核查输入、补丁和编译器摘要后签名；默认包含原始Wasm，`--without-wasm`可省略回退。来源绑定、兼容ID算法、AOT授权与发布钥轮换见 [包规格](specs/package.md)。发布密钥和签名服务由部署方管理。正式固件只信任其受控发布钥的AOT。
 
+## 马达反馈
+
+应用清单在原权限基础上加 `32`（HAPTIC），例如 DRAW + INPUT + CLOCK + HAPTIC 为 `43`。
+在 `tinyrt_init` 或 `tinyrt_event` 中调用 `haptic_pulse(50, 100)`，以 50% 强度震动 100 ms；
+`haptic_stop()` 提前停止。调用非阻塞，新脉冲替换旧脉冲；强度范围 1..100%，时长 1..2000 ms。
+返回 0 表示成功，1 表示设备无马达或不可用；非法参数、缺权限或在 render/stop 调用会失败。
+宿主在应用退出、异常或切换时停止马达。S31 支持，S3 与桌面预览返回不支持。
+需要支持这些 import 的宿主与桌面 runner；旧宿主拒绝新 import，旧应用无需增加权限。
+
 ## app.json
 
 ```json
@@ -133,7 +142,7 @@ source-lock、provenance、release profile、按序runtime补丁和签名钥由�
 | `title` | 1..63 字节严格 UTF-8，不含 NUL |
 | `version` | 1..4294967295 的整数；同 ID 更新必须递增 |
 | `abi_version` | 当前只能为 1 |
-| `permissions` | 0..31；draw=1、input=2、storage=4、clock=8、audio=16 |
+| `permissions` | 0..63；draw=1、input=2、storage=4、clock=8、audio=16、haptic=32 |
 | `memory_pages` | 1..16，页面为 64 KiB；这是 Wasm 线性内存上限 |
 | `budget` | 每回调 1..100000 条受计量指令 |
 | `sources` | 1..64 个不重复的本地 `.c` 相对路径 |

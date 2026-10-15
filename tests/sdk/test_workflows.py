@@ -44,7 +44,7 @@ class SDKTests(unittest.TestCase):
     def test_rejects_policy_and_type_violations(self):
         cases = [('app_id',''),('app_id','A'),('app_id','x'*32),('title',''),('title','中'*22),
                  ('title','a\0b'),('version',0),('version',2**32),('version',True),('version',1.5),
-                 ('abi_version',2),('permissions',32),('permissions',-1),('memory_pages',0),
+                 ('abi_version',2),('permissions',64),('permissions',-1),('memory_pages',0),
                  ('memory_pages',17),('budget',0),('budget',100001),('sources',[]),
                  ('sources',['../outside.c']),('sources',['/absolute.c']),
                  ('sources',['main.c','main.c']),('assets','../outside.bin'),
@@ -114,6 +114,17 @@ class SDKTests(unittest.TestCase):
         path=self.manifest(values)
         with self.assertRaises(ValueError):self.sdk.build(path,cc,asset)
         self.assertEqual(asset.read_bytes(),b'preserve resource')
+    def test_haptic_permission_round_trips_signed_package(self):
+        import package
+        values=copy.deepcopy(VALID);values['permissions']=63
+        self.assertEqual(self.sdk.load_manifest(self.manifest(values))['permissions'],63)
+        blob=package.build_package(b'\0asm\x01\0\0\0\0\1\0',b'',app_id='demo.test',title='Test',version=1,
+            abi_version=1,permissions=63,memory_pages=2,budget=100000,key_id=1,
+            private_key=package.development_key())
+        info=package.validate_envelope(blob,package.development_key().public_key(),1)
+        self.assertEqual(struct.unpack_from('<I',blob,40)[0],63)
+        self.assertEqual(info['validation_level'],'envelope')
+
     def test_envelope_is_explicitly_not_wasm_validation(self):
         import package
         info=self.sdk.validate_envelope(self.package(),package.development_key().public_key(),1)

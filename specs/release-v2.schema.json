@@ -119,7 +119,7 @@
         "permissions": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 31
+          "maximum": 63
         },
         "memory_pages": {
           "type": "integer",
