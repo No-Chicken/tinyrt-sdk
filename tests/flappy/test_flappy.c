@@ -10,7 +10,7 @@
 static uint32_t time_ms;
 static int stored_best, commands, saves;
 uint32_t now_ms(void) { return time_ms; }
-int32_t input_events(uint32_t mask) { assert(mask==120); return 0; }
+int32_t input_events(uint32_t mask) { assert(mask==56); return 0; }
 int32_t clock_interval(int32_t ms) { assert(ms==((test_caps&TINYRT_GFX_CAP_SPRITE)?33:8)); return 0; }
 int32_t kv_get(uint32_t key,int32_t fallback) { assert(key==0); (void)fallback; return stored_best; }
 int32_t kv_set(uint32_t key,int32_t value) { assert(key==0); stored_best=value;saves++;return 0; }
@@ -72,9 +72,9 @@ int main(int argc,char **argv) {
     for(int i=0;i<100&&state==RUNNING;i++) step();
     assert(state==GAME_OVER);press_tap();assert(state==GAME_OVER);
     time_ms+=900;assert(tinyrt_event(3,233,384,0)==0);assert(tinyrt_event(1,233,384,0)==0);assert(state==RUNNING&&score==0);
-    /* Each press has one impulse; queue cancellation clears touch and KEY1. */
-    tinyrt_event(6,1,1,0);step();v=velocity;tinyrt_event(6,1,1,0);assert(velocity==v);
-    tinyrt_event(5,0,0,0);assert(!key_down);tinyrt_event(6,1,0,0);assert(!key_down);
+    /* KEY1 remains host-owned; unexpected key events cannot flap. */
+    v=velocity;tinyrt_event(6,1,1,0);tinyrt_event(6,1,0,0);assert(velocity==v);
+    tinyrt_event(5,0,0,0);assert(!touch_down);
     /* Autopilot follows the next real gap, exercising collisions and scoring. */
     reset_game();state=RUNNING;
     for(int i=0;i<2200&&state==RUNNING;i++) {

@@ -8,7 +8,7 @@ static unsigned images, skips;
 uint32_t now_ms(void) { return clock_ms; }
 int32_t runtime_backend(void) { return 1; }
 int32_t clock_interval(int32_t ms) { assert(ms==16);return 0; }
-int32_t input_events(uint32_t mask) { assert(mask==248);return 0; }
+int32_t input_events(uint32_t mask) { assert(mask==184);return 0; }
 int32_t draw_clear(uint32_t rgb) { (void)rgb;return 0; }
 int32_t draw_skip(void) { skips++;return 0; }
 int32_t draw_text_box(int32_t x,int32_t y,int32_t w,int32_t h,const char *s,uint32_t n,uint32_t c,int32_t px,int32_t a) {
@@ -137,7 +137,7 @@ int main(void) {
         }
     }
     clock_ms=0xfffffff0u;last_ms=clock_ms;advance(33);assert(tinyrt_stop()==0);
-    assert(tinyrt_init(466,466)==0&&!touch_down&&!key_down&&theme==0);
+    assert(tinyrt_init(466,466)==0&&!touch_down&&theme==0);
     for(unsigned i=0;i<5;i++){tinyrt_event(3,200,200,0);advance(500);tinyrt_event(1,200,200,0);}
     assert(theme==0);
     test_caps=TINYRT_GFX_CAP_RECT|TINYRT_GFX_CAP_GRID;
@@ -145,7 +145,7 @@ int main(void) {
     assert(tinyrt_render()==0&&!frame_ready);
     assert(tinyrt_render()==0);
     tinyrt_event(3,200,200,0);advance(500);assert(theme==1);
-    tinyrt_event(5,0,0,0);assert(!touch_down&&!key_down);
+    tinyrt_event(5,0,0,0);assert(!touch_down);
     printf("PASS input, clock wrap, GRID/legacy pixel equality (180 scenes), RGB565 bytes/bounds, 36000-step shake, %dx%d / %d particles\n",WAVE_GRID,WAVE_GRID,WAVE_N);
     return 0;
 }

@@ -182,7 +182,7 @@ class SDKTests(unittest.TestCase):
         self.assertEqual(app['app_id'],'demo.sky-hop')
         self.assertEqual(sorted(p.name for p in (ROOT/'examples').iterdir() if p.is_dir()),['flappy','wave_sim'])
         wave=self.sdk.load_manifest(ROOT/'examples/wave_sim/app.json')
-        self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',7))
-        self.assertEqual(app['version'],4)
+        self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',13))
+        self.assertEqual(app['version'],6)
 
 if __name__=='__main__':unittest.main()

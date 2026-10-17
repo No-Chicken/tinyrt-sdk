@@ -58,8 +58,8 @@ static void append_record(const void *record,uint32_t size){
 static uint16_t counts[WAVE_CELLS];
 static float fastest[WAVE_CELLS];
 static unsigned theme,frame;
-static int touch_down,key_down,theme_changed,frame_ready;
-static uint32_t last_ms,render_ms,touch_ms,key_ms,toast_ms,accumulator;
+static int touch_down,theme_changed,frame_ready;
+static uint32_t last_ms,render_ms,touch_ms,toast_ms,accumulator;
 static int fast_backend,physics_active,compose_stage,compose_row;
 static unsigned render_theme;
 static int background_valid,last_marker_x,last_marker_y;
@@ -244,13 +244,13 @@ int32_t tinyrt_init(int32_t w,int32_t h) {
     grid_backend=!WAVE_LEGACY_GRAPHICS&&(gfx_caps()&(TINYRT_GFX_CAP_RECT|TINYRT_GFX_CAP_GRID))==(TINYRT_GFX_CAP_RECT|TINYRT_GFX_CAP_GRID);
     palette_valid=0;submitted_valid=0;
     if(!grid_backend&&allocate_legacy_frame()!=0)return -1;
-    wave_reset(&fluid);theme=frame=accumulator=0;touch_down=key_down=theme_changed=frame_ready=0;
+    wave_reset(&fluid);theme=frame=accumulator=0;touch_down=theme_changed=frame_ready=0;
     background_valid=0;
     last_ms=render_ms=now_ms();toast_ms=last_ms-1500u;
 #ifdef WAVE_METRICS
     metrics_reset(last_ms);
 #endif
-    if(input_events(248u)!=0)return -1;
+    if(input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION)!=0)return -1;
     fast_backend=runtime_backend();physics_active=0;compose_begin();
     if(fast_backend)compose();
     return clock_interval(fast_backend?16:1);
@@ -261,11 +261,8 @@ int32_t tinyrt_event(int32_t kind,int32_t x,int32_t y,int32_t arg) {
     if(kind==TINYRT_EV_MOTION){int32_t sx,sy;motion_to_screen(x,y,&sx,&sy);wave_tilt(&fluid,sx,sy);}
     else if(kind==TINYRT_TOUCH_PRESS&&!touch_down){touch_down=1;touch_ms=now;theme_changed=0;}
     else if(kind==TINYRT_TOUCH_RELEASE){if(touch_down&&!theme_changed){if((uint32_t)(now-touch_ms)<500u)wave_splash(&fluid);else next_theme(now);}touch_down=0;}
-    else if(kind==TINYRT_TOUCH_CANCEL){touch_down=key_down=0;}
-    else if(kind==TINYRT_USER_KEY_EVENT&&x==1){
-        if(y&&!key_down){key_down=1;key_ms=now;}
-        else if(!y){if(key_down&&(uint32_t)(now-key_ms)<500u)wave_splash(&fluid);key_down=0;}
-    } else if(kind==TINYRT_CLOCK_EVENT) {
+    else if(kind==TINYRT_TOUCH_CANCEL){touch_down=0;}
+    else if(kind==TINYRT_CLOCK_EVENT) {
         uint32_t elapsed=now-last_ms;last_ms=now;
         if(elapsed>100u)elapsed=100u;
         accumulator+=elapsed*WAVE_STEP_HZ;
@@ -321,4 +318,4 @@ int32_t tinyrt_render(void) {
 #endif
     return 0;
 }
-int32_t tinyrt_stop(void){touch_down=key_down=0;return 0;}
+int32_t tinyrt_stop(void){touch_down=0;return 0;}

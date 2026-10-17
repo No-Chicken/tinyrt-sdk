@@ -89,7 +89,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/dem
 | `int32_t tinyrt_render(void)` | 仅提交绘制；每个普通帧从 `draw_clear` 开始，或只调用一次 `draw_skip` |
 | `int32_t tinyrt_stop(void)`（可选） | 正常离场时有界保存；不得绘制；故障和断电不保证调用 |
 
-466×466 圆屏的四角不可见，约 330×330 的中央正方形是安全区（约 x/y=68..397）。留出宿主返回键空间。CLOCK=2；触摸 RELEASE=1、PRESS=3、MOVE=4、CANCEL=5。在 init 调用 `input_events(56)` 订阅完整触摸；mask=0 保留 release 模式。KEY1为事件6（`TINYRT_USER_KEY_EVENT`），x=1、y=1按下/0释放、arg=0；init订阅mask=64，触摸与KEY1合用mask=120。CANCEL清除触摸与KEY1按住状态；队列溢出可能丢失KEY1 release，因此取消必须解除所有按住动作。应用认领KEY1后短按/双击用于Guest，长按仍保留Host返回。按住动作在release/cancel时清零，release不自动代表click。使用 `now_ms()` 的无符号差推进时间，禁止 Guest 自己忙等。
+466×466 圆屏的四角不可见，约 330×330 的中央正方形是安全区（约 x/y=68..397）。EEBadge 宿主使用边缘返回手势，无固定顶部返回键；未订阅 KEY1 时短按由宿主返回应用大厅。CLOCK=2；触摸 RELEASE=1、PRESS=3、MOVE=4、CANCEL=5。在 init 调用 `input_events(56)` 订阅完整触摸；mask=0 保留 release 模式。KEY1为事件6（`TINYRT_USER_KEY_EVENT`），x=1、y=1按下/0释放、arg=0；init订阅mask=64，触摸与KEY1合用mask=120。CANCEL清除触摸与KEY1按住状态；队列溢出可能丢失KEY1 release，因此取消必须解除所有按住动作。应用认领KEY1后短按/双击用于Guest，长按仍保留Host返回。按住动作在release/cancel时清零，release不自动代表click。使用 `now_ms()` 的无符号差推进时间，禁止 Guest 自己忙等。
 
 ## ABI 1 全部 Host 函数
 

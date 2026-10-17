@@ -8,11 +8,11 @@
 
 ## 操作
 
-- 点击游戏区域或短按 KEY1 起跳。按住、拖动和松手不连跳。
+- 点击游戏区域起跳。按住、拖动和松手不连跳。
 - 穿过管道得分；碰到管道、上边界或地面结束。
-- 失败后 600 ms 显示计分板，800 ms 后可点击橙色 OK 或短按 KEY1 重开。
+- 失败后 600 ms 显示计分板，800 ms 后可点击橙色 OK 重开。
 - 最高分写入应用独立 KV；正常退出保存。突然断电仍受 Host 延迟落盘规则影响。
-- 宿主返回控件、KEY1 长按负责退出。输入队列取消会清除触摸和按键状态，避免吞掉下一次按下。
+- 短按 KEY1 返回应用大厅；新固件也支持左右边缘侧滑返回。游戏不订阅用户键，沿用宿主退出和最高分保存流程。输入队列取消会清除触摸状态。
 
 音效使用原始 wing、point、hit、die WAV 转换出的 16 kHz 单声道 PCM。碰撞先播放 hit，随后播放 die。宿主后台有界队列播放，不在游戏回调里等待扬声器；队列满时允许丢弃音效。桌面 runner 校验音频请求但静音，不代表真机扬声器已经验收。IMU 和 MIC 未使用。
 
@@ -30,7 +30,7 @@ python tools/tinyrt.py validate examples/flappy/build/demo.sky-hop.trpkg --devel
 python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --wamrc path/to/wamrc.exe --development-key
 ```
 
-应用 ID 为 demo.sky-hop。游戏中分数顶部下移到屏幕 y=88，避开宿主返回按钮。旧固件不支持 AUDIO 权限和导入，必须配套更新固件。
+应用 ID 为 demo.sky-hop。游戏中分数显示在屏幕 y=88。旧固件不支持 AUDIO 权限和导入，必须配套更新固件。
 
 游戏使用 33 ms 固定整数物理与有界补帧；8 ms 时钟分四条带合成 233×233 RGB565 完整帧，再由宿主放大到 466×466。一帧只提交一张图，部分合成帧不显示；像素素材通过包内只读资源读取，避免超出解释器回调预算。32 ms 合成周期是软件目标，不是设备帧率实测结果。
 

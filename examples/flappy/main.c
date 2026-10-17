@@ -37,7 +37,7 @@ static int stripe,frame_ready,die_sound,run_best;
 enum { READY, RUNNING, GAME_OVER };
 typedef struct { int x, gap, scored; } pipe_t;
 static pipe_t pipes[3];
-static int state, bird_y, velocity, score, best, saved_best, touch_down, key_down;
+static int state, bird_y, velocity, score, best, saved_best, touch_down;
 static uint32_t last_ms, remainder, died_ms, seed, scenery;
 
 static int next_gap(void) {
@@ -166,7 +166,7 @@ int32_t tinyrt_render(void) {
     D(draw_clear(0x70c5ceu));
     return draw_rgb565_scaled(0,0,466,466,233,233,pixels,BIRD_PIXEL_BYTES);
 }
-int32_t tinyrt_stop(void) { touch_down=key_down=0;return save_best(); }
+int32_t tinyrt_stop(void) { touch_down=0;return save_best(); }
 static int tick_game(void) {
     scenery++;
     velocity+=94;if(velocity>2100) velocity=2100;
@@ -195,8 +195,8 @@ int32_t tinyrt_init(int32_t width,int32_t height) {
             (const void *)(uintptr_t)RESIDENT_ATLAS_OFFSET,RESIDENT_ATLAS_LENGTH,TINYRT_GFX_FROM_ASSET));
     }else D(allocate_legacy_frame());
     best=kv_get(0,0);if(best<0 || best>9999) best=0;
-    saved_best=best;state=READY;touch_down=key_down=0;reset_game();
-    D(input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_INPUT_USER_KEY_MASK));
+    saved_best=best;state=READY;touch_down=0;reset_game();
+    D(input_events(TINYRT_INPUT_LIFECYCLE_MASK));
     stripe=frame_ready=0;return clock_interval(sprite_backend?33:8);
 }
 int32_t tinyrt_event(int32_t kind,int32_t x,int32_t y,int32_t arg) {
@@ -206,11 +206,8 @@ int32_t tinyrt_event(int32_t kind,int32_t x,int32_t y,int32_t arg) {
             if(state!=GAME_OVER || (x>=171 && x<=295 && y>=362 && y<=406)) D(flap());
         }
     } else if(kind==TINYRT_TOUCH_RELEASE) touch_down=0;
-    else if(kind==TINYRT_TOUCH_CANCEL) touch_down=key_down=0;
-    else if(kind==TINYRT_USER_KEY_EVENT && x==1) {
-        if(y && !key_down) { key_down=1;D(flap()); }
-        else if(!y) key_down=0;
-    } else if(kind==TINYRT_CLOCK_EVENT) {
+    else if(kind==TINYRT_TOUCH_CANCEL) touch_down=0;
+    else if(kind==TINYRT_CLOCK_EVENT) {
         uint32_t now=now_ms(),elapsed=now-last_ms;last_ms=now;
         if(elapsed>132u) elapsed=132u;
         if(state==RUNNING) {

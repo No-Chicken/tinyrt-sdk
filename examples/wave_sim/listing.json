@@ -8,12 +8,12 @@
   ],
   "controls": [
     "倾斜设备改变重力",
-    "点击屏幕或短按 KEY1 掀浪",
+    "点击屏幕 掀浪",
     "触摸长按 500 ms 切换主题",
-    "KEY1 长按或宿主返回退出"
+    "短按 KEY1 返回应用大厅；支持新固件边缘侧滑返回"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "v11：40×40 网格、400 粒子，水块更细密；无水格子与画布同色，移除浅色灯珠背景。保留五主题和原有操作。",
+  "release_notes": "v13：KEY1 短按返回应用大厅，保留触摸玩法，释放按键给宿主。",
   "full_bleed": true,
   "rights": {
     "status": "unverified",

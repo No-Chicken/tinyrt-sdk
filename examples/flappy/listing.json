@@ -7,12 +7,12 @@
     "单键"
   ],
   "controls": [
-    "点击屏幕或短按 KEY1 起跳",
+    "点击屏幕 起跳",
     "失败后点击橙色 OK 重开",
-    "KEY1 长按或宿主返回退出"
+    "短按 KEY1 返回应用大厅；支持新固件边缘侧滑返回"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "v5：精灵后端每 33 ms 提交完整帧，保留物理、音效、输入和最高分。",
+  "release_notes": "v6：KEY1 短按返回应用大厅，保留触摸玩法，释放按键给宿主。",
   "full_bleed": true,
   "rights": {
     "status": "unverified",
