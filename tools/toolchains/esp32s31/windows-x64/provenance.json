@@ -1,0 +1,196 @@
+{
+  "schema": 1,
+  "source_lock_sha256": "57bff42ced57d6dc7e4c89fde606b6def1ddb672d7dfe89253cdf5d6a8f917d4",
+  "build_script_sha256": "d58dd8e39c85d9ed3979b5529c9daee8b8df4aa27883f41c4147e3994df5dcb9",
+  "sources": {
+    "wamr": {
+      "url": "https://github.com/bytecodealliance/wasm-micro-runtime.git",
+      "commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605"
+    },
+    "llvm": {
+      "url": "https://github.com/espressif/llvm-project.git",
+      "commit": "344b928e67bfc1d07cb150609c55548e86a9bf19",
+      "upstream_branch": "xtensa_release_18.1.2",
+      "version": "18.1.2"
+    }
+  },
+  "patches": [
+    {
+      "name": "loop-poll.patch",
+      "sha256": "89c3fd33e9cf17c0ba0505a198237722b5d01beac58976115539baccf9f71f73"
+    },
+    {
+      "name": "../../patches/wamr/0001-exec-env-cancellation.patch",
+      "sha256": "a0908c084ba2613ca9aa6e10cdba6090f6ff74d47b88f68a66ed2c24b1fd7b18"
+    },
+    {
+      "name": "../../patches/wamr/0002-aot-dbus-writes.patch",
+      "sha256": "4668d7c87b0eb7deb7c1d8ea7b8ea27f802de70db09221b501c6dacea6755cd2"
+    },
+    {
+      "name": "../../patches/wamr/0003-aot-mapping-budget.patch",
+      "sha256": "74b01171b39278e2d9d3f6f5fa935bb344a5549f5641ea4154952ac41b6a82ac"
+    },
+    {
+      "name": "../../patches/wamr/0004-esp-idf-native-stack.patch",
+      "sha256": "b54f79fa4d653450cfd59aa79cb6f0605cd044f8e1b7a086201c25623b300164"
+    }
+  ],
+  "compiler": {
+    "path": "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\wamrc-build-riscv\\wamrc.exe",
+    "sha256": "9b7c129f2db705f56ab660d89c16ec0325f740d6d762fa14ec746554973934e8",
+    "version": "wamrc 2.4.5"
+  },
+  "host": {
+    "cc": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\cl.EXE",
+    "cc_version": "\u7528\u6cd5: cl [ \u9009\u9879... ] \u6587\u4ef6\u540d... [ /link \u94fe\u63a5\u9009\u9879... ]\nMicrosoft (R) C/C++ Optimizing Compiler Version 19.51.36248 for x64\n\u7248\u6743\u6240\u6709(C) Microsoft Corporation\u3002\u4fdd\u7559\u6240\u6709\u6743\u5229\u3002\n\n",
+    "cmake": "cmake version 4.0.3\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).",
+    "ninja": "1.12.1",
+    "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]"
+  },
+  "configure_commands": [
+    [
+      "cmake",
+      "-S",
+      "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\llvm-project\\llvm",
+      "-B",
+      "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\llvm-build",
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DCMAKE_C_FLAGS=/utf-8",
+      "-DCMAKE_CXX_FLAGS=/utf-8",
+      "-DLLVM_ENABLE_DIA_SDK=OFF",
+      "-DLLVM_TARGETS_TO_BUILD=X86;RISCV",
+      "-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=Xtensa",
+      "-DLLVM_INCLUDE_TESTS=OFF",
+      "-DLLVM_INCLUDE_EXAMPLES=OFF",
+      "-DLLVM_INCLUDE_BENCHMARKS=OFF",
+      "-DLLVM_INCLUDE_DOCS=OFF",
+      "-DLLVM_ENABLE_TERMINFO=OFF",
+      "-DLLVM_ENABLE_ZLIB=OFF",
+      "-DLLVM_ENABLE_ZSTD=OFF",
+      "-DLLVM_ENABLE_LIBXML2=OFF",
+      "-DLLVM_ENABLE_ASSERTIONS=OFF",
+      "-DLLVM_ENABLE_BINDINGS=OFF",
+      "-DLLVM_OPTIMIZED_TABLEGEN=ON",
+      "-DLLVM_INCLUDE_UTILS=OFF",
+      "-DLLVM_INCLUDE_TOOLS=ON",
+      "-DLLVM_BUILD_TOOLS=OFF",
+      "-DPython3_EXECUTABLE=C:\\Espressif\\tools\\python\\v6.1\\venv\\Scripts\\python.exe"
+    ],
+    [
+      "cmake",
+      "-S",
+      "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\wamr-upstream\\wamr-compiler",
+      "-B",
+      "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\wamrc-build-riscv",
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DCMAKE_C_FLAGS=/utf-8",
+      "-DCMAKE_CXX_FLAGS=/utf-8",
+      "-DWAMR_BUILD_WITH_CUSTOM_LLVM=1",
+      "-DLLVM_DIR=C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\llvm-build\\lib\\cmake\\llvm",
+      "-DWAMR_DISABLE_HW_BOUND_CHECK=1",
+      "-DWAMR_BUILD_PLATFORM=windows",
+      "-DWAMR_BUILD_TARGET=X86_64",
+      "-DWAMR_BUILD_LIBC_WASI=0",
+      "-DWAMR_BUILD_LIB_PTHREAD=0",
+      "-DWAMR_BUILD_LIB_WASI_THREADS=0",
+      "-DWAMR_BUILD_LOOP_POLL=1"
+    ]
+  ],
+  "target_options": [
+    "--target=riscv32",
+    "--cpu=generic-rv32",
+    "--bounds-checks=1",
+    "--stack-bounds-checks=1",
+    "--opt-level=3",
+    "--size-level=3",
+    "--disable-simd",
+    "--disable-ref-types",
+    "--enable-loop-poll",
+    "--target-abi=ilp32f",
+    "--cpu-features=+m,+a,+c,+f,-d"
+  ],
+  "target_options_sha256": "c7f3d342b011369f83b06d7988d02bc234005b7610edaa62d920ec1a98df38bf",
+  "licenses": [
+    {
+      "path": "LLVM/llvm/include/llvm/Support/LICENSE.TXT",
+      "sha256": "31ccf40a7039ab7b7693b0bdef2534fd546801036657bb4d0f2cfbfaa7c36547"
+    },
+    {
+      "path": "LLVM/llvm/lib/Support/BLAKE3/LICENSE",
+      "sha256": "6f8f71edf8c1f5eb070d9006840bdd09e7f96d6a08aa6780c70f56b9c3483cff"
+    },
+    {
+      "path": "LLVM/llvm/lib/Support/COPYRIGHT.regex",
+      "sha256": "8fce62c1390f1b2c8a761c9729b68665fd826d25893638a63edf93d15bed0540"
+    },
+    {
+      "path": "LLVM/llvm/LICENSE.TXT",
+      "sha256": "a9ed3eae930adbc631b83300b78ab5d228c9b1e4560d64ec4b4ea2bcf69f4569"
+    },
+    {
+      "path": "LLVM-LICENSE.txt",
+      "sha256": "a9ed3eae930adbc631b83300b78ab5d228c9b1e4560d64ec4b4ea2bcf69f4569"
+    },
+    {
+      "path": "upstream-source-notices.txt",
+      "sha256": "e9ea9b8991b395ad466af33396a1724a2da4a39db9265cd9d7f15552397a81a2"
+    },
+    {
+      "path": "WAMR/core/iwasm/aot/debug/LICENSE_NUTTX",
+      "sha256": "9ee28ba74533d81903761c0998e683c72d5f0df4f1b85de5c0db0014c268b6b5"
+    },
+    {
+      "path": "WAMR/core/iwasm/aot/debug/NOTICE_NUTTX",
+      "sha256": "afc2a7cc8a3143e4bc07f570462a1d11b6575d2ccc4925d3ed275b434317f34d"
+    },
+    {
+      "path": "WAMR/core/iwasm/fast-jit/cg/LICENSE_ASMJIT",
+      "sha256": "6de84debf5d9d30b252c397fc6fff79820b32b7513ed5e338e2ab4b8554f9ed6"
+    },
+    {
+      "path": "WAMR/core/iwasm/fast-jit/cg/LICENSE_ZYDIS",
+      "sha256": "240802d87ae8054d3cba8cd337332a6741894c65a0c2ce444c4c43ead494a1a6"
+    },
+    {
+      "path": "WAMR/core/iwasm/libraries/libc-uvwasi/LICENSE_LIBUV",
+      "sha256": "d1e1ff2c19bae35cd337d7333a5cebf7ba3ab3d0d4250c76b8bd0cf12c081b43"
+    },
+    {
+      "path": "WAMR/core/iwasm/libraries/libc-uvwasi/LICENSE_UVWASI",
+      "sha256": "3879914005fd6551afa7802544dc1472f2ca959895575a36c63eec514af1d375"
+    },
+    {
+      "path": "WAMR/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/include/LICENSE",
+      "sha256": "f4e7f373b9b996950337e8d41a4a2939c2d90b7725e9baf3d5084a22717ad328"
+    },
+    {
+      "path": "WAMR/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/LICENSE",
+      "sha256": "6245c107b49edd835e7cdb5d49c9a594aae0f3c071eda59a638752b6aba95db7"
+    },
+    {
+      "path": "WAMR/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/LICENSE",
+      "sha256": "81289817f0bc049bb52ca5456ed5a980d54ff589a5430add840d6cf42066ec0b"
+    },
+    {
+      "path": "WAMR/core/shared/coap/er-coap/LICENSE.md",
+      "sha256": "e23b4fc2265eb1f47fb14238f48a7b62771fc1259cef775ecafc07921e558022"
+    },
+    {
+      "path": "WAMR/core/shared/platform/common/math/COPYRIGHT",
+      "sha256": "deb19fab8d9a591ee3f126b9138af90715968611ec721a272df4050b04247a73"
+    },
+    {
+      "path": "WAMR/LICENSE",
+      "sha256": "af3f7d967a7b633e4965cb6ad506cb94ebe8c527b8525baf4c8f16268866263f"
+    },
+    {
+      "path": "WAMR-LICENSE.txt",
+      "sha256": "af3f7d967a7b633e4965cb6ad506cb94ebe8c527b8525baf4c8f16268866263f"
+    }
+  ]
+}

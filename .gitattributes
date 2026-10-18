@@ -5,3 +5,6 @@
 *.trpkg -text
 *.nes -text
 *.bin binary
+/tools/toolchains/esp32s31/windows-x64/wamrc.exe binary
+/tools/toolchains/esp32s31/windows-x64/provenance.json -text -diff
+/tools/toolchains/esp32s31/windows-x64/licenses/** -text -diff
