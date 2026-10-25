@@ -75,7 +75,7 @@ def pack_development(manifest, wasm, output, wamrc=None, target='esp32s3'):
     metadata.update(key_id=1,private_key=package.development_key())
     package.metadata_header(source,assets,**metadata)
     if len(source)>package.MAX_PACKAGE_SIZE or len(assets)>package.MAX_PACKAGE_SIZE:
-        raise ValueError('Wasm or resources exceed 2 MiB')
+        raise ValueError('Wasm or resources exceed the package format limit')
     output=tinyrt.protect_output(output,paths,'.trpkg',b'TRPKG001')
     with tempfile.TemporaryDirectory(prefix='tinyrt-dev-aot-') as directory:
         staged=Path(directory);input_wasm=staged/'input.wasm';native=staged/'output.aot'

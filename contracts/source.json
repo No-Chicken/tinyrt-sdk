@@ -1,10 +1,10 @@
 {
-  "core_revision": "a339ec6464b77523ce755ca7c1e0fc312534d53d",
+  "core_revision": "0c3463cbdcfea8ebe11665d82a0741aa39542e68",
   "files": {
     "abi-v1.json": "416c1f15de27e5e71a2d7c70791eaa214be62121f3c349709455a3ee380e42d5",
     "guest-gfx-v1.h": "707079cca96a30cc0f9685876dc491df74a9189a00fbaf0b41126813df447a43",
     "guest-v1.h": "f50a896fab09401b3f5ed3b227a6159eb5704b83b2f1569af36a738148037b1e",
-    "wire-v1.json": "fbbb01c8a06f85dcf0511c5b0620ed47307791395e4a488cd44c0b1edcc0ed1a"
+    "wire-v1.json": "8e1875626fe7e05fe846517ae7df9aab3bd20f1f94c6d11223f55cd037c793b2"
   },
   "format_version": 1
 }

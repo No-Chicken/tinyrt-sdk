@@ -125,7 +125,7 @@ def compile_release(manifest, wasm, source_lock, provenance, release_profile, ru
     kwargs.update(key_id=profile['signing_key_id'],private_key=private)
     # Validate metadata, Wasm envelope and maximum input sizes before any process.
     package.build_package(wasm_bytes,b'',**kwargs)
-    if len(assets)>package.MAX_PACKAGE_SIZE:raise ValueError('assets exceed 2 MiB')
+    if len(assets)>package.MAX_PACKAGE_SIZE:raise ValueError('assets exceed the package format limit')
     output=tinyrt.protect_output(output,list(watched),'.trpkg',b'TRPKG001')
     compat=compatibility_identity(lock,prov,profile)
     with tempfile.TemporaryDirectory(prefix='tinyrt-release-') as directory:

@@ -123,7 +123,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/dem
 ## 性能、边界和常见错误
 
 - 清单 `permissions` 是上述位之和，最大63；`memory_pages` 为1..16，每页64 KiB；`budget` 为每回调1..100000条受计量指令。AOT 保留边界、原生栈与循环取消检查，不把指令计量转换成固定设备耗时承诺。
-- 整包≤2 MiB，含签名、section 表、Wasm、AOT、资源和对齐。runtime 配额2 MiB还包含运行时开销和 AOT 映射预留；16页线性内存不意味着这些额外成本免费。
+- 整包（含签名、section 表、Wasm、AOT、资源和对齐）不超过设备 HELLO 报告的包库数据区即可，无单独单包上限；更新需另一段同样大小的连续空闲区。runtime 配额2 MiB还包含运行时开销和 AOT 映射预留；16页线性内存不意味着这些额外成本免费。
 - 一帧最多128条命令，两个 RGB565 函数合计最多提交一张图。把像素工作合到一张图后提交；更大内容用 Host 缩放。长计算分片放在 event，单次回调及时返回。
 - render 中调用资源或时钟设置会失败；KV 状态逻辑放在 init/event/stop；普通帧忘记 clear、混用 skip 与绘制、越界文本/像素、无权限 import 都会失败。不得依赖 WASI、libc、构造器或未声明的 import。
 - `kv_set` 成功先更新 RAM。Host 普通保存按全局5秒合并，正常 stop 强制刷新；断电可能丢失尚未保存的状态。仅保存实际变化。

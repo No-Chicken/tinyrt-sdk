@@ -13,8 +13,9 @@ import package
 import tinyrt
 
 DOCS = ('README.md', 'CHANGELOG.md', 'LICENSES.md')
-MAX_ZIP = 12 * 1024 * 1024
-MAX_EXPANDED = 10 * 1024 * 1024
+# 包本身只受 SDK 格式上限约束；其余文件合计最多约 7 MiB，ZIP 再留 1 MiB 头部余量。
+MAX_EXPANDED = package.MAX_PACKAGE_SIZE + 8 * 1024 * 1024
+MAX_ZIP = MAX_EXPANDED + 1024 * 1024
 
 
 def digest(raw):
@@ -168,7 +169,7 @@ def check_report(raw):
 
 def validate_bundle(raw, public_key, key_id):
     """Local content validation; server account/key authorization is separate."""
-    if len(raw) > MAX_ZIP: raise ValueError('ZIP exceeds 12 MiB')
+    if len(raw) > MAX_ZIP: raise ValueError('ZIP exceeds %d MiB' % (MAX_ZIP >> 20))
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             entries = archive.infolist()
@@ -186,12 +187,12 @@ def validate_bundle(raw, public_key, key_id):
                         or entry.is_dir() or (stat.S_IFMT(mode) not in (0, stat.S_IFREG))
                         or entry.create_version >= 45 or entry.extract_version >= 45):
                     raise ValueError('unsupported ZIP entry: '+name)
-                limit = 2097152 if name == 'package.trpkg' else 1048576 if name.startswith('screenshots/') else 262144 if name == 'build/report.json' else 32768 if name == 'release.json' else 65536
+                limit = package.MAX_PACKAGE_SIZE if name == 'package.trpkg' else 1048576 if name.startswith('screenshots/') else 262144 if name == 'build/report.json' else 32768 if name == 'release.json' else 65536
                 with archive.open(entry) as stream:
                     data = stream.read(limit+1)
                     if len(data) > limit or stream.read(1): raise ValueError('ZIP file exceeds limit: '+name)
                 total += len(data)
-                if total > MAX_EXPANDED: raise ValueError('ZIP exceeds 10 MiB expanded')
+                if total > MAX_EXPANDED: raise ValueError('ZIP exceeds %d MiB expanded' % (MAX_EXPANDED >> 20))
                 files[name] = data
     except (zipfile.BadZipFile, RuntimeError, NotImplementedError) as error:
         raise ValueError('invalid ZIP: '+str(error)) from error

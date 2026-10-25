@@ -17,7 +17,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 
 HEADER_SIZE = 256
-MAX_PACKAGE_SIZE = 0x200000
+# 格式健全性上限（16 MiB Flash）；实际单包上限是设备 HELLO 报告的包库数据区。
+MAX_PACKAGE_SIZE = 0x1000000
 P256_ORDER = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
 DOMAIN = b"TinyRT-package-v1\0"
 
@@ -142,7 +143,7 @@ def _assemble(wasm, assets, *, native=None, native_metadata=None, include_wasm=T
         pad = (-cursor) % 4; body += bytes(pad); cursor += pad
         table += struct.pack('<4I',kind,0,cursor,len(content))
         body += content; cursor += len(content)
-    if cursor > MAX_PACKAGE_SIZE: raise ValueError('complete package exceeds 2 MiB')
+    if cursor > MAX_PACKAGE_SIZE: raise ValueError('complete package exceeds the 16 MiB format limit')
     struct.pack_into('<HH5I',header,8,1,256,cursor,256,len(sections),16,0)
     payload = table + body; header[152:184] = hashlib.sha256(payload).digest()
     signature = metadata['private_key'].sign(DOMAIN+header[:192],ec.ECDSA(hashes.SHA256(),deterministic_signing=True))

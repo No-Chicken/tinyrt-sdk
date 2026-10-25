@@ -108,10 +108,11 @@ def protect_output(output, inputs, suffix, magic):
             if prefix not in accepted:
                 raise ValueError(f'existing output is not a {suffix} artifact; choose a new path')
             if prefix==b'TRPKG001':
+                import package
                 header=prefix+stream.read(248)
                 if (len(header)!=256 or struct.unpack_from('<HH',header,8)!=(1,256)
                         or struct.unpack_from('<I',header,12)[0]!=output.stat().st_size
-                        or not 272<=output.stat().st_size<=2097152):
+                        or not 272<=output.stat().st_size<=package.MAX_PACKAGE_SIZE):
                     raise ValueError('existing format-1 output has an incomplete or inconsistent header')
     return output
 

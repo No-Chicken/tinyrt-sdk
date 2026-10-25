@@ -10,6 +10,8 @@ import unittest
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 TOOL=Path(__file__).resolve().parents[2]/"tools"/"package.py"
+sys.path.insert(0,str(TOOL.parent))
+import package
 ORDER=0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
 class PackageCLI(unittest.TestCase):
     def setUp(self):
@@ -97,7 +99,7 @@ class PackageCLI(unittest.TestCase):
         self.assertNotEqual(self.invoke(*self.base).returncode,0)
         self.wasm.write_bytes(b"bad-wasm"*4)
         self.assertNotEqual(self.invoke(*self.base,"--development-key").returncode,0)
-        self.wasm.write_bytes(b"\0asm\1\0\0\0"+bytes(0x200000))
+        self.wasm.write_bytes(b"\0asm\1\0\0\0"+bytes(package.MAX_PACKAGE_SIZE))
         self.assertNotEqual(self.invoke(*self.base,"--development-key").returncode,0)
         self.assertFalse(self.output.exists())
     def test_output_cannot_overwrite_wasm_or_signing_key(self):

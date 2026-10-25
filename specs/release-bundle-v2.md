@@ -57,8 +57,9 @@ build/report.json
 ```
 
 No enclosing folder or directory entries. Producer uses ZIP_STORED with fixed
-regular-file attributes, no extras/comments/encryption/ZIP64. Limits: ZIP 12 MiB,
-expanded 10 MiB, package 2 MiB, manifest 32 KiB, report 256 KiB. Each file's hash
+regular-file attributes, no extras/comments/encryption/ZIP64. Limits: ZIP 25 MiB,
+expanded 24 MiB, package 16 MiB (SDK format ceiling; devices accept up to their
+reported package area), manifest 32 KiB, report 256 KiB. Each file's hash
 and size use final bytes. Report always accompanies successful output, though
 website Schema permits report=null. Steps use name/result and optional string
 detail. Device verification and rights come solely from developer declarations.

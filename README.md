@@ -76,7 +76,7 @@ python tools/tinyrt.py validate my-game/build/demo.my-game.trpkg --development-k
 
 `new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单、资源或签名输入；损坏产物需选择新路径。
 
-`app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为签名 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入 2 MiB 上限。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
+`app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为签名 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入整包长度。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
 
 `run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
 
@@ -151,7 +151,7 @@ source-lock、provenance、release profile、按序runtime补丁和签名钥由�
 
 当前只支持section包格式1，无`--format`参数；旧内部布局需要重建，应用`version`整数与平台版本独立。
 
-拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整签名包最多 2 MiB（2097152 字节），资源计入总长；安装时还会检查目标宿主 HELLO 公布的实际包上限，旧宿主仍可拒绝超出其容量的包。Flash 容量增加不改变 ABI 1 的 16 页线性内存与每回调 100000 指令限额；较大的 Wasm 仍需通过宿主运行时的独立内存检查。
+拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整签名包没有单独的 2 MiB 上限，资源计入总长；`pack` 只做 16 MiB 格式检查，安装时以目标宿主 HELLO 公布的包库数据区为准（S31 V2 为 3960 KiB，S3 V1 为 4984 KiB）。更新同一应用需要再有一段同样大小的连续空闲区，超过数据区一半的包需先卸载再安装。Flash 容量增加不改变 ABI 1 的 16 页线性内存与每回调 100000 指令限额；较大的 Wasm 仍需通过宿主运行时的独立内存检查。
 
 `assets` 指定包内经过签名的原始字节。`asset_read(offset,ptr,len)`在init/event中只读当前包资源，每次最多4096字节；尚无通用私有文件系统API。KV 是每应用 16 个 i32，不能把它描述为文件系统。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
 
