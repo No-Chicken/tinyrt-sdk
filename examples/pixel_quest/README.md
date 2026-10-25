@@ -32,6 +32,7 @@ python tools/tinyrt.py build examples/pixel_quest --cc path/to/zig.exe
 python tools/tinyrt.py run examples/pixel_quest --runner path/to/tinyrt-run.exe --events examples/pixel_quest/events.json --frames 500,6600,9000 --output examples/pixel_quest/build/preview
 python tools/tinyrt.py pack examples/pixel_quest --aot --development-key --target esp32s31 --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe
 python tools/tinyrt.py validate examples/pixel_quest/build/demo.pixel-quest.trpkg --development-key
+python tools/tinyrt.py release examples/pixel_quest --target esp32s31 --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe --development-key
 ```
 
 原生测试校验每帧记录格式、图集与资源边界、ASCII 文字，并用确定性自动驾驶不掉命走完整关，再覆盖左右按住移动、取消输入、长短跳、踩甲虫、掉坑复活、游戏结束与最高分保存。桌面截图来自真实 WAMR 解释器，不代表设备帧率；真机安装后需确认 `selected_backend=2`。

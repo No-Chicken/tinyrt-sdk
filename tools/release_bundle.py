@@ -248,12 +248,13 @@ def make_release(args):
         if args.wamrc and args.variant != 'wasm-aot': raise ValueError('--wamrc requires --variant wasm-aot')
         cc, toolchain = compiler_info(args.cc)
         runner = local_runner(args.runner)
+        target = getattr(args,'target','esp32s3')
         wamrc = None
         if args.variant == 'wasm-aot':
             import development_aot
             path = Path(args.wamrc or tinyrt.ROOT/'bin/wamrc.exe').resolve()
             if not path.is_file(): raise ValueError('release needs local pinned AOT compiler; pass --wamrc')
-            wamrc = development_aot.compiler_path(json.loads(development_aot.PROFILE.read_bytes()),path)
+            wamrc = development_aot.compiler_path(json.loads(development_aot.PROFILE.with_name(target+'.json').read_bytes()),path)
         revision, built_at = build_identity(args)
         version = str(app['version'])
         name = f'{app["app_id"]}-v{version}-{args.variant}'
@@ -291,7 +292,7 @@ def make_release(args):
             if args.variant == 'wasm-aot':
                 import development_aot
                 package_path = stage_root/'package.trpkg'
-                development_aot.pack_development(root,wasm,package_path,wamrc)
+                development_aot.pack_development(root,wasm,package_path,wamrc,target=target)
                 package_raw = package.read_bounded(package_path)
             else:
                 package_raw = package.build_package(wasm_raw,
@@ -323,6 +324,7 @@ def make_release(args):
         stage = 'manifest'
         command = 'python tools/tinyrt.py release '+('examples/'+root.name if root == tinyrt.ROOT/'examples'/root.name else '<app>')
         command += ' --variant '+args.variant
+        if args.variant == 'wasm-aot': command += ' --target '+target
         if args.development_key: command += ' --development-key'
         elif args.key: command += ' --key <key> --key-id '+str(args.key_id)
         manifest = dict(schema_version=2,app_id=info['app_id'],title=info['title'],version=info['version'],

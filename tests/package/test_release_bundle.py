@@ -249,6 +249,12 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(backups[0].read_bytes(),previous)
         self.assertTrue(archive.is_file())
 
+    def test_release_accepts_s31_target(self):
+        from contextlib import redirect_stdout
+        with patch.object(self.release,'make_release',return_value={}) as release, redirect_stdout(io.StringIO()):
+            self.assertEqual(tinyrt.main(['release',str(self.app),'--development-key','--target','esp32s31']),0)
+        self.assertEqual(release.call_args.args[0].target,'esp32s31')
+
     def test_release_defaults_to_aot_delivery(self):
         from contextlib import redirect_stdout
         with patch.object(self.release,'make_release',return_value={}) as release, redirect_stdout(io.StringIO()):
