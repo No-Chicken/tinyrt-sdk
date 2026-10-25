@@ -24,7 +24,7 @@ Windows 没有 make 时直接使用 Python 命令。Makefile 默认使用开发�
 命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、签名、网站 v2 清单和 ZIP 自检。
 本项目只交付 AOT：Flappy 输出 `examples/flappy/release/<app_id>-v<version>-wasm-aot.zip` 及同名展开目录。
 ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单和构建报告。
-release 默认为 wasm-aot，`--wamrc` 指定 SDK 固定摘要的本地 ESP32-S3 AOT 编译器；也可放在 SDK bin/wamrc.exe。
+release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s3`）。S3 用 `--wamrc` 指定 SDK 固定摘要的本地编译器，也可放在 SDK bin/wamrc.exe；`--target esp32s31` 默认使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`。
 `--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留它用于回退；独立 Wasm ZIP 不作为本项目交付件。
 失败保留此前完整交付件；诊断报告写入应用 `build/release-report.json`（安全可写时）。
 两个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。

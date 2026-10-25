@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import struct
 import sys
 import tempfile
 import unittest
@@ -51,7 +52,7 @@ class ReleaseTests(unittest.TestCase):
         Image.new('RGB', (210, 210), '#101418').save(self.app / 'cover.png')
         self.args = argparse.Namespace(app=self.app, cc='compiler', runner=self.app/'runner',
                                        variant='wasm', output=None, channel='development',
-                                       development_key=True, key=None, key_id=1, wamrc=None,
+                                       development_key=True, key=None, key_id=1, wamrc=None, target='esp32s3',
                                        preview_ms=60000, sdk_revision='a'*40, built_at='2026-10-03T00:00:00Z')
         self.args.runner.write_bytes(b'local runner')
 
@@ -260,6 +261,25 @@ class ReleaseTests(unittest.TestCase):
         with patch.object(self.release,'make_release',return_value={}) as release, redirect_stdout(io.StringIO()):
             self.assertEqual(tinyrt.main(['release',str(self.app),'--development-key']),0)
         self.assertEqual(release.call_args.args[0].variant,'wasm-aot')
+
+    def test_release_s31_target_uses_s31_profile_and_bundled_compiler(self):
+        import development_aot
+        self.args.variant = 'wasm-aot'; self.args.target = 'esp32s31'
+        pin = json.loads((ROOT/'tools/toolchains/esp32s31.json').read_bytes())
+        compiler = (ROOT/'tools/toolchains/esp32s31/windows-x64/wamrc.exe').resolve()
+        calls = []
+        def compile(command, **kwargs):
+            calls.append(command)
+            Path(command[command.index('-o')+1]).write_bytes(b'\0aot'+struct.pack('<I',pin['aot_format'])+b'native-test-output')
+        with patch.object(development_aot.subprocess, 'run', side_effect=compile):
+            result = self.run_release()
+        self.assertEqual(Path(calls[0][0]), compiler)
+        self.assertEqual(calls[0][1:-3], development_aot.target_options('esp32s31'))
+        manifest = self.release.validate_bundle(Path(result['zip']).read_bytes(), package.development_key().public_key(), 1)
+        self.assertEqual(manifest['variant'], 'wasm-aot')
+        self.assertEqual(manifest['requirements']['aot'],
+                         dict(target_arch='riscv32', target_cpu='generic-rv32', compat_id=pin['compat_id']))
+        self.assertIn('--target esp32s31', manifest['build']['command'])
 
     def test_sdk_public_version_is_initial_0001(self):
         from contextlib import redirect_stdout

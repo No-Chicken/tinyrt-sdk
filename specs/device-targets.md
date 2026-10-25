@@ -23,6 +23,6 @@ model; it does not remove those checks. Target/options/compiler digests must
 match the firmware compatibility profile. The package still contains source
 Wasm for authentication, but S31 bring-up firmware requires AOT to start games.
 
-Current website release ZIP schemas/pipeline remain ESP32-S3-specific. This
-change enables S31 development package delivery and bench verification only;
-production S31 signing and website variants require separate release work.
+`release --target esp32s31 --development-key` builds the website v2 ZIP with
+the same S31 profile; without `--wamrc` it uses the bundled compiler above.
+Production S31 signing still requires the controlled `release_compile.py` flow.

@@ -35,7 +35,7 @@ $env:TINYRT_WAMRC_S31 = (Resolve-Path tinyrt-sdk/tools/toolchains/esp32s31/windo
 python tools/cli/app.py build tinyrt-sdk/examples/flappy --target s31
 ```
 
-当前 SDK `release` 命令仍使用 S3 profile；仅替换 `--wamrc` 不会使它生成 S31 网站 ZIP。S31 包与网站交付流程的范围见 [设备目标](../../../../specs/device-targets.md)。
+生成 S31 网站 ZIP 用 `python tools/tinyrt.py release <app> --target esp32s31 --development-key`，未传 `--wamrc` 时默认使用本目录的编译器。S31 包与网站交付流程的范围见 [设备目标](../../../../specs/device-targets.md)。
 
 ## 网站对接
 

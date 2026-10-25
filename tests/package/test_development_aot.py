@@ -35,7 +35,7 @@ class DevelopmentAOT(unittest.TestCase):
             Image.new('RGB',(210,210),'red').save(root/'cover.png')
             metadata['cover']='cover.png'
             manifest.write_text(json.dumps(metadata),encoding='utf-8')
-            profile=json.loads(tool.PROFILE.read_text(encoding='utf-8'))
+            profile=json.loads(tool.profile_path('esp32s3').read_text(encoding='utf-8'))
             profile['compiler']['sha256']=hashlib.sha256(compiler.read_bytes()).hexdigest()
             pin=root/'pin.json';pin.write_text(json.dumps(profile),encoding='utf-8')
             output=root/'game.trpkg';calls=[]
@@ -44,7 +44,7 @@ class DevelopmentAOT(unittest.TestCase):
                 self.assertEqual(command[1:10],tool.OPTIONS)
                 self.assertEqual(Path(command[-1]).read_bytes(),wasm.read_bytes())
                 Path(command[command.index('-o')+1]).write_bytes(b'\0aot'+struct.pack('<I',5)+b'native-test-output')
-            with patch.object(tool,'PROFILE',pin),patch.object(tool.subprocess,'run',side_effect=compile):
+            with patch.object(tool,'profile_path',return_value=pin),patch.object(tool.subprocess,'run',side_effect=compile):
                 tool.pack_development(manifest,wasm,output,compiler)
                 checked=package.validate_envelope(output.read_bytes(),package.development_key().public_key(),1)
                 self.assertEqual(checked['aot']['compat_id'],profile['compat_id'])

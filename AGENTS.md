@@ -5,10 +5,10 @@ SDK 对外版本唯一来源是根目录 VERSION，`python tools/tinyrt.py --ver
 
 ## 本项目设备交付约定
 
-S31 应用编译统一使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`，从 SDK 根目录执行 `pack --aot --development-key --target esp32s31 --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe`。不得引用个人机器的 `tmp/` 编译器路径；SDK 按 `tools/toolchains/esp32s31.json` 强制核验摘要。来源、许可证与网站登记说明见 [S31 编译器](tools/toolchains/esp32s31/windows-x64/README.md)。S31 网站 ZIP 使用 `release --target esp32s31 --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe`；profile 与编译器须匹配目标。
+S31 应用编译统一使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`，从 SDK 根目录执行 `pack --aot --development-key --target esp32s31 --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe`。不得引用个人机器的 `tmp/` 编译器路径；SDK 按 `tools/toolchains/esp32s31.json` 强制核验摘要。来源、许可证与网站登记说明见 [S31 编译器](tools/toolchains/esp32s31/windows-x64/README.md)。S31 网站 ZIP 用 `release --target esp32s31`，默认取同一个仓库内编译器。
 
 默认交付 AOT 包：`pack --aot --development-key --wamrc <匹配编译器>`；网站发布使用
-`release --variant wasm-aot --wamrc <匹配编译器>`。桌面 WAMR 的 Wasm 仅用于预览和测试。
+`release --variant wasm-aot --target <esp32s3|esp32s31> --wamrc <匹配编译器>`。桌面 WAMR 的 Wasm 仅用于预览和测试。
 安装前确认宿主 `aot_enabled=true`，开发包还需要 `development_aot=true`；安装后查询
 APP_INFO，必须 `selected_backend=2`、`fallback_reason=0`，不得以 Wasm 回退作为设备验收。
 

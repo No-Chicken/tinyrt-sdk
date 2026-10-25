@@ -11,7 +11,7 @@ import urllib.request
 import package
 import tinyrt
 
-PROFILE=Path(__file__).resolve().parent/'toolchains/esp32s3.json'
+TOOLCHAINS=Path(__file__).resolve().parent/'toolchains'
 OPTIONS=['--target=xtensa','--cpu=esp32s3','--bounds-checks=1','--stack-bounds-checks=1',
          '--opt-level=3','--size-level=0','--disable-simd','--disable-ref-types','--enable-loop-poll']
 
@@ -23,6 +23,11 @@ def target_options(target):
         options[5]='--size-level=3'
         return options
     raise ValueError('unsupported AOT target: '+str(target))
+
+
+def profile_path(target):
+    target_options(target)
+    return TOOLCHAINS/(target+'.json')
 
 
 def sha(raw):return hashlib.sha256(raw).hexdigest()
@@ -56,12 +61,12 @@ def pack_development(manifest, wasm, output, wamrc=None, target='esp32s3'):
     if not app['app_id'].startswith('demo.') or len(app['app_id'])<=5:
         raise ValueError('development AOT app_id must be a demo. descendant')
     options=target_options(target)
-    profile_path=PROFILE if target=='esp32s3' else PROFILE.with_name('esp32s31.json')
-    pin_bytes=profile_path.read_bytes();pin=json.loads(pin_bytes)
+    profile=profile_path(target)
+    pin=json.loads(profile.read_bytes())
     if pin['schema']!=1 or pin['options']!=options or pin['options_sha256']!=sha(json.dumps(options,separators=(',',':')).encode()):
         raise ValueError('SDK toolchain profile must enable bounds, stack and loop-poll checks')
     compiler=compiler_path(pin,wamrc)
-    paths=[manifest,Path(wasm).resolve(),profile_path,compiler]
+    paths=[manifest,Path(wasm).resolve(),profile,compiler]
     paths += [tinyrt.local_file(manifest.parent,name) for name in app['sources']]
     asset=tinyrt.local_file(manifest.parent,app['assets']) if app.get('assets') else None
     if asset:paths.append(asset)

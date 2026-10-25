@@ -252,9 +252,11 @@ def make_release(args):
         wamrc = None
         if args.variant == 'wasm-aot':
             import development_aot
-            path = Path(args.wamrc or tinyrt.ROOT/'bin/wamrc.exe').resolve()
+            # The S31 compiler ships with the SDK; the S3 compiler is placed in bin/ by the developer.
+            bundled = tinyrt.ROOT/('tools/toolchains/esp32s31/windows-x64/wamrc.exe' if target == 'esp32s31' else 'bin/wamrc.exe')
+            path = Path(args.wamrc or bundled).resolve()
             if not path.is_file(): raise ValueError('release needs local pinned AOT compiler; pass --wamrc')
-            wamrc = development_aot.compiler_path(json.loads(development_aot.PROFILE.with_name(target+'.json').read_bytes()),path)
+            wamrc = development_aot.compiler_path(json.loads(development_aot.profile_path(target).read_bytes()),path)
         revision, built_at = build_identity(args)
         version = str(app['version'])
         name = f'{app["app_id"]}-v{version}-{args.variant}'
