@@ -112,10 +112,11 @@ class PackageTests(unittest.IsolatedAsyncioTestCase):
         raw[56:60] = b'demo'
         return bytes(raw)
 
-    async def test_two_mib_identity_and_old_device_rejection_before_prepare(self):
-        data = self.data(2097152)
-        self.assertEqual(cli.protocol.package_info(data)[68:], bytes.fromhex('00002000'))
-        with self.assertRaises(ValueError): cli.protocol.package_info(self.data(2097153))
+    async def test_format_limit_identity_and_old_device_rejection_before_prepare(self):
+        limit = cli.protocol.MAX_PACKAGE_SIZE
+        data = self.data(limit)
+        self.assertEqual(cli.protocol.package_info(data)[68:], struct.pack('<I', limit))
+        with self.assertRaises(ValueError): cli.protocol.package_info(self.data(limit + 1))
         class OldPeer:
             calls = []
             async def management(self, opcode, payload=b''):
