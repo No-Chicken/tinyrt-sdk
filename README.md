@@ -165,6 +165,7 @@ source-lock、provenance、release profile、按序runtime补丁和签名钥由�
 
 - [Flappy Bird / 圆屏 Flappy Bird](examples/flappy/README.md)：466×466 满屏像素场景，触摸或 KEY1 起跳、碰撞重试、最高分保存。使用经典精灵与音效；素材授权状态见示例 NOTICE。
 - [Wave](examples/wave_sim/README.md)：圆屏二维粒子水面，支持 IMU 重力、长按换色与 KEY1 掀浪。
+- [Pixel Quest](examples/pixel_quest/README.md)：原创横版平台跳跃，倾斜或按住左右侧移动、点按起跳，TILEMAP 关卡窗口加精灵，美术与音效由脚本原创生成。
 
 BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需要 Bleak；Windows 配对还需要对应 WinRT Python 包。设备配对、信任集和具体传输 profile 由产品配置提供，应用构建不依赖这些包。
 
@@ -207,6 +208,7 @@ python -m unittest discover -s tests/sdk -v
 python -m unittest discover -s tests/transport -v
 python -m unittest discover -s tests/package -v
 python tests/flappy/run_native.py --cc path/to/zig.exe
+python tests/pixel_quest/run_native.py --cc path/to/zig.exe
 python tools/tinyrt.py build examples/flappy --cc path/to/zig.exe
 ```
 

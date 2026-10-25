@@ -180,9 +180,11 @@ class SDKTests(unittest.TestCase):
         app=self.sdk.load_manifest(ROOT/'examples/flappy/app.json')
         self.assertEqual(app['permissions'],31)
         self.assertEqual(app['app_id'],'demo.sky-hop')
-        self.assertEqual(sorted(p.name for p in (ROOT/'examples').iterdir() if p.is_dir()),['flappy','wave_sim'])
+        self.assertEqual(sorted(p.name for p in (ROOT/'examples').iterdir() if p.is_dir()),['flappy','pixel_quest','wave_sim'])
         wave=self.sdk.load_manifest(ROOT/'examples/wave_sim/app.json')
         self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',13))
+        quest=self.sdk.load_manifest(ROOT/'examples/pixel_quest/app.json')
+        self.assertEqual((quest['app_id'],quest['version'],quest['permissions']),('demo.pixel-quest',1,63))
         self.assertEqual(app['version'],6)
 
 if __name__=='__main__':unittest.main()

@@ -1,0 +1,37 @@
+{
+  "summary": "原创圆屏横版跳跃：倾斜移动、点按起跳，收集宝石、踩甲虫、穿过传送门。",
+  "category": "game",
+  "tags": [
+    "平台跳跃",
+    "像素",
+    "IMU"
+  ],
+  "controls": [
+    "倾斜设备左右移动，或按住屏幕左/右侧",
+    "点按屏幕中间起跳，按住跳得更高",
+    "从上方落下踩扁甲虫；避开尖刺与深坑",
+    "短按 KEY1 返回应用大厅；支持边缘侧滑返回"
+  ],
+  "publisher_display": "EEBadge 示例",
+  "release_notes": "v1：首个版本，一整关、检查点、3 条命、宝石与最高分保存。",
+  "full_bleed": true,
+  "rights": {
+    "status": "unverified",
+    "note": "角色、图块与音效均由 prepare_assets.py 原创生成，见 LICENSES.md；发布前由发布方确认。"
+  },
+  "device_verified": false,
+  "screenshots": [
+    {
+      "at_ms": 500,
+      "caption": "标题"
+    },
+    {
+      "at_ms": 6600,
+      "caption": "石阶与甲虫"
+    },
+    {
+      "at_ms": 9000,
+      "caption": "木桥收宝石"
+    }
+  ]
+}
