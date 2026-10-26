@@ -13,7 +13,7 @@ static int audio_count,haptic_count,frames,texts_in_frame,frame_open;
 static unsigned char resources[200000];
 static uint32_t resource_length;
 uint32_t now_ms(void){return time_ms;}
-int32_t input_events(uint32_t mask){assert(mask==(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION));return 0;}
+int32_t input_events(uint32_t mask){assert(mask==(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD));return 0;}
 int32_t clock_interval(int32_t ms){assert(ms==33);return 0;}
 int32_t kv_get(uint32_t key,int32_t fallback){assert(key<16);return stored[key]?stored[key]:fallback;}
 int32_t kv_set(uint32_t key,int32_t value){assert(key==0);stored[key]=value;return 0;}
@@ -73,6 +73,9 @@ int32_t draw_text_box(int32_t x,int32_t y,int32_t w,int32_t h,const char *s,uint
     assert((px==18||px==24||px==36||px==48)&&align==1&&++texts_in_frame<=4);return 0;
 }
 static void step(void){time_ms+=33;assert(tinyrt_event(TINYRT_CLOCK_EVENT,0,0,0)==0);assert(tinyrt_render()==0);}
+static void pad(uint32_t buttons,int lx){
+    assert(tinyrt_event(TINYRT_EV_GAMEPAD,(int32_t)buttons,(int32_t)(uint8_t)(int8_t)lx,1<<16)==0);
+}
 static void tap(int x){assert(tinyrt_event(TINYRT_TOUCH_PRESS,x,233,0)==0);assert(tinyrt_event(TINYRT_TOUCH_RELEASE,x,233,0)==0);}
 
 /* 自动驾驶：前方有墙、坑、尖刺或甲虫时起跳；头顶有障碍且甲虫逼近时后退。 */
@@ -157,6 +160,35 @@ int main(int argc,char **argv){
     enemy_t *e=&enemies[0];e->state=1;e->x=px+2*SUB;e->y=py-30*SUB;e->vx=0;
     int s0=score;pvy=100;py=e->y-PH*SUB+2*SUB;
     step();assert(e->state==2&&score==s0+200&&pvy<0);
+
+    /* 手柄：十字键与左摇杆移动、倾斜失效；A 按住更高、轻点更低。 */
+    for(int i=0;i<30;i++)step();
+    pad(0,0);assert(pad_on&&tilt==0);
+    assert(tinyrt_event(TINYRT_EV_MOTION,-900,0,1000)==0);assert(tilt==0&&input_dir()==0);
+    int gx=px;pad(TINYRT_PAD_RIGHT,0);for(int i=0;i<10;i++)step();
+    assert(px>gx&&!facing_left);
+    pad(0,-127);assert(input_dir()==-RUN_MAX);
+    pad(0,20);assert(input_dir()==0);
+    pad(0,0);for(int i=0;i<20;i++)step();
+    assert(on_ground&&pvx==0);int pad_ground=py;
+    pad(TINYRT_PAD_A,0);pad(0,0);int pad_tap=py;
+    for(int i=0;i<30;i++){step();if(py<pad_tap)pad_tap=py;}
+    pad(TINYRT_PAD_A,0);int pad_hold=py;
+    for(int i=0;i<30;i++){step();if(py<pad_hold)pad_hold=py;}
+    pad(0,0);
+    assert(pad_ground-pad_hold>pad_ground-pad_tap+16*SUB);
+
+    /* 游戏中拔掉手柄：全部松开并暂停，点屏幕继续，之后恢复倾斜。 */
+    for(int i=0;i<20;i++)step();
+    pad(TINYRT_PAD_A|TINYRT_PAD_LEFT,0);assert(jump_held);
+    assert(tinyrt_event(TINYRT_EV_GAMEPAD,0,0,0)==0);
+    assert(!pad_on&&paused&&!jump_held&&pad_buttons==0);
+    int paused_x=px,paused_y=py;for(int i=0;i<10;i++)step();
+    assert(px==paused_x&&py==paused_y);
+    tap(233);assert(!paused&&state==ST_PLAY);
+    assert(tinyrt_event(TINYRT_EV_MOTION,-900,0,1000)==0);assert(tilt!=0);
+    for(int i=0;i<10;i++)assert(tinyrt_event(TINYRT_EV_MOTION,0,0,1000)==0);
+    for(int i=0;i<30;i++)step();
 
     /* 掉坑：失去一条命并在起点或检查点复活；三条命用完结束并存档。 */
     for(int i=0;i<60;i++)step();

@@ -9,11 +9,12 @@
   "controls": [
     "倾斜设备左右移动，或按住屏幕左/右侧",
     "点按屏幕中间起跳，按住跳得更高",
+    "外设手柄：十字键或左摇杆移动，A 起跳，START 开始",
     "从上方落下踩扁甲虫；避开尖刺与深坑",
     "短按 KEY1 返回应用大厅；支持边缘侧滑返回"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "v1：首个版本，一整关、检查点、3 条命、宝石与最高分保存。",
+  "release_notes": "v2：支持外设手柄，拔掉手柄自动暂停。",
   "full_bleed": true,
   "rights": {
     "status": "unverified",

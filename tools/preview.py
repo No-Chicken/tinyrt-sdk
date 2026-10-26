@@ -132,9 +132,19 @@ def run(app,events=None,frames='0,330',output=None,runner=None,step_ms=None):
     points={ms:[] for ms in captures}
     for event in scripted:
         if not isinstance(event,dict):raise ValueError('event must be an object')
-        expected={'ms','kind','x','y','arg'} if event.get('kind')=='motion' else {'ms','kind','x','y'}
+        pad_fields=('buttons','lx','ly','rx','ry','lt','rt','connected')
+        expected={'ms','kind','x','y','arg'} if event.get('kind')=='motion' else \
+            {'ms','kind',*pad_fields} if event.get('kind')=='gamepad' else {'ms','kind','x','y'}
         if set(event)!=expected:raise ValueError('event has missing or unexpected fields')
         ms=tinyrt.integer(event['ms'],0,captures[-1],'event time')
+        if event['kind']=='gamepad':
+            # 与宿主相同：bit16..23 由宿主保留（HOME），摇杆 -127..127，扳机 0..255。
+            buttons=tinyrt.integer(event['buttons'],0,0xFFFFFFFF,'buttons')
+            if buttons&0x00FF0000:raise ValueError('gamepad buttons bit16..23 are reserved')
+            values=[tinyrt.integer(event[name],-127,127,name) for name in ('lx','ly','rx','ry')]
+            values+=[tinyrt.integer(event[name],0,255,name) for name in ('lt','rt')]
+            values.append(tinyrt.integer(event['connected'],0,1,'connected'))
+            points.setdefault(ms,[]).append('gamepad '+' '.join(map(str,[buttons,*values])));continue
         if event['kind']=='motion':
             values=[tinyrt.integer(event[name],-16000,16000,name) for name in ('x','y','arg')]
             points.setdefault(ms,[]).append('motion '+' '.join(map(str,values)));continue

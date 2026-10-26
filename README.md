@@ -121,6 +121,24 @@ source-lock、provenance、release profile、按序runtime补丁和签名钥由�
 宿主在应用退出、异常或切换时停止马达。S31 支持，S3 与桌面预览返回不支持。
 需要支持这些 import 的宿主与桌面 runner；旧宿主拒绝新 import，旧应用无需增加权限。
 
+## 外设手柄
+
+吧唧经 pogo 外设口接手柄时，输入以 `TINYRT_EV_GAMEPAD`（kind 8）送给前台应用，需要 INPUT 权限。
+在 `tinyrt_init` 里把 `TINYRT_IN_GAMEPAD`（0x100）或进订阅掩码，可与触摸、KEY1、MOTION 同时订阅：
+
+```c
+input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
+```
+
+每个事件都是完整状态：`x` 为按键位图（`TINYRT_PAD_A`…`TINYRT_PAD_RIGHT`、`TINYRT_PAD_FN(1..8)`，bit16..23 恒为 0），
+`y` 为四个 int8 摇杆（`TINYRT_PAD_LX/LY/RX/RY(y)`，+X 右、+Y 下），`arg` 为扳机与标志
+（`TINYRT_PAD_LT_VALUE/RT_VALUE(arg)`、`TINYRT_PAD_CONNECTED(arg)`）。按键变化保序送达，一次轻点的按下和松开
+即使落在同一帧也都会收到；摇杆变化会合并。外设的 HOME 键由宿主保留，用于返回大厅；切换应用时仍按住的键要松开后才会出现。
+订阅时外设已连接，宿主会立即补发一次当前状态；拔掉外设时收到 `CONNECTED=0` 且全部松开，应用自行决定是否暂停。
+
+**兼容性**：不支持手柄事件的旧固件会拒绝 0x100 并终止应用，重新订阅也无法降级。订阅手柄的应用要求新固件，
+请在 CHANGELOG 与 listing 中注明。桌面预览的事件脚本格式见 [specs/gamepad.md](specs/gamepad.md)。
+
 ## app.json
 
 ```json

@@ -63,8 +63,11 @@ static int checkpoint_on,state_ticks;
 static int cam_x;
 static int bump_col=-1,bump_row,bump_ticks;
 static uint32_t last_ms,remainder,ticks;
-/* 输入：倾斜 IMU 或按住屏幕左/右侧为方向，点中间跳；KEY1 留给宿主返回大厅。 */
+/* 输入：倾斜 IMU 或按住屏幕左/右侧为方向，点中间跳；KEY1 留给宿主返回大厅。
+ * 接上外设手柄后改用十字键/左摇杆和 A，不再读倾斜；游戏中拔掉手柄自动暂停。 */
 static int touch_zone,tilt;   /* zone: 0 无 1 左 2 跳 3 右 */
+static int pad_on,pad_lx,paused;
+static uint32_t pad_buttons;
 static int frame_ready;
 
 #define SFX(name) do { if(audio_play(SOUND_##name##_OFFSET,SOUND_##name##_LENGTH,16000)<0) return -1; } while (0)
@@ -212,6 +215,14 @@ static int touch_tiles(void) {
     return 0;
 }
 static int input_dir(void) {
+    if(pad_on) {
+        if(pad_buttons&TINYRT_PAD_LEFT) return -RUN_MAX;
+        if(pad_buttons&TINYRT_PAD_RIGHT) return RUN_MAX;
+        int a=pad_lx<0?-pad_lx:pad_lx;
+        if(a<=24) return 0;   /* 摇杆回中死区；有手柄时不读倾斜 */
+        int v=(a-24)*RUN_MAX/(127-24);
+        return pad_lx<0?-v:v;
+    }
     if(touch_zone==1) return -RUN_MAX;
     if(touch_zone==3) return RUN_MAX;
     int a=tilt<0?-tilt:tilt;
@@ -399,11 +410,14 @@ int32_t tinyrt_render(void) {
     D(gfx_begin(2u<<TINYRT_GFX_SCALE_SHIFT));
     D(gfx_submit(gfx.bytes,gfx_len));
     D(gfx_end());
-    if(state==ST_TITLE) {
+    if(paused) {
+        D(text(190,48,"PAUSED",0xffd23f,36));
+        D(text(240,30,"TAP OR PRESS A",0xffffff,18));
+    } else if(state==ST_TITLE) {
         D(text(170,56,"PIXEL QUEST",0xffd23f,48));
-        D(text(232,30,"TILT OR EDGES: MOVE",0xffffff,18));
-        D(text(262,30,"TAP CENTER: JUMP",0xffffff,18));
-        if((ticks/15)&1) D(text(390,36,"TAP TO START",0xffffff,24));
+        D(text(232,30,pad_on?"D-PAD OR STICK: MOVE":"TILT OR EDGES: MOVE",0xffffff,18));
+        D(text(262,30,pad_on?"A: JUMP":"TAP CENTER: JUMP",0xffffff,18));
+        if((ticks/15)&1) D(text(390,36,pad_on?"PRESS START":"TAP TO START",0xffffff,24));
     } else if(state==ST_OVER) {
         D(text(176,48,"GAME OVER",0xff6070,36));
         D(text(220,30,"SCORE",0xffffff,18));
@@ -419,6 +433,7 @@ int32_t tinyrt_render(void) {
 /* ---------- 回调 ---------- */
 static int press_jump(void) { jump_buffer=5;jump_held=1;return 0; }
 static int start_or_jump(int x) {
+    if(paused) { paused=0;last_ms=now_ms();return 0; }
     if(state==ST_TITLE) { new_game();state=ST_PLAY;invuln=0;touch_zone=0;return 0; }
     if(state==ST_OVER||state==ST_CLEAR) {
         if(state_ticks<=30) return 0;
@@ -430,6 +445,26 @@ static int start_or_jump(int x) {
     return 0;
 }
 static void release_hold(void) { touch_zone=0;jump_held=0; }
+static int on_gamepad(uint32_t buttons,int32_t sticks,int32_t arg) {
+    if(!TINYRT_PAD_CONNECTED(arg)) {
+        /* 游戏中拔掉手柄：暂停，之后恢复倾斜和触屏操作。 */
+        if(pad_on&&state==ST_PLAY) paused=1;
+        pad_on=0;pad_buttons=0;pad_lx=0;jump_held=0;
+        return 0;
+    }
+    if(!pad_on) { pad_on=1;tilt=0;touch_zone=0; }
+    uint32_t pressed=buttons&~pad_buttons,released=pad_buttons&~buttons;
+    pad_buttons=buttons;pad_lx=TINYRT_PAD_LX(sticks);
+    if(pressed&TINYRT_PAD_START) {
+        if(paused||state!=ST_PLAY) return start_or_jump(233);
+    }
+    if(pressed&TINYRT_PAD_A) {
+        if(paused||state!=ST_PLAY) return start_or_jump(233);
+        return press_jump();
+    }
+    if(released&TINYRT_PAD_A) jump_held=0;
+    return 0;
+}
 
 int32_t tinyrt_init(int32_t width,int32_t height) {
     if(width!=466||height!=466) return -1;
@@ -441,13 +476,14 @@ int32_t tinyrt_init(int32_t width,int32_t height) {
     D(gfx_tex_upload(0,TINYRT_GFX_INDEX8,128,128,(const void *)(uintptr_t)ATLAS_OFFSET,ATLAS_LENGTH,TINYRT_GFX_FROM_ASSET));
     best=kv_get(0,0);if(best<0||best>99999) best=0;saved_best=best;
     state=ST_TITLE;ticks=0;touch_zone=tilt=0;jump_held=0;invuln=0;
+    pad_on=pad_lx=paused=0;pad_buttons=0;
     new_game();cam_x=0;
-    D(input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION));
+    /* 需要支持手柄事件的固件：旧宿主拒绝 0x100 并终止实例，无法降级重试。 */
+    D(input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD));
     last_ms=now_ms();remainder=0;compose();
     return clock_interval((int32_t)STEP_MS);
 }
 int32_t tinyrt_event(int32_t kind,int32_t x,int32_t y,int32_t arg) {
-    (void)y;(void)arg;
     switch(kind) {
     case TINYRT_TOUCH_PRESS: return start_or_jump(x);
     case TINYRT_TOUCH_MOVE:
@@ -457,9 +493,12 @@ int32_t tinyrt_event(int32_t kind,int32_t x,int32_t y,int32_t arg) {
     case TINYRT_TOUCH_CANCEL: touch_zone=0;jump_held=0;return 0;
     case TINYRT_EV_MOTION:
         /* 屏幕 X 轴即 ax；一阶低通平滑抖动 */
-        tilt+=(x-tilt)/3;return 0;
+        if(!pad_on) tilt+=(x-tilt)/3;
+        return 0;
+    case TINYRT_EV_GAMEPAD: return on_gamepad((uint32_t)x,y,arg);
     case TINYRT_CLOCK_EVENT: {
         uint32_t now=now_ms(),elapsed=now-last_ms;last_ms=now;
+        if(paused) { compose();return 0; }
         if(elapsed>132u) elapsed=132u;
         remainder+=elapsed;
         while(remainder>=STEP_MS) { remainder-=STEP_MS;D(tick()); }
@@ -468,4 +507,4 @@ int32_t tinyrt_event(int32_t kind,int32_t x,int32_t y,int32_t arg) {
     default: return 0;
     }
 }
-int32_t tinyrt_stop(void) { touch_zone=0;jump_held=0;return save_best(); }
+int32_t tinyrt_stop(void) { touch_zone=0;jump_held=0;pad_buttons=0;return save_best(); }
