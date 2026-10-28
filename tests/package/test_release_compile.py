@@ -72,6 +72,15 @@ class ReleaseCompile(unittest.TestCase):
             return self.tool.compile_release(self.manifest,self.wasm,self.source_lock,self.provenance,
                 self.release_profile,self.runtime,self.key,self.output,**kwargs)
 
+    def test_community_key_100_and_unprefixed_app_keep_controlled_compile(self):
+        app=json.loads(self.manifest.read_bytes());app['app_id']='games.reviewed';self.manifest.write_bytes(encoded(app))
+        self.profile['signing_key_id']=100;self.release_profile.write_bytes(encoded(self.profile))
+        self.compile()
+        import package
+        info=package.validate_envelope(self.output.read_bytes(),self.signer.public_key(),100)
+        self.assertEqual(info['app_id'],'games.reviewed');self.assertEqual(info['aot']['safety_flags'],7)
+        self.assertEqual(self.compiles,1)
+
     def test_compiles_own_output_and_signs_bound_source(self):
         result=self.compile()
         import package

@@ -29,7 +29,7 @@ class DevelopmentAOT(unittest.TestCase):
             root=Path(directory);compiler=root/'wamrc.exe';compiler.write_bytes(b'test compiler')
             wasm=root/'app.wasm';wasm.write_bytes(b'\0asm\1\0\0\0\0\1\0')
             (root/'main.c').write_text('/* fixture */',encoding='utf-8')
-            manifest=root/'app.json';metadata=dict(app_id='demo.game',title='Game',version=1,
+            manifest=root/'app.json';metadata=dict(app_id='games.game',title='Game',version=1,
                 abi_version=1,permissions=15,memory_pages=4,budget=100000,sources=['main.c'])
             from PIL import Image
             Image.new('RGB',(210,210),'red').save(root/'cover.png')

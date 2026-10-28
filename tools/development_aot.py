@@ -58,8 +58,6 @@ def compiler_path(pin, override=None):
 
 def pack_development(manifest, wasm, output, wamrc=None, target='esp32s3'):
     manifest=tinyrt.manifest_path(manifest);app=tinyrt.load_manifest(manifest)
-    if not app['app_id'].startswith('demo.') or len(app['app_id'])<=5:
-        raise ValueError('development AOT app_id must be a demo. descendant')
     options=target_options(target)
     profile=profile_path(target)
     pin=json.loads(profile.read_bytes())

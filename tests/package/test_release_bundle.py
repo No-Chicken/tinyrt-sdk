@@ -35,7 +35,7 @@ class ReleaseTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.app = Path(self.temp.name) / 'app'
         self.app.mkdir()
-        self.manifest = dict(app_id='demo.test', title='Test', version=1,
+        self.manifest = dict(app_id='games.test', title='Test', version=1,
                              abi_version=1, permissions=1, memory_pages=2,
                              budget=100000, sources=['main.c'], cover='cover.png')
         self.listing = dict(summary='A test', category='game', tags=[],
@@ -60,7 +60,7 @@ class ReleaseTests(unittest.TestCase):
         (self.app / name).write_bytes((json.dumps(value) + '\n').encode())
 
     def fake_build(self, *args, **kwargs):
-        destination = self.app/'build/demo.test.wasm'
+        destination = self.app/'build/games.test.wasm'
         destination.parent.mkdir(exist_ok=True)
         destination.write_bytes(WASM)
         return dict(wasm=str(destination))
@@ -94,7 +94,7 @@ class ReleaseTests(unittest.TestCase):
                                            'screenshots/01.png', 'build/report.json'])
             for name in ('release.json', 'build/report.json'):
                 self.assertNotIn(str(self.app).encode(), z.read(name))
-        self.assertEqual(archive.name, 'demo.test-v1-wasm.zip')
+        self.assertEqual(archive.name, 'games.test-v1-wasm.zip')
         self.assertEqual(result['package_version'], 1)
         self.assertNotIn('display_version', result)
 

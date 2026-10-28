@@ -34,7 +34,7 @@ listing 包含 summary/category/tags/controls/publisher_display/release_notes/fu
 截图/events 时间受 --preview-ms 限制，默认最多 60000 ms。没有真机验证不填 device_verified=true，
 授权未确认保留 rights.status=unverified。两个 new 模板均带完整资料与占位封面。
 
-应用发布版本是从 1 开始的整数，实际分发更新才递增；version 用于设备升级，
+应用发布版本是从 1 开始的整数，作为正整数标签；新 Core 允许同版本重装和低版本回装，
 release.json 必须与签名包相同。不要往 app.json 或网站 v2 清单添加显示版本字段。
 构建时间取 SOURCE_DATE_EPOCH / --built-at / SDK 提交时间，本地构建不自动升版本。
 规则见 specs/release-bundle-v2.md。
@@ -68,7 +68,7 @@ python tools/tinyrt.py validate my-game/build/demo.my-game.trpkg --development-k
 
 模板是完整可运行的小游戏：四个回调、33 ms 时钟、触摸生命周期、32×32 RGB565 图像与 Host 缩放。源码在 [templates/game/main.c](templates/game/main.c)，`new` 会复制清单与源码供你继续开发。截图默认写入 `my-game/build/preview/frame-000000.png` 和 `frame-000330.png`，计时写入 `report.json`。预览跑真实 WAMR 解释器，桌面时间不是设备 FPS；桌面字体与设备字体也不完全一致。JSON脚本支持触摸press/move/release/cancel，以及已订阅KEY1的应用所用的key_press（x=1,y=1）/key_release（x=1,y=0）。默认按Guest的clock_interval推进虚拟时间，处理完到期CLOCK再投递该时间点的输入并截图；截图不额外运行render。桌面回调执行的墙钟耗时不会推进虚拟时钟。显式--step-ms 33会每33ms强制注入CLOCK，覆盖Guest周期，只用于诊断。
 
-分享 `.trpkg` 时同时说明它需要开启公开开发钥与开发 AOT 的匹配 ESP32-S3 固件。公开开发钥任何人都能使用，不能证明发布者身份，也不用于量产。开发 AOT 只允许非空 `demo.` 子命名空间，key_id 固定为 1；编译器摘要、目标、bounds/stack/loop-poll 选项均固定。发布方使用受控 `release_compile.py` 流程。
+分享 `.trpkg` 时同时说明它需要开启公开开发钥与开发 AOT 的匹配 ESP32-S3 固件。公开开发钥任何人都能使用，不能证明发布者身份，也不用于量产。开发 AOT 不强制 `demo.`，范围由设备信任表决定，公开测试 key_id 仍为 1；编译器摘要、目标、bounds/stack/loop-poll 选项均固定。发布方使用受控 `release_compile.py` 流程。
 
 设备已刷入匹配开发固件后，在应用大厅开启安装窗口，再安装、核查和启动：
 
@@ -127,6 +127,6 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/dem
 - 一帧最多128条命令，两个 RGB565 函数合计最多提交一张图。把像素工作合到一张图后提交；更大内容用 Host 缩放。长计算分片放在 event，单次回调及时返回。
 - render 中调用资源或时钟设置会失败；KV 状态逻辑放在 init/event/stop；普通帧忘记 clear、混用 skip 与绘制、越界文本/像素、无权限 import 都会失败。不得依赖 WASI、libc、构造器或未声明的 import。
 - `kv_set` 成功先更新 RAM。Host 普通保存按全局5秒合并，正常 stop 强制刷新；断电可能丢失尚未保存的状态。仅保存实际变化。
-- `validate` 仅认证信封，不运行 Wasm/AOT，也不证明玩法正确。改清单版本后重建重打；同ID更新必须递增。旧内部包和目录与当前格式不兼容，需重新构建包并按设备部署流程处理旧媒体。
+- `validate` 仅认证信封，不运行 Wasm/AOT，也不证明玩法正确。改清单版本后重建重打；同ID可按同版本或低版本替换，完整签名与包摘要仍须校验。旧内部包和目录与当前格式不兼容，需重新构建包并按设备部署流程处理旧媒体。
 
 应用版本、ZIP 命名和兼容性注意事项见 [版本管理](specs/version-management.md)。

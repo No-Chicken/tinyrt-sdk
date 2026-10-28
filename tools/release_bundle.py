@@ -241,8 +241,8 @@ def make_release(args):
         if not isinstance(key,ec.EllipticCurvePrivateKey) or not isinstance(key.curve,ec.SECP256R1):
             raise ValueError('signing key must be an ECDSA P-256 private key')
         development = key.public_key().public_numbers() == package.development_key().public_key().public_numbers()
-        if development and (args.key_id != 1 or args.channel != 'development' or not re.fullmatch(r'demo\.[a-z0-9._-]+',app['app_id'])):
-            raise ValueError('development key requires demo. app ID, key ID 1 and development channel')
+        if development and (args.key_id != 1 or args.channel != 'development'):
+            raise ValueError('development key requires key ID 1 and development channel')
         if args.variant == 'wasm-aot' and (not args.development_key or args.key_id != 1):
             raise ValueError('production AOT must use the controlled release_compile.py workflow')
         if args.wamrc and args.variant != 'wasm-aot': raise ValueError('--wamrc requires --variant wasm-aot')
