@@ -226,8 +226,8 @@ def validate_bundle(raw, public_key, key_id):
     development = public_key.public_numbers() == package.development_key().public_key().public_numbers()
     if manifest['signing'] != ('development' if development else 'release'):
         raise ValueError('signing classification mismatch')
-    if development and (key_id != 1 or manifest['requested_channel'] != 'development' or not re.fullmatch(r'demo\.[a-z0-9._-]+',info['app_id'])):
-        raise ValueError('development signing requires demo. app, key ID 1 and development channel')
+    if development and (key_id != 1 or manifest['requested_channel'] != 'development'):
+        raise ValueError('development signing requires key ID 1 and development channel')
     if 'build/report.json' in files:
         report = check_report(files['build/report.json'])
         steps = {step['name']:step['result'] for step in report['steps']}

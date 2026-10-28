@@ -87,7 +87,7 @@ remains in controlled release_compile.py. This project's deliverable is the AOT
 ZIP; standalone Wasm ZIPs are interpreter diagnostics, not product deliverables.
 Private-key Wasm diagnostics use --variant wasm --key <key>
 --key-id <id>. --channel defaults to development. Public development scalar
-(also supplied via PEM) requires key ID 1, demo. namespace and development channel.
+(also supplied via PEM) requires key ID 1 and the development channel. App IDs are constrained by the device trust scope, without an implicit demo. prefix.
 
 Self-check covers ZIP whitelist/duplicates/types/limits/CRC, v2 Schema, hashes,
 PNGs, signature, metadata/imports/variant and signed-cover consistency. Website

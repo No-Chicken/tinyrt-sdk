@@ -50,7 +50,7 @@ release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s
 at_ms 与 file 二选一，1–6 张。封面必须为 210×210 RGB/RGBA PNG、≤64 KiB。
 三个 Markdown 必须 UTF-8 无 BOM、LF、各≤64 KiB。未知字段、重复键、超时和错误尺寸都报错。
 应用版本唯一来源是 app.json.version；ZIP 名称、签名包和 release.json 使用同一个整数。listing 不允许 display_version。
-只有实际分发更新才递增版本，反复本地构建不自动涨版本。
+version 是正整数标签；匹配新 Core 的设备允许同版本重装和低版本回装，反复构建不自动涨版本。
 
 构建时间固定取 SDK 提交时间，可用 SOURCE_DATE_EPOCH 或 --built-at 覆盖；同样输入和工具环境产出相同字节。
 无 Git 的源码分发须传 --sdk-revision 和固定时间。
@@ -80,7 +80,7 @@ python tools/tinyrt.py validate my-game/build/demo.my-game.trpkg --development-k
 
 `run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
 
-`pack --aot --development-key` 限定非空`demo.`子命名空间与key_id=1。它用SDK pin校验编译器SHA-256，默认ESP32-S3，也可用`--target esp32s31`生成S31开发包；目标ABI与bounds/stack/loop-poll检查均固定，自行生成AOT并保留源Wasm。S31首板固件要求匹配AOT才启动游戏。通用入口不接受上传者提供的AOT或自报安全参数。`--wamrc`也必须匹配固定摘要。S3附件URL仍待发布；S31 编译器已随仓库提供，开发者与 AI 统一显式使用 `--target esp32s31 --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe`，文件说明与校验见[编译器目录](tools/toolchains/esp32s31/windows-x64/README.md)；详见[设备目标](specs/device-targets.md)。自动下载代码只支持Windows x64，其他系统须显式提供匹配工具。
+`pack --aot --development-key` 使用公开测试 key_id=1，app ID 不强制 `demo.` 前缀，范围仍由设备信任表决定。它用SDK pin校验编译器SHA-256，默认ESP32-S3，也可用`--target esp32s31`生成S31开发包；目标ABI与bounds/stack/loop-poll检查均固定，自行生成AOT并保留源Wasm。S31首板固件要求匹配AOT才启动游戏。通用入口不接受上传者提供的AOT或自报安全参数。`--wamrc`也必须匹配固定摘要。S3附件URL仍待发布；S31 编译器已随仓库提供，开发者与 AI 统一显式使用 `--target esp32s31 --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe`，文件说明与校验见[编译器目录](tools/toolchains/esp32s31/windows-x64/README.md)；详见[设备目标](specs/device-targets.md)。自动下载代码只支持Windows x64，其他系统须显式提供匹配工具。
 
 不加`--aot`时生成Wasm包，可用`--key application-signing.pem --key-id 100`签名。公开开发钥是公开P-256标量1；任何人都能签名，不能证明作者身份，不适合量产。设备还必须显式配置信任。底层`tools/package.py`提供单独打包与`development-public-key`，不读取或生成生产/固件密钥。
 
@@ -158,7 +158,7 @@ input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
 |---|---|
 | `app_id` | 1..31 字节 ASCII `[a-z0-9._-]` |
 | `title` | 1..63 字节严格 UTF-8，不含 NUL |
-| `version` | 1..4294967295 的整数；同 ID 更新必须递增 |
+| `version` | 1..4294967295 的整数；新 Core 允许同版本重装及低版本回装 |
 | `abi_version` | 当前只能为 1 |
 | `permissions` | 0..63；draw=1、input=2、storage=4、clock=8、audio=16、haptic=32 |
 | `memory_pages` | 1..16，页面为 64 KiB；这是 Wasm 线性内存上限 |
@@ -247,3 +247,11 @@ python scripts/sync_contracts.py --core path/to/tinyrt --check
 尚未创建 core 首次提交时，可以显式使用 `--revision pending` 准备开发快照；此状态不会通过 `--check`，发布前必须换成实际 commit。除显式更新 revision 外，普通同步也要求锁定的来源 hash 一致。同步方向始终为 core → SDK，核心构建不读取 SDK。
 
 应用版本、ZIP 命名和兼容性注意事项见 [版本管理](specs/version-management.md)。
+
+## 社区签名与历史迁移
+
+维护者确认 app ID 不强制 demo. 前缀，匹配新 Core 的设备允许同版本重装和低版本回装。公开测试标量 1 可被任何人使用，不能防止第三方改包后重新签名；社区发布由网站审核后用独立非公开 P-256 钥统一签名，设备信任对应公钥（例如 key_id=100）。这不替代 AOT 来源和安全校验。
+
+新上传 AOT 必须走受控 release_compile.py，从 Wasm 重编译再签名。无匹配 Linux 编译器时不自动签名上传者 AOT，只接受审核后的纯 Wasm，AOT 进入待人工审核。
+
+历史已审核包可使用 tools/resign.py 做一次显式迁移。AOT 必须提供操作方批准记录，绑定原包完整 SHA-256、完整 AOT 元数据和 review_id；所有 section 字节保持不变，app_id/version 保持原值。批准文件和签名钥不能来自上传者。新签名包生成新清单与摘要并重新审核，原上传物保留，禁止静默替换。工具只验证信封/元数据，不执行原生代码。

@@ -116,10 +116,7 @@ def compile_release(manifest, wasm, source_lock, provenance, release_profile, ru
         raise ValueError('signing key must be P-256')
     public=private.public_key().public_bytes(serialization.Encoding.X962,serialization.PublicFormat.UncompressedPoint)
     if digest(public)!=profile['signing_key_sha256']:raise ValueError('signing key identity mismatch')
-    if profile['development']:
-        if not app['app_id'].startswith('demo.') or len(app['app_id'])<=5:
-            raise ValueError('development AOT is limited to demo. descendants')
-    elif private.private_numbers().private_value==1:
+    if not profile['development'] and private.private_numbers().private_value==1:
         raise ValueError('public development key cannot be a release authority')
     kwargs={name:app[name] for name in tinyrt.REQUIRED-{'sources'}}
     kwargs.update(key_id=profile['signing_key_id'],private_key=private)
