@@ -1,6 +1,6 @@
 # Pixel Quest · 466×466 圆屏横版跳跃
 
-应用发布版本唯一来源为 app.json.version，构建不自动递增。应用 ID 为 `demo.pixel-quest`。
+应用发布版本唯一来源为 app.json.version，构建不自动递增。应用 ID 为 `pixel-quest`。
 
 原创横版平台跳跃：小探险机器人「豆豆」穿过草原、洞穴、云海和熔炉四个主题共八关，收集宝石，踩扁甲虫，最后打败熔核魔像。关卡布局全部原创，由 `prepare_levels.py` 生成；单关约 30 到 40 秒，每关一个检查点。
 
@@ -49,7 +49,7 @@ python tests/pixel_quest/run_native.py --cc path/to/zig.exe
 python tools/tinyrt.py build examples/pixel_quest --cc path/to/zig.exe
 python tools/tinyrt.py run examples/pixel_quest --runner path/to/tinyrt-run.exe --events examples/pixel_quest/events.json --frames 500,6600,9000 --output examples/pixel_quest/build/preview
 python tools/tinyrt.py pack examples/pixel_quest
-python tools/tinyrt.py validate examples/pixel_quest/build/demo.pixel-quest.trpkg --rebuild-aot
+python tools/tinyrt.py validate examples/pixel_quest/build/pixel-quest.trpkg --rebuild-aot
 python tools/tinyrt.py release examples/pixel_quest --cc path/to/zig.exe --runner path/to/tinyrt-run.exe
 ```
 

@@ -180,7 +180,7 @@ class SDKTests(unittest.TestCase):
         wave=self.sdk.load_manifest(ROOT/'examples/wave_sim/app.json')
         self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',13))
         quest=self.sdk.load_manifest(ROOT/'examples/pixel_quest/app.json')
-        self.assertEqual((quest['app_id'],quest['version'],quest['permissions']),('demo.pixel-quest',3,63))
+        self.assertEqual((quest['app_id'],quest['version'],quest['permissions']),('pixel-quest',3,63))
         self.assertEqual(app['version'],6)
 
 if __name__=='__main__':unittest.main()
