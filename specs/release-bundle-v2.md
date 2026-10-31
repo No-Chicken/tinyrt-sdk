@@ -32,7 +32,7 @@ PNGs; preview images retain the existing round-screen alpha mask.
 
 ## Pipeline and output
 
-1. Check inputs, local tools, signing/channel rules and destination ownership.
+1. Check inputs, local tools, channel rules and destination ownership.
 2. Run <app>/tests/run_native.py --cc <compiler> if supplied. Shipped examples
    use SDK tests/<example>/run_native.py; otherwise native is not-run.
 3. Reuse SDK build and real WAMR preview; failures stop the release.
@@ -68,11 +68,11 @@ A failed rebuild preserves the previous complete deliverable. Unknown output,
 modified unpacked files or linked destinations are refused. The ZIP commits
 last. Failure writes a sanitized stage report to <app>/build/release-report.json
 when safe; it never emits a partial ZIP. Inputs are checked for changes during
-the build. Source, keys, scripts and firmware never enter the archive.
+the build. Source, scripts and firmware never enter the archive.
 
 ## Reproducibility and signing
 
-Same inputs, keys and toolchain/environment produce the same bytes. JSON uses
+Same inputs and toolchain/environment produce the same bytes. JSON uses
 UTF-8 without BOM, LF, two spaces and fixed key order. built_at uses --built-at,
 then SOURCE_DATE_EPOCH, then SDK commit time; never current wall-clock time.
 ZIP uses that UTC timestamp, clamped to the DOS year range and two-second

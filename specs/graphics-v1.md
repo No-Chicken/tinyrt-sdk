@@ -1,6 +1,6 @@
 # Graphics API
 
-ABI 和签名包版本仍为 1。生成的 `include/tinyrt_gfx.h` 来自 core 的
+ABI 和包版本为 1。生成的 `include/tinyrt_gfx.h` 来自 core 的
 `contracts/guest-gfx-v1.h`；通过 `scripts/sync_contracts.py` 同步，禁止手工修改。
 `VERSION` 表示 SDK 显示版本；应用 `version` 是设备升级使用的独立整数，构建不自动递增。
 
@@ -9,9 +9,9 @@ ABI 和签名包版本仍为 1。生成的 `include/tinyrt_gfx.h` 来自 core �
 `gfx_caps()` 返回功能位；使用新 import 的包需要支持这些 import 的宿主。
 旧固件在安装预检中拒绝未知 import，需要先升级固件。
 能力查询不能让新包自动运行于缺少 `gfx_caps` 的旧固件；需要旧固件时，发布保留旧 import 的独立构建。
-SDK 在构建、开发 AOT 签名与受控发布签名前拒绝不认识的 `gfx_*` / `fb_*` import。
+SDK 在构建和 AOT 编译前拒绝不认识的 `gfx_*` / `fb_*` import。
 `app.json` 可选 `graphics` 只能是 `immediate`、`raster`、`framebuffer`。
-该字段用于构建检查，不添加签名包字段；实际要求来自签名保护的 Wasm import。
+该字段用于构建检查，不添加包字段；实际要求来自 Wasm import。
 
 ## 帧与资源
 
@@ -25,7 +25,7 @@ SDK 在构建、开发 AOT 签名与受控发布签名前拒绝不认识的 `gfx
 
 纹理/调色板上传只在 init/event 调用；render 仅绘制。
 纹理 32 槽、调色板 16 槽，纹理总容量 256 KiB；INDEX8 的索引 0 可透明。
-`gfx_tex_upload` 可用 `TINYRT_GFX_FROM_ASSET` 直接引用签名资源偏移，宿主复制并拥有资源。
+`gfx_tex_upload` 可用 `TINYRT_GFX_FROM_ASSET` 直接引用包内资源偏移，宿主复制并拥有资源。
 队列帧保持自己的资源版本；之后更新资源不会改变已提交帧。
 
 GRID 为 40 字节头部加 `cols*rows` 个索引：每格画

@@ -1,11 +1,13 @@
 # TinyRT SDK
 
+独立开发、编译、预览和打包 TinyRT ABI 1 的 C/Wasm 应用。当前是开发预览：包格式、store 与 BLE schema 都为 1。普通 C/Wasm 构建不依赖 ESP-IDF；桌面预览使用真实 WAMR runner，AOT 使用固定目标与来源的编译器。权威契约与运行验证属于 TinyRT core。
+
 游戏模板默认使用 `clock_interval(33)`，约 30 Hz。每次 `TINYRT_CLOCK_EVENT` 更新游戏逻辑，随后在 `tinyrt_render()` 提交一张完整帧；静止画面可以 `draw_skip()`。不要靠累计多次 CLOCK 才提交来控制帧率。物理固定步长应保留实际经过时间的余数补偿；需要更高帧率的应用可显式请求其他周期，实际显示频率受宿主和送屏能力限制。
 
 SDK 对外版本以根目录 VERSION 为准，用 `python tools/tinyrt.py --version` 查询。
 应用发布版本见各自 `app.json.version`；反复编译不自动升版本。
 
-Wave 为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](examples/wave_sim/README.md)。高速画布条带通路说明见 [高速画布 V1](specs/fast-canvas-v1.md)，其中三维球体描述属于实验实现，不能当作当前 Wave 的发布效果。
+Wave 为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](examples/wave_sim/README.md)。高速画布条带通路说明见 [高速画布 V1](specs/fast-canvas-v1.md)。
 
 图形批次、GRID、驻留精灵与兼容要求见 [graphics-v1.md](specs/graphics-v1.md)。
 
@@ -24,7 +26,7 @@ Windows 没有 make 时直接使用 Python 命令。Wasm 诊断包用
 命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、打包、网站 v2 清单和 ZIP 自检。
 本项目只交付 AOT：Flappy 输出 `examples/flappy/release/<app_id>-v<version>-wasm-aot.zip` 及同名展开目录。
 ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单和构建报告。
-release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s3`）。S3 用 `--wamrc` 指定 SDK 固定摘要的本地编译器，也可放在 SDK bin/wamrc.exe；`--target esp32s31` 默认使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`。
+release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s31`，使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`）。S3 用 `--wamrc` 指定 SDK 固定摘要的本地编译器，也可放在 SDK bin/wamrc.exe。
 `--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留它用于回退；独立 Wasm ZIP 不作为本项目交付件。
 失败保留此前完整交付件；诊断报告写入应用 `build/release-report.json`（安全可写时）。
 两个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。
@@ -55,9 +57,7 @@ at_ms 与 file 二选一，1–6 张。封面必须为 210×210 RGB/RGBA PNG、�
 构建时间固定取 SDK 提交时间，可用 SOURCE_DATE_EPOCH 或 --built-at 覆盖；同样输入和工具环境产出相同字节。
 无 Git 的源码分发须传 --sdk-revision 和固定时间。
 规范见 [v2 发布规则](specs/release-bundle-v2.md) 和 [listing Schema](specs/listing.schema.json)。
-本地自检不包含网站账号、公钥登记与发布审核，在线验收仍需上传联调。
-
-独立开发、编译、预览和打包 TinyRT ABI 1 的 C/Wasm 应用。当前是开发预览：包格式、store 与 BLE schema 都为 1。普通 C/Wasm 构建不依赖 ESP-IDF；桌面预览使用真实 WAMR runner，AOT 使用固定目标与来源的编译器。权威契约与运行验证属于 TinyRT core。
+本地自检不包含网站账号与发布审核，在线验收仍需上传联调。
 
 ## 开发者：创建、预览、打包
 
@@ -74,9 +74,9 @@ python tools/tinyrt.py pack my-game
 python tools/tinyrt.py validate my-game/build/my-game.trpkg
 ```
 
-`new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单、资源或签名输入；损坏产物需选择新路径。
+`new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单或资源；损坏产物需选择新路径。
 
-`app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入整包长度。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
+`app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入整包长度。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](https://github.com/No-Chicken/tinyrt/blob/main/specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
 
 `run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
 
@@ -100,7 +100,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id my-game
 python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/my-game.trpkg
 ```
 
-按设备显示PIN配对；自动化终端用`--pin`提供六位PIN。完整包身份的最终QUERY确认安装结果。`info`中的`selected_backend=2`表示AOT，`1`表示Wasm；带AOT包选择Wasm时结合`fallback_reason`显示“兼容模式，性能降低”。手机安装入口尚未完成时使用电脑流程。开发包分享应同时说明固件目标和公开开发钥要求。
+按设备显示PIN配对；自动化终端用`--pin`提供六位PIN。完整包身份的最终QUERY确认安装结果。`info`中的`selected_backend=2`表示AOT，`1`表示Wasm；带AOT包选择Wasm时结合`fallback_reason`显示“兼容模式，性能降低”。手机安装入口尚未完成时使用电脑流程。分享包时说明固件目标。
 
 ## 马达反馈
 
@@ -109,7 +109,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/my-
 `haptic_stop()` 提前停止。调用非阻塞，新脉冲替换旧脉冲；强度范围 1..100%，时长 1..2000 ms。
 返回 0 表示成功，1 表示设备无马达或不可用；非法参数、缺权限或在 render/stop 调用会失败。
 宿主在应用退出、异常或切换时停止马达。S31 支持，S3 与桌面预览返回不支持。
-需要支持这些 import 的宿主与桌面 runner；旧宿主拒绝新 import，旧应用无需增加权限。
+需要支持这些 import 的宿主与桌面 runner；旧宿主拒绝新 import。
 
 ## 外设手柄
 
@@ -157,9 +157,9 @@ input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
 | `assets` | 可选：应用目录内现有文件的相对路径，或 null |
 | `defines` | 可选：最多 32 个 C 标识符到整数的映射，值为 -2147483648..4294967295 |
 
-当前只支持section包格式1，无`--format`参数；旧内部布局需要重建，应用`version`整数与平台版本独立。
+当前只支持section包格式1；应用`version`整数与平台版本独立。
 
-拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整签名包没有单独的 2 MiB 上限，资源计入总长；`pack` 只做 16 MiB 格式检查，安装时以目标宿主 HELLO 公布的包库数据区为准（S31 V2 为 3960 KiB，S3 V1 为 4984 KiB）。更新同一应用需要再有一段同样大小的连续空闲区，超过数据区一半的包需先卸载再安装。Flash 容量增加不改变 ABI 1 的 16 页线性内存与每回调 100000 指令限额；较大的 Wasm 仍需通过宿主运行时的独立内存检查。
+拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整包没有单独的单包上限，资源计入总长；`pack` 只做 16 MiB 格式检查，安装时以目标宿主 HELLO 公布的包库数据区为准（S31 V2 为 3960 KiB，S3 V1 为 4984 KiB）。更新同一应用需要再有一段同样大小的连续空闲区，超过数据区一半的包需先卸载再安装。Flash 容量增加不改变 ABI 1 的 16 页线性内存与每回调 100000 指令限额；较大的 Wasm 仍需通过宿主运行时的独立内存检查。
 
 `assets` 指定包内的原始字节。`asset_read(offset,ptr,len)`在init/event中只读当前包资源，每次最多4096字节；尚无通用私有文件系统API。KV 是每应用 16 个 i32，不能把它描述为文件系统。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
 
@@ -181,9 +181,9 @@ BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需�
 python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install examples/flappy/build/demo.sky-hop.trpkg
 ```
 
-支持隔离诊断的宿主在 HELLO capability bit 3 标记能力：`quarantine` 列出损坏包，`uninstall --app-id demo.sky-hop` 解析当前目录完整身份后卸载，无需原包。`list` 只列健康项。重新 install 相同原始签名包可修复隔离项；最终 QUERY 仍必须确认完整身份，不能把 VERIFY_FAILED 当成成功。旧宿主不提供隔离查询时可继续正常安装及按 ID 解析健康项。
+支持隔离诊断的宿主在 HELLO capability bit 3 标记能力：`quarantine` 列出损坏包，`uninstall --app-id demo.sky-hop` 解析当前目录完整身份后卸载，无需原包。`list` 只列健康项。重新 install 相同的原包可修复隔离项；最终 QUERY 仍必须确认完整身份，不能把 VERIFY_FAILED 当成成功。
 
-支持分页的宿主在 HELLO capability bit 4 标记能力，最多安装 16 个应用。客户端使用 `LIST_PAGE=0x18`，每页最多三条 info72；目录在翻页期间变化时，从第一页重新读取，完整读取最多尝试三次。generation 是不透明的 64 位标记，客户端校验每页标记、总数、游标、规范身份和严格递增的 app ID；畸形回复立即失败。管理消息仍不超过 256 字节。未声明分页能力的旧宿主继续使用最多两条记录的 LIST/LIST_QUARANTINED。
+支持分页的宿主在 HELLO capability bit 4 标记能力，最多安装 16 个应用。客户端使用 `LIST_PAGE=0x18`，每页最多三条 info72；目录在翻页期间变化时，从第一页重新读取，完整读取最多尝试三次。generation 是不透明的 64 位标记，客户端校验每页标记、总数、游标、规范身份和严格递增的 app ID；畸形回复立即失败。管理消息不超过 256 字节。
 
 空间查询需要HELLO capability bit5（32）；详情查询需要bit6（64）的section元数据能力：
 
@@ -199,9 +199,9 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info examples/flappy/bui
 
 设备靠 BLE 配对和屏幕确认决定谁能安装。同一 app_id 的新包会替换旧包并沿用存档，所以社区发布时 app_id 归属由网站保证。
 
-HELLO bit6（64）声明PACKAGE_SECTIONS能力。当前格式1安装要求此位；APP_INFO只使用70字节schema1请求、248字节schema1回复，旧68/164字节布局已移除。输出`package_format=1`、`selected_backend`、`fallback_reason`及各section大小；总长包含16字节表项、最小4字节对齐和256字节AOT元数据。
+HELLO bit6（64）声明PACKAGE_SECTIONS能力。当前格式1安装要求此位；APP_INFO使用70字节schema1请求、248字节schema1回复。输出`package_format=1`、`selected_backend`、`fallback_reason`及各section大小；总长包含16字节表项、最小4字节对齐和256字节AOT元数据。
 
-`python tools/ble_install.py --address AA:BB:CC:DD:EE:FF runtime`或`await runtime_info(link)`查询实际运行时profile：格式位图（格式1=1）、后端、开发AOT开关、目标、compat_id、选项摘要与WAMR提交。未启用AOT时全部AOT/profile字段为零；未知schema/位、尺寸矛盾与不完整profile会失败。字段见 [BLE合同](specs/package.md#ble-协商合同)。
+`python tools/ble_install.py --address AA:BB:CC:DD:EE:FF runtime`或`await runtime_info(link)`查询实际运行时profile：格式位图（格式1=1）、后端、目标、compat_id、选项摘要与WAMR提交。未启用AOT时全部AOT/profile字段为零；未知schema/位、尺寸矛盾与不完整profile会失败。字段见 [BLE合同](https://github.com/No-Chicken/tinyrt/blob/main/specs/package.md#ble-协商合同)。
 
 Windows 仅在系统发出 PIN 请求后读取控制台，支持退格、Enter、Ctrl-C（取消）和 Ctrl-Z（EOF）。读取使用可取消的异步轮询；系统拒绝配对时会结束读取，不留下阻塞 `input()` 的后台线程。非交互终端必须提供 `--pin`。Python 自动验收可调用 `await windows_pair(address, pin_reader=reader)`，其中 `reader` 是无参数的异步函数，在收到请求后返回六位数字字符串；仍可用原有 `pin` 参数直接提供值。
 
@@ -234,6 +234,6 @@ python scripts/sync_contracts.py --core path/to/tinyrt --check
 
 同步器验证该路径本身是 core Git 根目录、HEAD 与请求 revision 一致，四件权威契约在该提交中均为普通文件。生成内容直接读取固定 commit 的 Git blob，同时逐字节比对工作区源文件；即使设置 assume-unchanged 或 skip-worktree 也不能隐藏未提交修改。它记录 `contracts/source.json` 中的来源 revision，以及 `guest-v1.h`、`guest-gfx-v1.h`、`abi-v1.json`、`wire-v1.json` 的 SHA-256；生成的 `include/tinyrt.h` 和 `include/tinyrt_gfx.h` 必须与对应权威 guest 头逐字节相同。`--check` 校验 revision、源摘要、快照及生成头，不写文件。SDK 为这些文件固定 LF 换行，不受本机 autocrlf 设置影响。输出写前检查路径，并通过同目录临时文件与原子替换断开已有硬链接，避免改写 SDK 外共用同一文件内容的路径。
 
-尚未创建 core 首次提交时，可以显式使用 `--revision pending` 准备开发快照；此状态不会通过 `--check`，发布前必须换成实际 commit。除显式更新 revision 外，普通同步也要求锁定的来源 hash 一致。同步方向始终为 core → SDK，核心构建不读取 SDK。
+除显式更新 revision 外，普通同步也要求锁定的来源 hash 一致。同步方向始终为 core → SDK，核心构建不读取 SDK。
 
 应用版本、ZIP 命名和兼容性注意事项见 [版本管理](specs/version-management.md)。

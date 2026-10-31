@@ -10,7 +10,6 @@
 
 | 项目 | Wasm 包 | Wasm 加 AOT 包 |
 |---|---|---|
-| 示例旧文件名 | `demo.sky-hop-wasm.trpkg` | `demo.sky-hop.trpkg` |
 | 内容 | Wasm、资源、可选封面 | 相同 Wasm、资源、封面，加目标机器码和来源元数据 |
 | 编译路径 | C → Wasm → 打包 | C → Wasm → 固定 wamrc 编译 → AOT → 打包 |
 | 执行 | WAMR 解释器 | 条件满足时执行目标 AOT，否则按严格规则决定是否回退 |
@@ -33,7 +32,7 @@ v1 网站默认支持 Wasm；可增加 `wasm+aot` 变体。暂不接收 AOT-only
 
 准备 Python 3.10+、SDK requirements、Zig 0.13 或 SDK 支持的 wasm32 Clang、匹配的 WAMR runner；素材转换需要 Pillow。SDK 发布应锁定 core 契约提交及工具链。不要只写“兼容 0.1.0”：相同显示版本可能包含不同导入能力。
 
-当前 Flappy Bird 所需核心契约提交为 `3f9ff9b0e20e293fe386ed7764d5f2a3711880cb`，这只是兼容性核查线索；固件仍须实际配置公钥、导入和能力。不能简单用 Git 提交先后顺序判断兼容。
+固件须实际提供应用所需的导入和能力。不能简单用 Git 提交先后顺序判断兼容。
 
 ## 3. 应用源码目录与 app.json
 
@@ -92,7 +91,7 @@ my-game/
 
 ## 5. PNG 和说明文件规范
 
-以下是网站 v1 额外限制，包格式本身的限制以 `specs/package.md` 为准。
+以下是网站 v1 额外限制，包格式本身的限制以 [包规格](https://github.com/No-Chicken/tinyrt/blob/main/specs/package.md) 为准。
 
 | 文件 | 必需 | 格式和上限 |
 |---|---|---|
@@ -147,7 +146,7 @@ v2 机器约束见 `release-v2.schema.json`；v1 语义、字节数、跨文件�
 | display | 固定 width=466、height=466、shape=round；full_bleed 为是否铺满屏幕 |
 | package | 固定路径、size、sha256，以及 format=1、abi=1、permissions、memory_pages、budget、key_id；全部核对包内值 |
 | requirements | core_contract_revision 为40位小写 Git SHA；imports 为实际 tinyrt 导入名全集、无重复；aot 为 null 或目标和64位 compat_id |
-| signing | development/release 声明；必须根据服务器可信公钥注册表重新裁定 |
+| signing | 固定为 development，无安全含义，只为兼容 v2 清单 |
 | verification | native、wamr、device 为 passed/not-run/failed；只是作者自报，服务端另存自己的验收结果 |
 | rights | status 为 declared-cleared/unverified；note 是授权范围或欠缺说明，不是自动授权凭据 |
 | cover/readme/licenses | 固定 path，实际 size、SHA-256；cover 再加 width=height=210 |

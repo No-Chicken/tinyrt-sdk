@@ -37,7 +37,7 @@
     }
   ],
   "compiler": {
-    "path": "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\wamrc-build-riscv\\wamrc.exe",
+    "path": "<build-root>\\wamrc-build-riscv\\wamrc.exe",
     "sha256": "9b7c129f2db705f56ab660d89c16ec0325f740d6d762fa14ec746554973934e8",
     "version": "wamrc 2.4.5"
   },
@@ -52,9 +52,9 @@
     [
       "cmake",
       "-S",
-      "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\llvm-project\\llvm",
+      "<build-root>\\llvm-project\\llvm",
       "-B",
-      "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\llvm-build",
+      "<build-root>\\llvm-build",
       "-G",
       "Ninja",
       "-DCMAKE_BUILD_TYPE=Release",
@@ -77,21 +77,21 @@
       "-DLLVM_INCLUDE_UTILS=OFF",
       "-DLLVM_INCLUDE_TOOLS=ON",
       "-DLLVM_BUILD_TOOLS=OFF",
-      "-DPython3_EXECUTABLE=C:\\Espressif\\tools\\python\\v6.1\\venv\\Scripts\\python.exe"
+      "-DPython3_EXECUTABLE=<idf-python>"
     ],
     [
       "cmake",
       "-S",
-      "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\wamr-upstream\\wamr-compiler",
+      "<build-root>\\wamr-upstream\\wamr-compiler",
       "-B",
-      "C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\wamrc-build-riscv",
+      "<build-root>\\wamrc-build-riscv",
       "-G",
       "Ninja",
       "-DCMAKE_BUILD_TYPE=Release",
       "-DCMAKE_C_FLAGS=/utf-8",
       "-DCMAKE_CXX_FLAGS=/utf-8",
       "-DWAMR_BUILD_WITH_CUSTOM_LLVM=1",
-      "-DLLVM_DIR=C:\\projects\\Git_Projects\\EEBadge\\tmp\\tinyrt-upstream-aot-20261002\\llvm-build\\lib\\cmake\\llvm",
+      "-DLLVM_DIR=<build-root>\\llvm-build\\lib\\cmake\\llvm",
       "-DWAMR_DISABLE_HW_BOUND_CHECK=1",
       "-DWAMR_BUILD_PLATFORM=windows",
       "-DWAMR_BUILD_TARGET=X86_64",

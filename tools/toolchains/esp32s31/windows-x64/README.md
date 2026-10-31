@@ -1,11 +1,11 @@
 # ESP32-S31 AOT 编译器（Windows x64）
 
-此目录提供 SDK 固定的 S31 `wamrc.exe`。开发者和 AI 编译 S31 应用时统一使用本目录文件，显式传入 `--wamrc`，不要引用个人机器的 `tmp/` 构建目录。工具在 Windows x64 上运行，输出 ESP32-S31 使用的 RISC-V AOT；不是 ESP-IDF 固件 C 编译器。
+此目录提供 SDK 固定的 S31 `wamrc.exe`。`pack` 和 `release` 默认使用本目录文件，不要引用个人机器上的构建目录。工具在 Windows x64 上运行，输出 ESP32-S31 使用的 RISC-V AOT；不是 ESP-IDF 固件 C 编译器。
 
 ## 文件与核验
 
 - `wamrc.exe`：实际编译器；身份、目标、选项及兼容配置以 [esp32s31.json](../../esp32s31.json) 为准。
-- `provenance.json`：原始构建来源记录，包含源码提交、补丁、构建命令及许可证摘要。保留原始字节；其中绝对路径描述原构建环境，使用者无需具备这些路径。
+- `provenance.json`：原始构建来源记录，包含源码提交、补丁、构建命令及许可证摘要。其中 `<build-root>`、`<idf-python>` 是原构建环境路径的占位符，使用者无需具备这些路径。
 - `licenses/`：随编译器分发的原始许可证与版权声明，路径和摘要对应 provenance 的 `licenses` 数组。
 
 从 SDK 根目录核验：
@@ -31,7 +31,6 @@ python tools/tinyrt.py pack examples/flappy
 使用 EEBadge 固件的应用入口时，从 `esp32/` 目录执行：
 
 ```powershell
-$env:TINYRT_WAMRC_S31 = (Resolve-Path tinyrt-sdk/tools/toolchains/esp32s31/windows-x64/wamrc.exe).Path
 python tools/cli/app.py build tinyrt-sdk/examples/flappy --target s31
 ```
 

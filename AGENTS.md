@@ -22,7 +22,7 @@ python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner pat
 
 设置 TINYRT_CC / TINYRT_RUNNER 后可用 `make release APP=examples/flappy`。
 命令离线完成测试、编译、WAMR 截图、打包、清单、ZIP 与自检。默认输出应用 release/ 下
-的 ZIP 和同名展开目录；本项目只交付 AOT，默认 wasm-aot，传 --wamrc <本地固定工具>。
+的 ZIP 和同名展开目录；本项目只交付 AOT，默认 wasm-aot。
 Wasm 用于编译、预览和包内回退，独立 Wasm ZIP 仅用于解释器诊断。
 
 应用提供 app.json、源码、listing.json、cover.png 和 README.md / CHANGELOG.md / LICENSES.md。
@@ -38,7 +38,7 @@ release.json 必须与应用包相同。不要往 app.json 或网站 v2 清单�
 构建时间取 SOURCE_DATE_EPOCH / --built-at / SDK 提交时间，本地构建不自动升版本。
 规则见 specs/release-bundle-v2.md。
 
-这是开发预览版。Guest ABI、包格式、存储布局与 BLE schema 均为 1；应用 `version` 是从 1 开始的独立整数。先读本页，再修改应用目录中的 C 文件和 `app.json`。生成的 `include/tinyrt.h` 由 core 契约同步，不手工修改。详细说明见 [README](README.md) 和 [包规格](specs/package.md)。
+这是开发预览版。Guest ABI、包格式、存储布局与 BLE schema 均为 1；应用 `version` 是从 1 开始的独立整数。先读本页，再修改应用目录中的 C 文件和 `app.json`。生成的 `include/tinyrt.h` 由 core 契约同步，不手工修改。详细说明见 [README](README.md) 和 [包规格](https://github.com/No-Chicken/tinyrt/blob/main/specs/package.md)。
 
 ## 从游戏模板到可分享的包
 
@@ -63,7 +63,7 @@ python tools/tinyrt.py validate my-game/build/my-game.trpkg
 ]
 ```
 
-输出仅允许更新本工具标记的PNG与report.json；拒绝覆盖输入、链接目标或未知已有文件。旧版没有标记的预览产物请改用新的--output目录。
+输出仅允许更新本工具标记的PNG与report.json；拒绝覆盖输入、链接目标或未知已有文件。
 
 模板是完整可运行的小游戏：四个回调、33 ms 时钟、触摸生命周期、32×32 RGB565 图像与 Host 缩放。源码在 [templates/game/main.c](templates/game/main.c)，`new` 会复制清单与源码供你继续开发。截图默认写入 `my-game/build/preview/frame-000000.png` 和 `frame-000330.png`，计时写入 `report.json`。预览跑真实 WAMR 解释器，桌面时间不是设备 FPS；桌面字体与设备字体也不完全一致。JSON脚本支持触摸press/move/release/cancel，以及已订阅KEY1的应用所用的key_press（x=1,y=1）/key_release（x=1,y=0）。默认按Guest的clock_interval推进虚拟时间，处理完到期CLOCK再投递该时间点的输入并截图；截图不额外运行render。桌面回调执行的墙钟耗时不会推进虚拟时钟。显式--step-ms 33会每33ms强制注入CLOCK，覆盖Guest周期，只用于诊断。
 
@@ -94,8 +94,8 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/my-
 
 ## ABI 1 全部 Host 函数
 
-0.0.2 的新增 `gfx_*` / `fb_*` import、能力位和二进制记录见生成的
-`include/tinyrt_gfx.h` 与 [图形契约](specs/graphics-v1.md)。旧函数约束如下。
+`gfx_*` / `fb_*` import、能力位和二进制记录见生成的
+`include/tinyrt_gfx.h` 与 [图形契约](specs/graphics-v1.md)。其余函数约束如下。
 
 所有函数在模块 `tinyrt` 中；整数为 i32/u32，像素和文本传 Guest 线性内存地址。`now_ms`返回u32，其余返回i32；`kv_get`返回存储值，`asset_read`返回长度；绘制和设置通常以0表示成功，失败会令当前回调失败。
 

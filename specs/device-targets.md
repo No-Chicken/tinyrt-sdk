@@ -8,7 +8,7 @@ device architecture; an ESP32-S3 Xtensa AOT section cannot execute on ESP32-S31.
 - `--target esp32s3`, the existing pinned Xtensa compiler/profile.
 - `--target esp32s31`, the pinned RISC-V compiler/profile in
   `tools/toolchains/esp32s31.json`; use the bundled Windows x64 compiler at
-  `tools/toolchains/esp32s31/windows-x64/wamrc.exe` with explicit `--wamrc`.
+  `tools/toolchains/esp32s31/windows-x64/wamrc.exe` by default.
   See the [compiler bundle](../tools/toolchains/esp32s31/windows-x64/README.md)
   for provenance, licenses, checksum verification and website integration.
 

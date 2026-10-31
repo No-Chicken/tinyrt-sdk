@@ -14,7 +14,7 @@
 | 16 | 完整 cover section SHA-256[32] |
 | 48 | data[chunk_length] |
 
-每次返回请求长度和剩余长度的较小者；offset>=total 拒绝。无 cover 返回 NOT_FOUND(8)。客户端限制 total=133232，核验每段 offset、长度、同一个 SHA-256；完成后核验完整段摘要与 `TRCOV001` 头及固定 210/150 尺寸。codec=1 的字节布局见 [包规格](package.md)。PNG 源文件不会直接传回；手机可以将 RGB565LE 转为自己的图像。SDK Python `app_cover` 和 miniapp TypeScript `appCover` 提供经过完整检查的主图/侧图像素。
+每次返回请求长度和剩余长度的较小者；offset>=total 拒绝。无 cover 返回 NOT_FOUND(8)。客户端限制 total=133232，核验每段 offset、长度、同一个 SHA-256；完成后核验完整段摘要与 `TRCOV001` 头及固定 210/150 尺寸。codec=1 的字节布局见 [包规格](https://github.com/No-Chicken/tinyrt/blob/main/specs/package.md)。PNG 源文件不会直接传回；手机可以将 RGB565LE 转为自己的图像。SDK Python `app_cover` 和 miniapp TypeScript `appCover` 提供经过完整检查的主图/侧图像素。
 
 APP_INFO 保持 248 字节，section_bits offset6 新增 bit3=cover。该位表示固定 133232 字节，计算整包总长时需将它计入 section 表及四字节对齐；Wasm/AOT/resources 字段偏移不变。
 
