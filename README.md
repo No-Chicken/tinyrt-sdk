@@ -14,14 +14,14 @@ Wave 为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](exa
 安装 requirements.txt 并准备本地工具后，从 SDK 根目录执行：
 
 ```powershell
-python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --wamrc path/to/wamrc.exe --development-key
+python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe
 ```
 
 设置 `TINYRT_CC`、`TINYRT_RUNNER` 后也可执行 `make release APP=examples/flappy`。
-Windows 没有 make 时直接使用 Python 命令。Makefile 默认使用开发钥；正式 Wasm 签名通过
-`RELEASE_ARGS="--variant wasm --key <key> --key-id <id> --channel beta"` 指定。
+Windows 没有 make 时直接使用 Python 命令。Wasm 诊断包用
+`RELEASE_ARGS="--variant wasm --target esp32s3"` 指定。
 
-命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、签名、网站 v2 清单和 ZIP 自检。
+命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、打包、网站 v2 清单和 ZIP 自检。
 本项目只交付 AOT：Flappy 输出 `examples/flappy/release/<app_id>-v<version>-wasm-aot.zip` 及同名展开目录。
 ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单和构建报告。
 release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s3`）。S3 用 `--wamrc` 指定 SDK 固定摘要的本地编译器，也可放在 SDK bin/wamrc.exe；`--target esp32s31` 默认使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`。
@@ -49,68 +49,58 @@ release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s
 截图也可用 `{"file":"screenshots/device.png","caption":"真机"}`，必须原本为 466×466 单帧 PNG。
 at_ms 与 file 二选一，1–6 张。封面必须为 210×210 RGB/RGBA PNG、≤64 KiB。
 三个 Markdown 必须 UTF-8 无 BOM、LF、各≤64 KiB。未知字段、重复键、超时和错误尺寸都报错。
-应用版本唯一来源是 app.json.version；ZIP 名称、签名包和 release.json 使用同一个整数。listing 不允许 display_version。
-只有实际分发更新才递增版本，反复本地构建不自动涨版本。
+应用版本唯一来源是 app.json.version；ZIP 名称、应用包和 release.json 使用同一个整数。listing 不允许 display_version。
+上架更新要递增版本，设备本身不强制，反复本地构建不自动涨版本。
 
 构建时间固定取 SDK 提交时间，可用 SOURCE_DATE_EPOCH 或 --built-at 覆盖；同样输入和工具环境产出相同字节。
 无 Git 的源码分发须传 --sdk-revision 和固定时间。
 规范见 [v2 发布规则](specs/release-bundle-v2.md) 和 [listing Schema](specs/listing.schema.json)。
 本地自检不包含网站账号、公钥登记与发布审核，在线验收仍需上传联调。
 
-独立开发、编译、预览和签名 TinyRT ABI 1 的 C/Wasm 应用。当前是开发预览：包格式、store 与 BLE schema 都为 1，公开开发钥仅用于开发固件。普通 C/Wasm 构建不依赖 ESP-IDF；桌面预览使用真实 WAMR runner，开发 AOT 使用固定目标与来源的编译器。权威契约与运行验证属于 TinyRT core。
+独立开发、编译、预览和打包 TinyRT ABI 1 的 C/Wasm 应用。当前是开发预览：包格式、store 与 BLE schema 都为 1。普通 C/Wasm 构建不依赖 ESP-IDF；桌面预览使用真实 WAMR runner，AOT 使用固定目标与来源的编译器。权威契约与运行验证属于 TinyRT core。
 
 ## 开发者：创建、预览、打包
 
 Windows x64 的已打包 `wamrc.exe` 还需要 Microsoft Visual C++ v14 x64 运行库（14.51或以上）；可安装[微软最新运行库](https://learn.microsoft.com/zh-CN/cpp/windows/latest-supported-vc-redist)。已打包桌面 runner 使用静态CRT。
 
-需要 Python 3.10+，以及可生成 wasm32 的 Clang 或 Zig 0.13.0。安装 `requirements.txt`（签名用 cryptography，PNG 用 Pillow）；用 `--cc` 或 `TINYRT_CC` 指定编译器。AI 与人都可以从 [AGENTS.md](AGENTS.md) 开始，它包含全部 ABI 函数、回调边界和完整小游戏模板。
+需要 Python 3.10+，以及可生成 wasm32 的 Clang 或 Zig 0.13.0。安装 `requirements.txt`（打包用 cryptography，PNG 用 Pillow）；用 `--cc` 或 `TINYRT_CC` 指定编译器。AI 与人都可以从 [AGENTS.md](AGENTS.md) 开始，它包含全部 ABI 函数、回调边界和完整小游戏模板。
 
 ```powershell
 python -m pip install -r requirements.txt
-python tools/tinyrt.py new my-game --app-id demo.my-game --title "My game" --template game
+python tools/tinyrt.py new my-game --title "My game" --template game
 python tools/tinyrt.py build my-game --cc path/to/zig.exe
 python tools/tinyrt.py run my-game --runner path/to/tinyrt-run.exe --frames 0,330
-python tools/tinyrt.py pack my-game --aot --development-key --wamrc path/to/wamrc.exe
-python tools/tinyrt.py validate my-game/build/demo.my-game.trpkg --development-key
+python tools/tinyrt.py pack my-game
+python tools/tinyrt.py validate my-game/build/my-game.trpkg
 ```
 
 `new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单、资源或签名输入；损坏产物需选择新路径。
 
-`app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为签名 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入整包长度。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
+`app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入整包长度。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
 
 `run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
 
-`pack --aot --development-key` 限定非空`demo.`子命名空间与key_id=1。它用SDK pin校验编译器SHA-256，默认ESP32-S3，也可用`--target esp32s31`生成S31开发包；目标ABI与bounds/stack/loop-poll检查均固定，自行生成AOT并保留源Wasm。S31首板固件要求匹配AOT才启动游戏。通用入口不接受上传者提供的AOT或自报安全参数。`--wamrc`也必须匹配固定摘要。S3附件URL仍待发布；S31 编译器已随仓库提供，开发者与 AI 统一显式使用 `--target esp32s31 --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe`，文件说明与校验见[编译器目录](tools/toolchains/esp32s31/windows-x64/README.md)；详见[设备目标](specs/device-targets.md)。自动下载代码只支持Windows x64，其他系统须显式提供匹配工具。
+`pack` 默认为 ESP32-S31 编译 AOT 并保留源 Wasm，使用仓库内编译器，不需要任何密钥或额外参数；`app_id` 只要合法就行，不要求命名空间。`--target esp32s3` 打 S3 包，`--wasm-only` 跳过 AOT（S31 固件不运行这种包）。SDK 用 pin 校验编译器 SHA-256，目标 ABI 与 bounds/stack/loop-poll 检查均固定，不接受上传者提供的 AOT 或自报安全参数；`--wamrc` 也必须匹配固定摘要。文件说明见[编译器目录](tools/toolchains/esp32s31/windows-x64/README.md)，目标细节见[设备目标](specs/device-targets.md)。
 
-不加`--aot`时生成Wasm包，可用`--key application-signing.pem --key-id 100`签名。公开开发钥是公开P-256标量1；任何人都能签名，不能证明作者身份，不适合量产。设备还必须显式配置信任。底层`tools/package.py`提供单独打包与`development-public-key`，不读取或生成生产/固件密钥。
+设备不校验签名，只校验包结构、完整性、ABI、权限和 AOT 兼容性。SDK 仍在包头写入公开的兼容签名，开发者无感，只为让包能装到旧固件；不能证明作者身份。
 
-**`validate`仅认证包信封。** 它验证规范字段、section布局、策略、长度、摘要、low-S P-256签名与key ID；输出含`validation_level: envelope`、`wasm_validation: not_performed`、`aot_validation: not_performed`。设备必须再运行core结构/ABI/目标/兼容性与执行保护校验。签名元数据是声明，不能单独证明机器码安全。
+**`validate`仅检查包信封。** 它验证规范字段、section布局、策略、长度和摘要；输出含`validation_level: envelope`、`wasm_validation: not_performed`、`aot_validation: not_performed`。设备必须再运行core结构/ABI/目标/兼容性与执行保护校验。AOT元数据是声明，不能单独证明机器码安全；`validate --rebuild-aot` 重新编译包内 Wasm 并要求 AOT 逐字节一致，发布平台必须用它。
 
 ## 用户：安装别人分享的包
 
-安装匹配的开发固件（启用`TINYRT_ALLOW_DEVELOPMENT_KEY=ON`并给予开发钥DEVELOPMENT授权），打开设备应用大厅的限时BLE安装入口。固件准备方式由产品提供；本工具只安装应用包。电脑准备依赖后扫描、配对、安装：
+打开设备应用大厅的限时BLE安装入口。固件准备方式由产品提供；本工具只安装应用包。电脑准备依赖后扫描、配对、安装：
 
 ```powershell
 python -m pip install bleak
 # Windows显式配对还需：
 python -m pip install winrt-Windows.Devices.Bluetooth winrt-Windows.Devices.Enumeration
 python tools/ble_install.py --scan
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install my-game/build/demo.my-game.trpkg
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id demo.my-game
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/demo.my-game.trpkg
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install my-game/build/my-game.trpkg
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id my-game
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/my-game.trpkg
 ```
 
 按设备显示PIN配对；自动化终端用`--pin`提供六位PIN。完整包身份的最终QUERY确认安装结果。`info`中的`selected_backend=2`表示AOT，`1`表示Wasm；带AOT包选择Wasm时结合`fallback_reason`显示“兼容模式，性能降低”。手机安装入口尚未完成时使用电脑流程。开发包分享应同时说明固件目标和公开开发钥要求。
-
-## 受信 AOT 发布
-
-发布操作方使用独立受控入口：
-
-```powershell
-python tools/release_compile.py --manifest path/to/app/app.json --wasm path/to/app/build/app.wasm --source-lock path/to/toolchain/source-lock.json --provenance path/to/compiler/provenance.json --release-profile path/to/release-profile.json --runtime-patch path/to/runtime/0001.patch --runtime-patch path/to/runtime/0002.patch --key path/to/release-signing.pem --output path/to/app/build/app.trpkg
-```
-
-source-lock、provenance、release profile、按序runtime补丁和签名钥由发布方控制。工具固定编译器及选项，重新核查输入、补丁和编译器摘要后签名；默认包含原始Wasm，`--without-wasm`可省略回退。来源绑定、兼容ID算法、AOT授权与发布钥轮换见 [包规格](specs/package.md)。发布密钥和签名服务由部署方管理。正式固件只信任其受控发布钥的AOT。
 
 ## 马达反馈
 
@@ -158,7 +148,7 @@ input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
 |---|---|
 | `app_id` | 1..31 字节 ASCII `[a-z0-9._-]` |
 | `title` | 1..63 字节严格 UTF-8，不含 NUL |
-| `version` | 1..4294967295 的整数；同 ID 更新必须递增 |
+| `version` | 1..4294967295 的整数；同 ID 的不同包会直接替换旧包并保留存档，设备不要求递增，上架要递增 |
 | `abi_version` | 当前只能为 1 |
 | `permissions` | 0..63；draw=1、input=2、storage=4、clock=8、audio=16、haptic=32 |
 | `memory_pages` | 1..16，页面为 64 KiB；这是 Wasm 线性内存上限 |
@@ -171,7 +161,7 @@ input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
 
 拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整签名包没有单独的 2 MiB 上限，资源计入总长；`pack` 只做 16 MiB 格式检查，安装时以目标宿主 HELLO 公布的包库数据区为准（S31 V2 为 3960 KiB，S3 V1 为 4984 KiB）。更新同一应用需要再有一段同样大小的连续空闲区，超过数据区一半的包需先卸载再安装。Flash 容量增加不改变 ABI 1 的 16 页线性内存与每回调 100000 指令限额；较大的 Wasm 仍需通过宿主运行时的独立内存检查。
 
-`assets` 指定包内经过签名的原始字节。`asset_read(offset,ptr,len)`在init/event中只读当前包资源，每次最多4096字节；尚无通用私有文件系统API。KV 是每应用 16 个 i32，不能把它描述为文件系统。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
+`assets` 指定包内的原始字节。`asset_read(offset,ptr,len)`在init/event中只读当前包资源，每次最多4096字节；尚无通用私有文件系统API。KV 是每应用 16 个 i32，不能把它描述为文件系统。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
 
 当前 core 将普通 KV 保存尝试按 manager 全局五秒合并，正常停止强制刷新；`kv_set` 成功只表示 RAM 更新，突然断电可能丢失未持久化变化。故障回调不会获得 stop 补救机会。正常停止及重启是节流例外，应用仍应只保存有意义的变化。
 
@@ -185,7 +175,7 @@ input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
 - [Wave](examples/wave_sim/README.md)：圆屏二维粒子水面，支持 IMU 重力、长按换色与 KEY1 掀浪。
 - [Pixel Quest](examples/pixel_quest/README.md)：原创横版平台跳跃，倾斜或按住左右侧移动、点按起跳，TILEMAP 关卡窗口加精灵，美术与音效由脚本原创生成。
 
-BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需要 Bleak；Windows 配对还需要对应 WinRT Python 包。设备配对、信任集和具体传输 profile 由产品配置提供，应用构建不依赖这些包。
+BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需要 Bleak；Windows 配对还需要对应 WinRT Python 包。设备配对和具体传输 profile 由产品配置提供，应用构建不依赖这些包。
 
 ```powershell
 python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install examples/flappy/build/demo.sky-hop.trpkg
@@ -205,9 +195,9 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info examples/flappy/bui
 
 `storage` 输出实际包字节、4 KiB 对齐占用、总空闲、最大连续空闲、健康和隔离总数及容量限制；总空闲不保证能暂存同样大小的连续更新。传输中返回 BUSY。generation 在 JSON 中是精确的 16 位十六进制字符串，表示 wire 小端 u64 的数值，来源与分页 token 相同。BSP RAM 有效位未设置时，六项 internal/external RAM 指标输出 null；runtime heap 的 limit/used/peak 独立有效，始终校验 used≤peak≤limit。
 
-`info` 仅查询已验证健康应用。包路径使用该文件的完整身份和大小；`--app-id` 先解析健康目录的当前完整身份，再发 APP_INFO。返回 title、key_id、ABI、permissions、memory_pages、instruction_budget、wasm_size、assets_size 和完整身份，可供网站/手机对照应用目录。标题和 ID 本身不证明“官方”；应结合完整 SHA-256 与受信发布者 key_id。客户端严格检查 STORAGE 92 字节与 APP_INFO 248 字节布局、schema/保留位、容量关系、身份匹配与 UTF-8，未知能力或畸形回复直接失败。Python 对应 API 为 `storage_info(link)` 和 `app_info(link, identity68_or_info72)`。
+`info` 仅查询已验证健康应用。包路径使用该文件的完整身份和大小；`--app-id` 先解析健康目录的当前完整身份，再发 APP_INFO。返回 title、key_id、ABI、permissions、memory_pages、instruction_budget、wasm_size、assets_size 和完整身份，可供网站/手机对照应用目录。标题和 ID 本身不证明“官方”；来源由发布平台的 app_id 归属保证，设备不校验。客户端严格检查 STORAGE 92 字节与 APP_INFO 248 字节布局、schema/保留位、容量关系、身份匹配与 UTF-8，未知能力或畸形回复直接失败。Python 对应 API 为 `storage_info(link)` 和 `app_info(link, identity68_or_info72)`。
 
-信任策略由宿主配置：签名钥可限定 app ID 或末尾点命名空间。开发者应使用所属范围内的 ID；签名合法但越权的包仍被拒绝。公开开发钥只用于明确开启该信任的试验固件。
+设备靠 BLE 配对和屏幕确认决定谁能安装。同一 app_id 的新包会替换旧包并沿用存档，所以社区发布时 app_id 归属由网站保证。
 
 HELLO bit6（64）声明PACKAGE_SECTIONS能力。当前格式1安装要求此位；APP_INFO只使用70字节schema1请求、248字节schema1回复，旧68/164字节布局已移除。输出`package_format=1`、`selected_backend`、`fallback_reason`及各section大小；总长包含16字节表项、最小4字节对齐和256字节AOT元数据。
 
@@ -231,7 +221,7 @@ python tools/tinyrt.py build examples/flappy --cc path/to/zig.exe
 ```
 
 
-源码仓库不包含构建缓存、签名包或本机工具链路径。产物保留在被忽略的 `build/` 中，发布时另作附件。
+源码仓库不包含构建缓存、应用包或本机工具链路径。产物保留在被忽略的 `build/` 中，发布时另作附件。
 
 ## 契约同步与来源固定
 

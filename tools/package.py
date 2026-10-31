@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 """TinyRT section package format 1 packer. Requires cryptography >= 43.
 
-The fixed development scalar 1 is PUBLIC and INSECURE. It is available only via
---development-key / development-public-key for tests and demos. Device trust
-configuration must explicitly opt in. This tool never reads firmware keys by
-default and never generates or replaces production keys.
+Devices no longer check signatures. Packages stay signed with the public scalar
+1 key, invisibly to developers, so they still install on older firmware.
 """
 import argparse
 import hashlib
 import json
 import re
 import struct
-import sys
 from pathlib import Path
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 
 HEADER_SIZE = 256
@@ -22,9 +19,13 @@ MAX_PACKAGE_SIZE = 0x1000000
 P256_ORDER = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
 DOMAIN = b"TinyRT-package-v1\0"
 
-def development_key():
-    """Public, test-only private key. Never trust in production."""
-    return ec.derive_private_key(1, ec.SECP256R1())
+KEY_ID = 1
+
+def legacy_signature(signed):
+    """Old firmware requires a canonical public-key signature; it proves nothing."""
+    der = ec.derive_private_key(1, ec.SECP256R1()).sign(DOMAIN+signed, ec.ECDSA(hashes.SHA256(),deterministic_signing=True))
+    r, s = utils.decode_dss_signature(der)
+    return r.to_bytes(32,'big')+min(s,P256_ORDER-s).to_bytes(32,'big')
 
 def uint32(value):
     result = int(value, 0)
@@ -33,8 +34,8 @@ def uint32(value):
     return result
 
 def metadata_header(wasm, assets, *, app_id, title, version, abi_version,
-                  permissions, memory_pages, budget, key_id, private_key):
-    """Sign validated metadata and payload; runtime still validates Wasm/ABI."""
+                  permissions, memory_pages, budget):
+    """Encode validated metadata; runtime still validates Wasm/ABI."""
     if re.fullmatch(r"[a-z0-9._-]{1,31}", app_id) is None:
         raise ValueError("app_id must be 1..31 ASCII [a-z0-9._-] bytes")
     encoded_title = title.encode("utf-8", errors="strict")
@@ -46,15 +47,11 @@ def metadata_header(wasm, assets, *, app_id, title, version, abi_version,
         raise ValueError("unknown permission bits")
     if not 1 <= memory_pages <= 16 or not 1 <= budget <= 100000:
         raise ValueError("memory pages or instruction budget exceed v1 policy")
-    if not 0 <= key_id <= 0xFFFFFFFF:
-        raise ValueError("key ID must fit uint32")
-    if not isinstance(private_key, ec.EllipticCurvePrivateKey) or not isinstance(private_key.curve, ec.SECP256R1):
-        raise ValueError("signing key must be an ECDSA P-256 private key")
     if len(wasm) <= 8 or not wasm.startswith(b"\0asm\x01\0\0\0"):
         raise ValueError("input must begin with Wasm v1 magic and contain sections")
     header = bytearray(HEADER_SIZE)
     struct.pack_into('<6I', header, 32, version, abi_version, permissions,
-                     memory_pages, budget, key_id)
+                     memory_pages, budget, KEY_ID)
     header[56:56+len(app_id)] = app_id.encode('ascii')
     header[88:88+len(encoded_title)] = encoded_title
     return header
@@ -146,21 +143,15 @@ def _assemble(wasm, assets, *, native=None, native_metadata=None, include_wasm=T
     if cursor > MAX_PACKAGE_SIZE: raise ValueError('complete package exceeds the 16 MiB format limit')
     struct.pack_into('<HH5I',header,8,1,256,cursor,256,len(sections),16,0)
     payload = table + body; header[152:184] = hashlib.sha256(payload).digest()
-    signature = metadata['private_key'].sign(DOMAIN+header[:192],ec.ECDSA(hashes.SHA256(),deterministic_signing=True))
-    r,s = utils.decode_dss_signature(signature)
-    header[192:256] = r.to_bytes(32,'big')+min(s,P256_ORDER-s).to_bytes(32,'big')
+    header[192:256] = legacy_signature(bytes(header[:192]))
     return bytes(header+payload)
 
 def build_wasm_package(wasm, assets, **metadata):
     """Developer packer: intentionally exposes no AOT input or safety assertions."""
     return _assemble(wasm,assets,**metadata)
 
-def validate_envelope(data, public_key, expected_key_id):
-    """Authenticate envelope only. Does not authorize a host, load, or execute code."""
-    if not isinstance(public_key,ec.EllipticCurvePublicKey) or not isinstance(public_key.curve,ec.SECP256R1):
-        raise ValueError('verification key must be P-256')
-    if type(expected_key_id) is not int or not 0 <= expected_key_id <= 0xffffffff:
-        raise ValueError('invalid expected key ID')
+def validate_envelope(data):
+    """Check envelope structure and hashes only. Does not load or execute code."""
     if not 272 <= len(data) <= MAX_PACKAGE_SIZE or data[:8] != b'TRPKG001':
         raise ValueError('invalid format-1 size or magic')
     fmt,header,total,table,count,entry,flags = struct.unpack_from('<HH5I',data,8)
@@ -169,14 +160,8 @@ def validate_envelope(data, public_key, expected_key_id):
     version,abi,permissions,pages,budget,key_id = struct.unpack_from('<6I',data,32)
     if not version or abi!=1 or permissions & ~63 or not 1<=pages<=16 or not 1<=budget<=100000 or any(data[184:192]):
         raise ValueError('invalid package policy')
-    if key_id != expected_key_id: raise ValueError('package key ID is not the explicitly trusted ID')
     app_id = _text(data[56:88],'ascii',r'[a-z0-9._-]{1,31}')
     title = _text(data[88:152],'utf-8')
-    r,s = int.from_bytes(data[192:224],'big'),int.from_bytes(data[224:256],'big')
-    if not 0<r<P256_ORDER or not 0<s<=P256_ORDER//2: raise ValueError('noncanonical signature')
-    from cryptography.exceptions import InvalidSignature
-    try: public_key.verify(utils.encode_dss_signature(r,s),DOMAIN+data[:192],ec.ECDSA(hashes.SHA256()))
-    except InvalidSignature as error: raise ValueError('signature verification failed') from error
     if hashlib.sha256(data[256:]).digest()!=data[152:184]: raise ValueError('payload hash mismatch')
     cursor = 256+count*16; previous=0; sections={}
     if cursor>len(data): raise ValueError('truncated section table')
@@ -216,7 +201,7 @@ def read_bounded(path):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    pack = commands.add_parser("pack", help="build a signed TinyRT Wasm package")
+    pack = commands.add_parser("pack", help="build a TinyRT Wasm package")
     pack.add_argument("--wasm", required=True, type=Path)
     pack.add_argument("--assets", type=Path)
     pack.add_argument("--cover", type=Path, help="single-frame 210x210 PNG, at most 64 KiB")
@@ -228,39 +213,20 @@ def main(argv=None):
     pack.add_argument("--permissions", type=uint32, default=15)
     pack.add_argument("--memory-pages", type=uint32, default=4)
     pack.add_argument("--budget", type=uint32, default=10000)
-    pack.add_argument("--key-id", required=True, type=uint32)
-    keys = pack.add_mutually_exclusive_group(required=True)
-    keys.add_argument("--key", type=Path, help="existing unencrypted P-256 PEM private key")
-    keys.add_argument("--development-key", action="store_true", help="PUBLIC TEST KEY ONLY; scalar 1")
-    public = commands.add_parser("development-public-key", help="export PUBLIC TEST key, SEC1 65 bytes")
-    public.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.command == "development-public-key":
-            key = development_key()
-            data = key.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
-            print("WARNING: public development key for TESTS ONLY; never trust in production.", file=sys.stderr)
-            args.output.write_bytes(data)
-            return 0
-        for source in (args.wasm, args.assets, args.cover, args.key):
+        for source in (args.wasm, args.assets, args.cover):
             if source is not None and (args.output.resolve() == source.resolve() or
                     (args.output.exists() and args.output.samefile(source))):
-                raise ValueError("output must not overwrite an input or signing key")
-        if args.development_key:
-            key = development_key()
-            print("WARNING: signing with public development key for TESTS ONLY.", file=sys.stderr)
-        else:
-            key = serialization.load_pem_private_key(args.key.read_bytes(), password=None)
+                raise ValueError("output must not overwrite an input")
         builder = build_package
         data = builder(read_bounded(args.wasm), read_bounded(args.assets) if args.assets else b"",
             cover=read_cover_png(args.cover) if args.cover else None,
             app_id=args.app_id, title=args.title, version=args.version, abi_version=args.abi_version,
-            permissions=args.permissions, memory_pages=args.memory_pages, budget=args.budget,
-            key_id=args.key_id, private_key=key)
+            permissions=args.permissions, memory_pages=args.memory_pages, budget=args.budget)
         args.output.write_bytes(data)
         print(json.dumps({"app_id": args.app_id, "version": args.version,
-            "package_size": len(data), "sha256": hashlib.sha256(data).hexdigest(),
-            "key_id": args.key_id, "development_key": args.development_key}, sort_keys=True))
+            "package_size": len(data), "sha256": hashlib.sha256(data).hexdigest()}, sort_keys=True))
         return 0
     except (OSError, ValueError, TypeError, UnicodeError) as error:
         parser.exit(2, f"package: {error}\n")

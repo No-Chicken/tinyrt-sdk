@@ -590,6 +590,93 @@ HILL = art([
     "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
 ], 32, 16)
 
+# 20/21 岩浆两帧，22/23 弹簧压缩/弹起（原创）
+TILES[20] = art([
+    "................", "................", "...yy.......yy..", ".yyooyy...yyooyy",
+    "yooooooyyyoooooo", "oooorroooooooroo", "oorrrroooorrrroo", "orrrrrrrrrrrrrrr",
+    "rrrrOrrrrrrrOrrr", "rrOOrrrrOOrrrrOO", "rrrrrrOrrrrrrrrr", "OrrrrrrrrrOrrrrr",
+    "rrrOrrrrrrrrrOrr", "rrrrrrrOrrrrrrrr", "rOrrrrrrrrOrrrrr", "rrrrrrrrrrrrrrrr",
+])
+TILES[21] = art([
+    "................", "..yy.......yy...", "yyooyy...yyooyy.", "oooooyyyyoooooyy",
+    "oorooooooooroooo", "rrroooorrrroooor", "rrrrrrrrrrrrrrrr", "rrOrrrrrrrOrrrrr",
+    "rrrrrOrrrrrrrOrr", "OrrrrrrOOrrrrrrr", "rrrOrrrrrrrrOrrr", "rrrrrrrOrrrrrrrr",
+    "rOrrrrrrrrrOrrrr", "rrrrOrrrrrrrrrrO", "rrrrrrrrOrrrrrrr", "rrrrrrrrrrrrrrrr",
+])
+TILES[22] = art([
+    "................", "................", "................", "................",
+    "................", "................", "................", "................",
+    "kkkkkkkkkkkkkkkk", "kyyyyyyyyyyyyyyk", "kYYYYYYYYYYYYYYk", "kkkkkkkkkkkkkkkk",
+    "..kSsSsSsSsSsk..", "..kSsSsSsSsSsk..", "kkkkkkkkkkkkkkkk", "kSSSSSSSSSSSSSSk",
+])
+TILES[23] = art([
+    "kkkkkkkkkkkkkkkk", "kyyyyyyyyyyyyyyk", "kYYYYYYYYYYYYYYk", "kkkkkkkkkkkkkkkk",
+    "....kssk........", "....kSSSSk......", ".......kssk.....", "........kSSSk...",
+    "......kssk......", "....kSSk........", "......kssk......", "........kSSk....",
+    "......kssk......", "....kSSSk.......", "kkkkkkkkkkkkkkkk", "kSSSSSSSSSSSSSSk",
+])
+# 29 护盾能量核；30/31 黄蜂；35/48 跳虫；49/50 刺背虫（原创）
+PLAYER[29] = art([
+    "................", ".....kkkkkk.....", "...kkccccCCkk...", "..kcwwccccCCCk..",
+    "..kcwccccccCCk..", ".kccccttttccCCk.", ".kcccttwwttcCCk.", ".kcccttwwttcCCk.",
+    ".kccccttttccCCk.", ".kCcccccccccCCk.", "..kCcccccccCCk..", "..kCCCcccCCCCk..",
+    "...kkCCCCCCkk...", ".....kkkkkk.....", "................", "................",
+])
+ENEMY[30] = art([
+    "................", "...kkk....kkk...", "..kuuuk..kuuuk..", "..kuwuukkuuwuk..",
+    "...kuuukkuuuk...", "....kkyyyykk....", "...kyykkkkyyk...", "..kykwkyykkkyk..",
+    "..kykkkyykkkyk..", "...kyykkkkyyk...", "....kkyyyykk....", "......kYYk......",
+    ".......kk.......", "................", "................", "................",
+])
+ENEMY[31] = art([
+    "................", "................", "................", "...kkkk..kkkk...",
+    "..kuuuwkkwuuuk..", "...kkkyyyykkk...", "...kyykkkkyyk...", "..kykwkyykkkyk..",
+    "..kykkkyykkkyk..", "...kyykkkkyyk...", "....kkyyyykk....", "......kYYk......",
+    ".......kk.......", "................", "................", "................",
+])
+ENEMY[35] = art([
+    "................", "................", "................", "................",
+    "................", ".....kkkkkk.....", "...kkggggggkk...", "..kgggwkgwkggk..",
+    "..kgggwkgwkggk..", "..kGgggggggggk..", "...kGGGGGGGGk...", "....kkkkkkkk....",
+    "...kSk....kSk...", "..kSSk....kSSk..", ".kkkk......kkkk.", "................",
+])
+ENEMY[48] = art([
+    "................", ".....kkkkkk.....", "...kkggggggkk...", "..kgggwkgwkggk..",
+    "..kgggwkgwkggk..", "..kGgggggggggk..", "...kGGGGGGGGk...", "....kkkkkkkk....",
+    ".....kSkkSk.....", ".....kSkkSk.....", ".....kSkkSk.....", ".....kSkkSk.....",
+    ".....kSkkSk.....", "....kSSkkSSk....", "....kkkkkkkk....", "................",
+])
+ENEMY[49] = art([
+    "................", "................", "................", "....k..k..k.....",
+    "...kwk.kwkkwk...", "..kwSkkwSkwSk...", "..kkrrrrrrrrkk..", ".krrrrrrrrrrrrk.",
+    ".krwwrrrrrrrrrk.", ".krwkrrrrrrrrrk.", ".kOrrrrrrrrrrOk.", "..kOOOOOOOOOOk..",
+    "...kkkkkkkkkk...", "...kk..kk..kk...", "................", "................",
+])
+ENEMY[50] = art([
+    "................", "................", "................", ".....k..k..k....",
+    "...kwk.kwk.kwk..", "...kSwkkSwkkSk..", "..kkrrrrrrrrkk..", ".krrrrrrrrrrrrk.",
+    ".krwwrrrrrrrrrk.", ".krwkrrrrrrrrrk.", ".kOrrrrrrrrrrOk.", "..kOOOOOOOOOOk..",
+    "...kkkkkkkkkk...", "....kk..kk..kk..", "................", "................",
+])
+# 52/53/60/61 组成 32×32 Boss「熔核魔像」
+GOLEM = [
+    "................................", "..........kkkkkkkkkkkk..........",
+    ".......kkkSSSSSSSSSSSSkkk.......", ".....kkSSSssssssssssssSSSkk.....",
+    "....kSSSssssssssssssssssSSSk....", "...kSSssssssssssssssssssssSSk...",
+    "...kSsssskkkkssssssskkkksssSk...", "..kSsssskrrrrkssssskrrrrksssSk..",
+    "..kSsssskryrrkssssskryrrksssSk..", "..kSsssskrrrrkssssskrrrrksssSk..",
+    "..kSssssskkkkssssssskkkkssssSk..", "..kSSsssssssssssssssssssssssSk..",
+    "..kSSSsssssssskkkksssssssssSSk..", "...kSSssssssskoooksssssssssSk...",
+    "...kkSSsssskkooyookksssssSSkk...", "..kSkkSSssskooyyyookssssSSkkSk..",
+    ".kSSskkSSsskooyyyookssSSSkksSSk.", ".kSssskkSSSkkooyookkSSSkkssssSk.",
+    ".kSsssskkSSSSkkkkSSSSSkkssssSSk.", ".kSsssk.kkSSSSSSSSSSSkk.kssssSk.",
+    ".kSssk...kkkSSSSSSSkkk...kssSk..", "..kkk.....kSSkkkkSSk.....kkk...",
+    ".........kSSssssssSSk...........", "........kSSsskkkksssSk..........",
+    "........kSSsk....ksssSk.........", ".......kSSsk......kssSk.........",
+    ".......kSSsk......kssSSk........", "......kSSssk......kssSSk........",
+    "......kSSSSk......kSSSSk........", ".....kkkkkkkk....kkkkkkkk.......",
+    "................................", "................................",
+]
 # 8x8 字形：0-9、x、心、宝石、星
 GLYPHS = [
     ["..kkkk..", ".kwwwwk.", "kwwkkwwk", "kwwkkwwk", "kwwkkwwk", "kwwkkwwk", ".kwwwwk.", "..kkkk.."],
@@ -623,6 +710,7 @@ def build_atlas():
         return (i % 8) * 16, (i // 8) * 16
     for i, rows in {**TILES, **PLAYER, **ENEMY}.items():
         put(rows, *cell(i))
+    put(GOLEM, *cell(52))
     put(CLOUD, *cell(36))
     put(HILL, *cell(38))
     for g, rows in enumerate(GLYPHS):
@@ -630,8 +718,22 @@ def build_atlas():
     return atlas
 
 
-def palette_list():
-    return [0] + [rgb565(COLORS[k]) for k in KEYS]
+# 四个主题共用图集，只换调色板：草原、洞穴、云海、熔炉。
+THEMES = [
+    {},
+    {'g': (92, 150, 206), 'G': (54, 96, 150), 'd': (88, 80, 118), 'D': (54, 48, 80), 'b': (112, 92, 150), 'B': (66, 54, 100),
+     's': (120, 124, 156), 'S': (70, 74, 104), 'h': (44, 42, 74), 'H': (34, 32, 60), 'n': (130, 110, 150), 'N': (80, 66, 104)},
+    {'g': (244, 248, 255), 'G': (196, 210, 240), 'd': (176, 192, 228), 'D': (126, 142, 190), 'h': (214, 196, 240), 'H': (188, 170, 226),
+     's': (214, 222, 240), 'S': (150, 164, 204), 'n': (250, 214, 150), 'N': (204, 160, 96)},
+    {'g': (214, 96, 50), 'G': (150, 54, 34), 'd': (96, 62, 62), 'D': (62, 38, 44), 'b': (120, 80, 80), 'B': (74, 44, 50),
+     's': (128, 112, 118), 'S': (78, 64, 72), 'h': (84, 38, 40), 'H': (62, 28, 34), 'u': (120, 70, 66), 'w': (244, 234, 224),
+     'n': (150, 100, 70), 'N': (96, 58, 44)},
+]
+
+
+def palette_list(theme=None):
+    colors = {**COLORS, **(theme or {})}
+    return [0] + [rgb565(colors[k]) for k in KEYS]
 
 
 def preview_png(atlas, path, scale=4):
@@ -696,6 +798,9 @@ SOUNDS = {
     'HURT': tone([(660, 600, 0.10), (520, 400, 0.12), (400, 300, 0.14), (300, 110, 0.30)], 0.24, 0.5),
     'CLEAR': tone([(523, 523, 0.10), (659, 659, 0.10), (784, 784, 0.10), (1046, 1046, 0.32)], 0.22, 0.5),
     'CHECK': tone([(784, 784, 0.07), (1175, 1175, 0.14)], 0.20, 0.25),
+    'POWER': tone([(392, 784, 0.10), (523, 1046, 0.12), (659, 1318, 0.14)], 0.20, 0.25),
+    'SPRING': tone([(180, 1100, 0.16)], 0.20, 0.5),
+    'BOSS': mix(tone([(140, 50, 0.30)], 0.34, 0.5), noise(0.22, 0.22)),
 }
 
 
@@ -743,7 +848,9 @@ def main():
     defs.append('#define ATLAS_LENGTH %du' % (128 * 128))
     defs.append('#define PALETTE_OFFSET %du' % len(data))
     defs.append('#define PALETTE_COUNT %du' % len(pal))
-    data += struct.pack('<' + 'H' * len(pal), *pal)
+    defs.append('#define THEME_COUNT %du' % len(THEMES))
+    for theme in THEMES:
+        data += struct.pack('<' + 'H' * len(pal), *palette_list(theme))
     for name, samples in SOUNDS.items():
         if len(data) % 2:
             data.append(0)

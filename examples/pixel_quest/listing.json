@@ -1,24 +1,26 @@
 {
-  "summary": "原创圆屏横版跳跃：倾斜移动、点按起跳，收集宝石、踩甲虫、穿过传送门。",
+  "summary": "原创圆屏横版跳跃：四个主题八个关卡，倾斜移动、点按起跳，收集宝石，打败熔核魔像。",
   "category": "game",
   "tags": [
     "平台跳跃",
     "像素",
-    "IMU"
+    "IMU",
+    "Boss"
   ],
   "controls": [
     "倾斜设备左右移动，或按住屏幕左/右侧",
     "点按屏幕中间起跳，按住跳得更高",
     "外设手柄：十字键或左摇杆移动，A 起跳，START 开始",
-    "从上方落下踩扁甲虫；避开尖刺与深坑",
+    "从上方落下踩扁敌人；避开尖刺、岩浆和深坑，刺背虫不能踩",
+    "标题页点屏幕左右侧选择已解锁的关卡",
     "短按 KEY1 返回应用大厅；支持边缘侧滑返回"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "v2：支持外设手柄，拔掉手柄自动暂停。",
+  "release_notes": "v3：扩充为八个原创关卡，新增弹簧、移动平台、岩浆、三种敌人、护盾、进度存档和终关 Boss。",
   "full_bleed": true,
   "rights": {
     "status": "unverified",
-    "note": "角色、图块与音效均由 prepare_assets.py 原创生成，见 LICENSES.md；发布前由发布方确认。"
+    "note": "角色、图块、关卡与音效均由 prepare_assets.py、prepare_levels.py 原创生成，见 LICENSES.md；发布前由发布方确认。"
   },
   "device_verified": false,
   "screenshots": [
@@ -28,11 +30,11 @@
     },
     {
       "at_ms": 6600,
-      "caption": "石阶与甲虫"
+      "caption": "第一关：宝石箱与甲虫"
     },
     {
       "at_ms": 9000,
-      "caption": "木桥收宝石"
+      "caption": "收集宝石"
     }
   ]
 }

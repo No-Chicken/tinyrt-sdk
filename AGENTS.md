@@ -5,11 +5,11 @@ SDK 对外版本唯一来源是根目录 VERSION，`python tools/tinyrt.py --ver
 
 ## 本项目设备交付约定
 
-S31 应用编译统一使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`，从 SDK 根目录执行 `pack --aot --development-key --target esp32s31 --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe`。不得引用个人机器的 `tmp/` 编译器路径；SDK 按 `tools/toolchains/esp32s31.json` 强制核验摘要。来源、许可证与网站登记说明见 [S31 编译器](tools/toolchains/esp32s31/windows-x64/README.md)。S31 网站 ZIP 用 `release --target esp32s31`，默认取同一个仓库内编译器。
+`pack <app>` 默认用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe` 编译 S31 AOT，不需要额外参数。不得引用个人机器的 `tmp/` 编译器路径；SDK 按 `tools/toolchains/esp32s31.json` 强制核验摘要。来源、许可证与网站登记说明见 [S31 编译器](tools/toolchains/esp32s31/windows-x64/README.md)。网站 ZIP 用 `release <app>`，默认同一个编译器。
 
-默认交付 AOT 包：`pack --aot --development-key --wamrc <匹配编译器>`；网站发布使用
-`release --variant wasm-aot --target <esp32s3|esp32s31> --wamrc <匹配编译器>`。桌面 WAMR 的 Wasm 仅用于预览和测试。
-安装前确认宿主 `aot_enabled=true`，开发包还需要 `development_aot=true`；安装后查询
+默认交付 AOT 包；网站发布使用
+`release <app>`（默认 wasm-aot + esp32s31）。桌面 WAMR 的 Wasm 仅用于预览和测试。
+安装前确认宿主 `aot_enabled=true`；安装后查询
 APP_INFO，必须 `selected_backend=2`、`fallback_reason=0`，不得以 Wasm 回退作为设备验收。
 
 ## 本地交付网站 ZIP
@@ -17,14 +17,13 @@ APP_INFO，必须 `selected_backend=2`、`fallback_reason=0`，不得以 Wasm �
 从 SDK 根目录执行：
 
 ```powershell
-python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --wamrc path/to/wamrc.exe --development-key
+python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe
 ```
 
 设置 TINYRT_CC / TINYRT_RUNNER 后可用 `make release APP=examples/flappy`。
-命令离线完成测试、编译、WAMR 截图、签名、清单、ZIP 与自检。默认输出应用 release/ 下
+命令离线完成测试、编译、WAMR 截图、打包、清单、ZIP 与自检。默认输出应用 release/ 下
 的 ZIP 和同名展开目录；本项目只交付 AOT，默认 wasm-aot，传 --wamrc <本地固定工具>。
 Wasm 用于编译、预览和包内回退，独立 Wasm ZIP 仅用于解释器诊断。
-生产 AOT 保留受控 release_compile.py 流程。
 
 应用提供 app.json、源码、listing.json、cover.png 和 README.md / CHANGELOG.md / LICENSES.md。
 三个 Markdown 用 UTF-8 无 BOM、LF、各≤64 KiB；封面为 210×210 单帧 RGB/RGBA PNG。
@@ -34,8 +33,8 @@ listing 包含 summary/category/tags/controls/publisher_display/release_notes/fu
 截图/events 时间受 --preview-ms 限制，默认最多 60000 ms。没有真机验证不填 device_verified=true，
 授权未确认保留 rights.status=unverified。两个 new 模板均带完整资料与占位封面。
 
-应用发布版本是从 1 开始的整数，实际分发更新才递增；version 用于设备升级，
-release.json 必须与签名包相同。不要往 app.json 或网站 v2 清单添加显示版本字段。
+应用发布版本是从 1 开始的整数，上架更新要递增；设备本身允许同版本覆盖和降级，
+release.json 必须与应用包相同。不要往 app.json 或网站 v2 清单添加显示版本字段。
 构建时间取 SOURCE_DATE_EPOCH / --built-at / SDK 提交时间，本地构建不自动升版本。
 规则见 specs/release-bundle-v2.md。
 
@@ -43,15 +42,15 @@ release.json 必须与签名包相同。不要往 app.json 或网站 v2 清单�
 
 ## 从游戏模板到可分享的包
 
-需要 Python 3.10+、Zig 0.13.0 或支持 wasm32 的 Clang。桌面预览还需要真实 WAMR `tinyrt-run.exe`；开发 AOT 需要 SDK 固定 SHA-256 的 ESP32-S3 `wamrc.exe`。用 `--runner`、`--wamrc` 指向匹配的本地工具；使用下载工具时须核对发布附件和固定摘要。命令从 SDK 根目录运行，路径按机器替换。
+需要 Python 3.10+、Zig 0.13.0 或支持 wasm32 的 Clang。桌面预览还需要真实 WAMR `tinyrt-run.exe`；S31 AOT 编译器随仓库提供。用 `--runner` 指向匹配的本地工具；使用下载工具时须核对发布附件和固定摘要。命令从 SDK 根目录运行，路径按机器替换。
 
 ```powershell
 python -m pip install -r requirements.txt
-python tools/tinyrt.py new my-game --app-id demo.my-game --title "My game" --template game
+python tools/tinyrt.py new my-game --title "My game" --template game
 python tools/tinyrt.py build my-game --cc path/to/zig.exe
 python tools/tinyrt.py run my-game --runner path/to/tinyrt-run.exe --events my-game/events.json --frames 0,330
-python tools/tinyrt.py pack my-game --aot --development-key --wamrc path/to/wamrc.exe
-python tools/tinyrt.py validate my-game/build/demo.my-game.trpkg --development-key
+python tools/tinyrt.py pack my-game
+python tools/tinyrt.py validate my-game/build/my-game.trpkg
 ```
 
 创建 `my-game/events.json`，按住触摸让模板中的角色移动；时间不得超过最后一个截图时间：
@@ -68,16 +67,16 @@ python tools/tinyrt.py validate my-game/build/demo.my-game.trpkg --development-k
 
 模板是完整可运行的小游戏：四个回调、33 ms 时钟、触摸生命周期、32×32 RGB565 图像与 Host 缩放。源码在 [templates/game/main.c](templates/game/main.c)，`new` 会复制清单与源码供你继续开发。截图默认写入 `my-game/build/preview/frame-000000.png` 和 `frame-000330.png`，计时写入 `report.json`。预览跑真实 WAMR 解释器，桌面时间不是设备 FPS；桌面字体与设备字体也不完全一致。JSON脚本支持触摸press/move/release/cancel，以及已订阅KEY1的应用所用的key_press（x=1,y=1）/key_release（x=1,y=0）。默认按Guest的clock_interval推进虚拟时间，处理完到期CLOCK再投递该时间点的输入并截图；截图不额外运行render。桌面回调执行的墙钟耗时不会推进虚拟时钟。显式--step-ms 33会每33ms强制注入CLOCK，覆盖Guest周期，只用于诊断。
 
-分享 `.trpkg` 时同时说明它需要开启公开开发钥与开发 AOT 的匹配 ESP32-S3 固件。公开开发钥任何人都能使用，不能证明发布者身份，也不用于量产。开发 AOT 只允许非空 `demo.` 子命名空间，key_id 固定为 1；编译器摘要、目标、bounds/stack/loop-poll 选项均固定。发布方使用受控 `release_compile.py` 流程。
+`.trpkg` 不需要任何密钥：设备不校验签名，`app_id` 只要合法就能用，存档随 app_id 走。编译器摘要、目标、bounds/stack/loop-poll 选项均固定。
 
-设备已刷入匹配开发固件后，在应用大厅开启安装窗口，再安装、核查和启动：
+在应用大厅开启安装窗口，再安装、核查和启动：
 
 ```powershell
 python -m pip install bleak winrt-Windows.Devices.Bluetooth winrt-Windows.Devices.Enumeration
 python tools/ble_install.py --scan
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install my-game/build/demo.my-game.trpkg
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id demo.my-game
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/demo.my-game.trpkg
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install my-game/build/my-game.trpkg
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id my-game
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/my-game.trpkg
 ```
 
 按设备屏幕 PIN 配对。查看 `selected_backend=2` 才能确认设备选择 AOT；`1` 是 Wasm，结合 `fallback_reason` 判断性能降低原因。安装成功与运行正确需要分别验证。
@@ -117,16 +116,16 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/dem
 | `kv_get(key,fallback)` / `kv_set(key,value)` | STORAGE=4；key=0..15，值为 i32，每应用隔离；应用在 init/event/stop 中保存状态 |
 | `asset_read(offset,destination,len)` | 无额外权限；仅 init/event，只读当前包 resources；每次≤4096字节，返回读取长度或-1 |
 | `haptic_pulse(strength,duration_ms)` / `haptic_stop()` | HAPTIC=32；仅 init/event；强度 1..100%，时长 1..2000 ms；新脉冲替换旧脉冲，非阻塞；0 成功、1 不支持，非法参数或调用阶段使回调失败；应用结束由 Host 停止；桌面无马达 |
-| `audio_play(resource_offset,byte_length,sample_rate)` | AUDIO=16；仅init/event；当前签名资源内PCM16 LE单声道，固定16000Hz，偶数字节2..32000（最长1秒）；每回调最多4次；0已排队，1队列满、次数超限或不可用；Host复制，退出清队列并取消在播音效；桌面预览校验资源但静音 |
+| `audio_play(resource_offset,byte_length,sample_rate)` | AUDIO=16；仅init/event；当前包资源内PCM16 LE单声道，固定16000Hz，偶数字节2..32000（最长1秒）；每回调最多4次；0已排队，1队列满、次数超限或不可用；Host复制，退出清队列并取消在播音效；桌面预览校验资源但静音 |
 | `runtime_backend()` | 无额外权限；0=classic解释器，1=AOT；用于选择有界工作批量，不保证设备速度 |
 
 ## 性能、边界和常见错误
 
 - 清单 `permissions` 是上述位之和，最大63；`memory_pages` 为1..16，每页64 KiB；`budget` 为每回调1..100000条受计量指令。AOT 保留边界、原生栈与循环取消检查，不把指令计量转换成固定设备耗时承诺。
-- 整包（含签名、section 表、Wasm、AOT、资源和对齐）不超过设备 HELLO 报告的包库数据区即可，无单独单包上限；更新需另一段同样大小的连续空闲区。runtime 配额2 MiB还包含运行时开销和 AOT 映射预留；16页线性内存不意味着这些额外成本免费。
+- 整包（含头、section 表、Wasm、AOT、资源和对齐）不超过设备 HELLO 报告的包库数据区即可，无单独单包上限；更新需另一段同样大小的连续空闲区。runtime 配额2 MiB还包含运行时开销和 AOT 映射预留；16页线性内存不意味着这些额外成本免费。
 - 一帧最多128条命令，两个 RGB565 函数合计最多提交一张图。把像素工作合到一张图后提交；更大内容用 Host 缩放。长计算分片放在 event，单次回调及时返回。
 - render 中调用资源或时钟设置会失败；KV 状态逻辑放在 init/event/stop；普通帧忘记 clear、混用 skip 与绘制、越界文本/像素、无权限 import 都会失败。不得依赖 WASI、libc、构造器或未声明的 import。
 - `kv_set` 成功先更新 RAM。Host 普通保存按全局5秒合并，正常 stop 强制刷新；断电可能丢失尚未保存的状态。仅保存实际变化。
-- `validate` 仅认证信封，不运行 Wasm/AOT，也不证明玩法正确。改清单版本后重建重打；同ID更新必须递增。旧内部包和目录与当前格式不兼容，需重新构建包并按设备部署流程处理旧媒体。
+- `validate` 仅检查信封，不运行 Wasm/AOT，也不证明玩法正确。同 ID 的不同包会直接替换旧包并保留存档，同版本重编译和降级都可以。旧内部包和目录与当前格式不兼容，需重新构建包并按设备部署流程处理旧媒体。
 
 应用版本、ZIP 命名和兼容性注意事项见 [版本管理](specs/version-management.md)。

@@ -25,7 +25,7 @@ SDK 打包时也会强制核验编译器 SHA-256。版本号相同不代表文�
 
 ```powershell
 python tools/tinyrt.py build examples/flappy --cc path/to/zig.exe
-python tools/tinyrt.py pack examples/flappy --aot --development-key --target esp32s31 --wamrc tools/toolchains/esp32s31/windows-x64/wamrc.exe
+python tools/tinyrt.py pack examples/flappy
 ```
 
 使用 EEBadge 固件的应用入口时，从 `esp32/` 目录执行：
@@ -35,7 +35,7 @@ $env:TINYRT_WAMRC_S31 = (Resolve-Path tinyrt-sdk/tools/toolchains/esp32s31/windo
 python tools/cli/app.py build tinyrt-sdk/examples/flappy --target s31
 ```
 
-生成 S31 网站 ZIP 用 `python tools/tinyrt.py release <app> --target esp32s31 --development-key`，未传 `--wamrc` 时默认使用本目录的编译器。S31 包与网站交付流程的范围见 [设备目标](../../../../specs/device-targets.md)。
+生成 S31 网站 ZIP 用 `python tools/tinyrt.py release <app> --target esp32s31`，未传 `--wamrc` 时默认使用本目录的编译器。S31 包与网站交付流程的范围见 [设备目标](../../../../specs/device-targets.md)。
 
 ## 网站对接
 

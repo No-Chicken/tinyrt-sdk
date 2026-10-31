@@ -9,7 +9,7 @@ A greeting rendered on the 466x466 round display. Use host back to exit.
 From the SDK directory (replace `<app>` with this application directory):
 
 ```text
-python tools/tinyrt.py release <app> --cc path/to/zig.exe --runner path/to/tinyrt-run.exe --wamrc path/to/wamrc.exe --development-key
+python tools/tinyrt.py release <app> --cc path/to/zig.exe --runner path/to/tinyrt-run.exe
 ```
 
 Edit listing.json, this README, CHANGELOG.md, LICENSES.md and cover.png for your application.

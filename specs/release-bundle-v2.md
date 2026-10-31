@@ -1,6 +1,6 @@
 # Local website release bundles
 
-`python tools/tinyrt.py release <app> --development-key` produces an offline
+`python tools/tinyrt.py release <app>` produces an offline
 website v2 ZIP and a matching unpacked directory. Set `TINYRT_CC` and
 `TINYRT_RUNNER`, or pass `--cc` and `--runner` with local executables.
 It does not download tools, upload files or publish to a server.
@@ -77,21 +77,19 @@ UTF-8 without BOM, LF, two spaces and fixed key order. built_at uses --built-at,
 then SOURCE_DATE_EPOCH, then SDK commit time; never current wall-clock time.
 ZIP uses that UTC timestamp, clamped to the DOS year range and two-second
 resolution. Variable timings and absolute preview paths do not enter reports.
-build.command is a logical invocation with <app>/<key> placeholders for local
+build.command is a logical invocation with an <app> placeholder for local
 paths; compiler version is recorded separately. SDK HEAD is recorded. Source
 archives need --sdk-revision plus SOURCE_DATE_EPOCH or --built-at.
 
-Default variant is wasm-aot. --wamrc <local compiler> uses the
-existing pinned development AOT workflow with Wasm fallback. Production AOT
-remains in controlled release_compile.py. This project's deliverable is the AOT
-ZIP; standalone Wasm ZIPs are interpreter diagnostics, not product deliverables.
-Private-key Wasm diagnostics use --variant wasm --key <key>
---key-id <id>. --channel defaults to development. Public development scalar
-(also supplied via PEM) requires key ID 1, demo. namespace and development channel.
+Default variant is wasm-aot for esp32s31, built by the pinned compiler with Wasm
+kept in the package. This project's deliverable is the AOT ZIP; standalone Wasm
+ZIPs are interpreter diagnostics, not product deliverables. --channel defaults to
+development and is only a request; the store decides the channel. `signing` is
+always "development" and key ID always 1; neither has security meaning.
 
 Self-check covers ZIP whitelist/duplicates/types/limits/CRC, v2 Schema, hashes,
-PNGs, signature, metadata/imports/variant and signed-cover consistency. Website
-account authorization, key registry, channel approval and rights review remain
+PNGs, metadata/imports/variant and cover consistency. Website app ID ownership,
+AOT rebuild comparison, channel approval and rights review remain
 server decisions. Local success does not assert online acceptance.
 
 V2 adds release_notes, changelog, build and screenshot captions. Other semantics

@@ -87,8 +87,8 @@ class SDKTests(unittest.TestCase):
         run('new',project,'--app-id','demo.standalone')
         built=run('build',project,'--cc',cc)
         self.assertTrue(Path(built['wasm']).read_bytes().startswith(b'\0asm\x01\0\0\0'))
-        packed=run('pack',project,'--development-key','--key-id','1')
-        checked=run('validate',packed['package'],'--development-key','--key-id','1')
+        packed=run('pack',project,'--wasm-only')
+        checked=run('validate',packed['package'])
         self.assertEqual(checked['validation_level'],'envelope')
         self.assertEqual(checked['wasm_validation'],'not_performed')
         self.assertEqual(checked['app_id'],'demo.standalone')
@@ -96,8 +96,7 @@ class SDKTests(unittest.TestCase):
     def package(self, wasm=b'\0asm\x01\0\0\0\0\1\0', assets=b''):
         import package
         return package.build_package(wasm,assets,app_id='demo.test',title='Test',version=1,
-            abi_version=1,permissions=15,memory_pages=2,budget=100000,key_id=1,
-            private_key=package.development_key())
+            abi_version=1,permissions=15,memory_pages=2,budget=100000)
 
     def test_build_uses_declared_memory_for_larger_static_data(self):
         cc=os.environ.get('TINYRT_CC') or shutil.which('clang') or shutil.which('zig')
@@ -119,15 +118,14 @@ class SDKTests(unittest.TestCase):
         values=copy.deepcopy(VALID);values['permissions']=63
         self.assertEqual(self.sdk.load_manifest(self.manifest(values))['permissions'],63)
         blob=package.build_package(b'\0asm\x01\0\0\0\0\1\0',b'',app_id='demo.test',title='Test',version=1,
-            abi_version=1,permissions=63,memory_pages=2,budget=100000,key_id=1,
-            private_key=package.development_key())
-        info=package.validate_envelope(blob,package.development_key().public_key(),1)
+            abi_version=1,permissions=63,memory_pages=2,budget=100000)
+        info=package.validate_envelope(blob)
         self.assertEqual(struct.unpack_from('<I',blob,40)[0],63)
         self.assertEqual(info['validation_level'],'envelope')
 
     def test_envelope_is_explicitly_not_wasm_validation(self):
         import package
-        info=self.sdk.validate_envelope(self.package(),package.development_key().public_key(),1)
+        info=package.validate_envelope(self.package())
         self.assertEqual(info['validation_level'],'envelope')
         self.assertEqual(info['wasm_validation'],'not_performed')
 
@@ -137,26 +135,23 @@ class SDKTests(unittest.TestCase):
         wasm.write_bytes(b'\0asm\x01\0\0\0\0\1\0');output=self.project/'app.trpkg'
         for _ in range(2):
             self.cli('pack',manifest,'--wasm',wasm,'--output',output,
-                     '--development-key','--key-id',1)
-            checked=self.sdk.validate_envelope(output.read_bytes(),package.development_key().public_key(),1)
+                     '--wasm-only')
+            checked=package.validate_envelope(output.read_bytes())
             self.assertEqual(checked['format_version'],1)
         self.cli('pack',manifest,'--wasm',wasm,'--format',2,
-                 '--development-key','--key-id',1,success=False)
+                 '--wasm-only',success=False)
 
-    def test_envelope_rejects_corruption_untrusted_id_and_high_s(self):
+    def test_envelope_rejects_corruption_and_ignores_signature(self):
         import package
-        key=package.development_key().public_key()
         data=self.package()
-        for offset in (0,8,10,12,16,20,24,28,32,36,40,44,48,52,56,88,152,184,192,256):
+        for offset in (0,8,10,12,16,20,24,28,36,40,44,56,88,152,184,256):
             changed=bytearray(data);changed[offset]^=0xff
             with self.subTest(offset=offset),self.assertRaises(ValueError):
-                self.sdk.validate_envelope(bytes(changed),key,1)
+                package.validate_envelope(bytes(changed))
         for malformed in (b'',data[:-1],data+b'\0'):
-            with self.assertRaises(ValueError): self.sdk.validate_envelope(malformed,key,1)
-        with self.assertRaises(ValueError):self.sdk.validate_envelope(data,key,2)
-        high=bytearray(data);s=int.from_bytes(high[224:256],'big')
-        high[224:256]=(package.P256_ORDER-s).to_bytes(32,'big')
-        with self.assertRaises(ValueError):self.sdk.validate_envelope(bytes(high),key,1)
+            with self.assertRaises(ValueError): package.validate_envelope(malformed)
+        ignored=bytearray(data);ignored[52]^=0xff;ignored[192:256]=bytes(64)
+        package.validate_envelope(bytes(ignored))
 
     def test_single_package_limit(self):
         import package
@@ -165,15 +160,15 @@ class SDKTests(unittest.TestCase):
         limit=package.MAX_PACKAGE_SIZE
         data=self.package(wasm,b'a'*(limit-300))
         self.assertEqual(len(data),limit)
-        self.sdk.validate_envelope(data,package.development_key().public_key(),1)
+        package.validate_envelope(data)
         with self.assertRaises(ValueError):self.package(wasm,b'a'*(limit+1-300))
 
     def test_pack_refuses_to_overwrite_manifest_or_wasm(self):
         p=self.manifest();wasm=self.project/'app.wasm';wasm.write_bytes(b'\0asm\x01\0\0\0\0\1\0')
         original=p.read_bytes()
-        self.cli('pack',p,'--wasm',wasm,'--output',p,'--development-key','--key-id','1',success=False)
+        self.cli('pack',p,'--wasm',wasm,'--output',p,'--wasm-only',success=False)
         self.assertEqual(p.read_bytes(),original)
-        self.cli('pack',p,'--wasm',wasm,'--output',wasm,'--development-key','--key-id','1',success=False)
+        self.cli('pack',p,'--wasm',wasm,'--output',wasm,'--wasm-only',success=False)
         self.assertEqual(wasm.read_bytes(),b'\0asm\x01\0\0\0\0\1\0')
 
     def test_shipped_demos_match_the_catalog(self):
@@ -185,7 +180,7 @@ class SDKTests(unittest.TestCase):
         wave=self.sdk.load_manifest(ROOT/'examples/wave_sim/app.json')
         self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',13))
         quest=self.sdk.load_manifest(ROOT/'examples/pixel_quest/app.json')
-        self.assertEqual((quest['app_id'],quest['version'],quest['permissions']),('demo.pixel-quest',2,63))
+        self.assertEqual((quest['app_id'],quest['version'],quest['permissions']),('demo.pixel-quest',3,63))
         self.assertEqual(app['version'],6)
 
 if __name__=='__main__':unittest.main()

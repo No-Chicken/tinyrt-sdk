@@ -604,26 +604,6 @@
           }
         }
       }
-    },
-    {
-      "if": {
-        "properties": {
-          "signing": {
-            "const": "development"
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "requested_channel": {
-            "const": "development"
-          },
-          "app_id": {
-            "type": "string",
-            "pattern": "^demo\\.[a-z0-9._-]+$"
-          }
-        }
-      }
     }
   ]
 }

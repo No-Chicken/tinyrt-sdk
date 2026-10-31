@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Standalone TinyRT SDK: create, build, sign and inspect ABI 1 applications.
+"""Standalone TinyRT SDK: create, build, pack and inspect ABI 1 applications.
 
-validate checks only the authenticated package envelope. TinyRT core remains
+validate checks only the package envelope. TinyRT core remains
 responsible for full Wasm structure, imports/exports, limits and actual execution.
 """
 import argparse
@@ -13,7 +13,6 @@ import re
 import shutil
 import struct
 import subprocess
-import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -99,7 +98,7 @@ def protect_output(output, inputs, suffix, magic):
         if source is None: continue
         source=Path(source).resolve()
         if output==source or (output.exists() and source.exists() and output.samefile(source)):
-            raise ValueError('output must not overwrite an input or signing key')
+            raise ValueError('output must not overwrite an input')
     if output.exists():
         if not output.is_file(): raise ValueError('output must be a regular artifact file')
         accepted=magic if isinstance(magic,tuple) else (magic,)
@@ -128,9 +127,9 @@ def write_atomic(output,data):
 
 
 def check_graphics_imports(wasm):
-    """Reject unknown graphics requirements before signing; core validates ABI.
+    """Reject unknown graphics requirements before packing; core validates ABI.
 
-    Requirement names remain in signed Wasm imports, so package format stays 1.
+    Requirement names remain in Wasm imports, so package format stays 1.
     An older runtime rejects unsupported imports during preflight installation.
     """
     if not wasm.startswith(b'\0asm\x01\0\0\0'):raise ValueError('invalid Wasm magic')
@@ -197,26 +196,12 @@ def build(path,cc=None,output=None):
     return {'app_id':m['app_id'],'wasm':str(output),'wasm_size':output.stat().st_size}
 
 
-def validate_envelope(data,public_key,expected_key_id):
-    """Authenticate canonical envelope only; does NOT load or execute Wasm."""
-    import package
-    return package.validate_envelope(data, public_key, expected_key_id)
-
-
-def signing_options(parser,verify=False):
-    parser.add_argument('--key-id',default=1,type=lambda s:int(s,0),help='trusted key ID; development key uses 1')
-    group=parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--public-key' if verify else '--key',type=Path,
-                       help='P-256 SEC1 or PEM public key' if verify else 'existing unencrypted P-256 PEM key')
-    group.add_argument('--development-key',action='store_true',help='PUBLIC TEST key; explicitly opt in')
-
-
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version',action='version',version='TinyRT SDK '+(ROOT/'VERSION').read_text(encoding='ascii').strip())
     commands=parser.add_subparsers(dest='command',required=True)
     new=commands.add_parser('new',help='create a minimal app in a new directory')
-    new.add_argument('directory',type=Path);new.add_argument('--app-id',required=True);new.add_argument('--title',default='TinyRT app')
+    new.add_argument('directory',type=Path);new.add_argument('--app-id',help='default: derived from the directory name');new.add_argument('--title',default='TinyRT app')
     new.add_argument('--template',choices=('minimal','game'),default='minimal')
     compile_cmd=commands.add_parser('build',help='compile freestanding C to Wasm without ESP-IDF')
     compile_cmd.add_argument('app',type=Path);compile_cmd.add_argument('--cc');compile_cmd.add_argument('--output',type=Path)
@@ -225,35 +210,38 @@ def main(argv=None):
     preview_cmd.add_argument('--frames',default='0,330');preview_cmd.add_argument('--output',type=Path)
     preview_cmd.add_argument('--runner',type=Path)
     preview_cmd.add_argument('--step-ms',type=int,help='explicit fixed CLOCK injection; default honors guest clock_interval')
-    pack=commands.add_parser('pack',help='sign package using app.json metadata')
-    pack.add_argument('app',type=Path);pack.add_argument('--wasm',type=Path);pack.add_argument('--output',type=Path);signing_options(pack)
-    pack.add_argument('--aot',action='store_true',help='compile pinned target AOT; requires --development-key')
-    pack.add_argument('--target',choices=('esp32s3','esp32s31'),default='esp32s3',help='AOT device target')
-    pack.add_argument('--wamrc',type=Path,help='local compiler with the exact SDK-pinned SHA-256')
-    release=commands.add_parser('release',help='offline build, preview, sign and export a website v2 ZIP')
+    pack=commands.add_parser('pack',help='package a built app; compiles AOT for the target by default')
+    pack.add_argument('app',type=Path);pack.add_argument('--wasm',type=Path);pack.add_argument('--output',type=Path)
+    pack.add_argument('--wasm-only',action='store_true',help='skip AOT; S31 firmware will not run such a package')
+    pack.add_argument('--target',choices=('esp32s3','esp32s31'),default='esp32s31',help='AOT device target')
+    pack.add_argument('--wamrc',type=Path,help='compiler override; must match the SDK-pinned SHA-256')
+    release=commands.add_parser('release',help='offline build, preview and export a website v2 ZIP')
     release.add_argument('app',type=Path);release.add_argument('--cc');release.add_argument('--runner',type=Path)
-    release.add_argument('--target',choices=('esp32s3','esp32s31'),default='esp32s3',help='AOT device target')
+    release.add_argument('--target',choices=('esp32s3','esp32s31'),default='esp32s31',help='AOT device target')
     release.add_argument('--variant',choices=('wasm','wasm-aot'),default='wasm-aot',help='default wasm-aot for the selected target; wasm is for interpreter diagnostics')
     release.add_argument('--output',type=Path,help='destination directory; default <app>/release')
     release.add_argument('--channel',choices=('development','beta','stable'),default='development')
     release.add_argument('--preview-ms',type=int,default=60000,help='maximum preview/script time, 0..60000 ms')
-    release.add_argument('--wamrc',type=Path);signing_options(release)
+    release.add_argument('--wamrc',type=Path)
     release.add_argument('--sdk-revision',help='SDK commit for a source distribution without Git metadata')
     release.add_argument('--built-at',help='fixed UTC timestamp YYYY-MM-DDTHH:MM:SSZ; default SOURCE_DATE_EPOCH or SDK commit time')
-    validate=commands.add_parser('validate',help='check authenticated envelope ONLY; no Wasm loading or execution')
-    validate.add_argument('package',type=Path);signing_options(validate,True)
+    validate=commands.add_parser('validate',help='check package envelope ONLY; no Wasm loading or execution')
+    validate.add_argument('package',type=Path)
+    validate.add_argument('--rebuild-aot',action='store_true',help='also recompile the Wasm and require identical AOT bytes')
+    validate.add_argument('--wamrc',type=Path,help='compiler override for --rebuild-aot')
     args=parser.parse_args(argv)
     try:
         if args.command=='new':
             if args.directory.exists(): raise ValueError('destination already exists')
+            app_id=args.app_id or re.sub(r'[^a-z0-9._-]+','-',args.directory.resolve().name.lower()).strip('-')[:31]
             with tempfile.TemporaryDirectory(prefix='tinyrt-new-') as temp:
                 staged=Path(temp)/'app';shutil.copytree(ROOT/'templates'/args.template,staged)
                 m=json.loads((staged/'app.json').read_text(encoding='utf-8-sig'))
-                m.update(app_id=args.app_id,title=args.title)
+                m.update(app_id=app_id,title=args.title)
                 (staged/'app.json').write_bytes((json.dumps(m,indent=2)+'\n').encode('utf-8'))
                 load_manifest(staged)
                 shutil.copytree(staged,args.directory)
-            result={'app':str(args.directory.resolve()),'app_id':args.app_id}
+            result={'app':str(args.directory.resolve()),'app_id':app_id}
         elif args.command=='build':result=build(args.app,args.cc,args.output)
         elif args.command=='run':
             import preview
@@ -263,39 +251,34 @@ def main(argv=None):
             result=release_bundle.make_release(args)
         else:
             import package
-            from cryptography.hazmat.primitives import serialization
-            from cryptography.hazmat.primitives.asymmetric import ec
-            integer(args.key_id,0,0xffffffff,'key ID')
-            if args.development_key: print('WARNING: PUBLIC development key for TESTS ONLY.',file=sys.stderr)
+            import release_validation
             if args.command=='pack':
                 path=manifest_path(args.app);m=load_manifest(path)
                 wasm=args.wasm or path.parent/'build'/(m['app_id']+'.wasm')
-                check_graphics_imports(package.read_bounded(wasm))
+                if not Path(wasm).is_file():raise ValueError(f'找不到 {wasm}；先运行 python tools/tinyrt.py build {args.app}')
+                raw_wasm=package.read_bounded(wasm);check_graphics_imports(raw_wasm)
+                release_validation.wasm_imports(raw_wasm,m['permissions'])
                 assets=local_file(path.parent,m['assets']) if m.get('assets') is not None else None
                 cover=local_file(path.parent,m['cover']) if m.get('cover') is not None else None
-                inputs=[path,wasm,assets,cover,args.key,*[local_file(path.parent,s) for s in m['sources']]]
+                inputs=[path,wasm,assets,cover,*[local_file(path.parent,s) for s in m['sources']]]
                 output=protect_output(args.output or path.parent/'build'/(m['app_id']+'.trpkg'),inputs,'.trpkg',b'TRPKG001')
-                if args.aot:
-                    if not args.development_key or args.key_id!=1:
-                        raise ValueError('SDK AOT packing requires --development-key with key ID 1; publishers use release_compile.py')
-                    import development_aot
-                    result=development_aot.pack_development(path,wasm,output,args.wamrc,target=args.target)
+                if not args.wasm_only:
+                    import aot
+                    result=aot.pack_aot(path,wasm,output,args.wamrc,target=args.target)
                     print(json.dumps(result,sort_keys=True));return 0
-                if args.wamrc:raise ValueError('--wamrc requires --aot')
-                key=package.development_key() if args.development_key else serialization.load_pem_private_key(args.key.read_bytes(),None)
-                builder=package.build_package
-                data=builder(package.read_bounded(wasm),package.read_bounded(assets) if assets else b'',
+                if args.wamrc:raise ValueError('--wamrc cannot be combined with --wasm-only')
+                data=package.build_package(raw_wasm,package.read_bounded(assets) if assets else b'',
                     cover=package.read_cover_png(cover) if cover else None,
-                    **{k:m[k] for k in REQUIRED-{'sources'}},key_id=args.key_id,private_key=key)
+                    **{k:m[k] for k in REQUIRED-{'sources'}})
                 write_atomic(output,data)
                 result={'package':str(output),'app_id':m['app_id'],'package_size':len(data),
-                        'sha256':hashlib.sha256(data).hexdigest(),'development_key':args.development_key}
+                        'sha256':hashlib.sha256(data).hexdigest()}
             else:
-                if args.development_key: public=package.development_key().public_key()
-                else:
-                    raw=args.public_key.read_bytes()
-                    public=serialization.load_pem_public_key(raw) if raw.startswith(b'-----BEGIN') else ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(),raw)
-                result=validate_envelope(package.read_bounded(args.package),public,args.key_id)
+                data=package.read_bounded(args.package);result=package.validate_envelope(data)
+                if args.rebuild_aot:
+                    import aot
+                    result.update(aot.check_rebuild(data,args.wamrc))
+                elif args.wamrc:raise ValueError('--wamrc requires --rebuild-aot')
         print(json.dumps(result,sort_keys=True));return 0
     except (OSError,ValueError,TypeError,UnicodeError,subprocess.SubprocessError) as error:
         parser.exit(2,f'tinyrt: {error}\n')

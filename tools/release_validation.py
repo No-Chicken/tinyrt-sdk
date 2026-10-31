@@ -118,7 +118,7 @@ def wasm_imports(raw, permissions):
                 raise ValueError('unsupported Wasm import: '+module+'.'+name)
             content.uint()  # function type index; runtime checks the signature.
             if allowed[name] & permissions != allowed[name]:
-                raise ValueError('missing permission for Wasm import: '+name)
+                raise ValueError(f'缺少权限：{name} 需要 app.json 的 permissions 包含 {allowed[name]}（missing permission for Wasm import: {name}）')
             names.append(name)
         if content.pos != len(content.raw): raise ValueError('trailing Wasm import bytes')
     return sorted(set(names))
@@ -135,8 +135,8 @@ def core_contract_revision():
     return revision
 
 
-def inspect_package(raw, public_key, key_id):
-    info = package.validate_envelope(raw, public_key, key_id)
+def inspect_package(raw):
+    info = package.validate_envelope(raw)
     parts = sections(raw)
     if 1 not in parts: raise ValueError('website bundle requires Wasm fallback')
     version, abi, permissions, pages, budget, actual_key = struct.unpack_from('<6I', raw, 32)
@@ -167,8 +167,8 @@ def check_report(raw):
     return report
 
 
-def validate_bundle(raw, public_key, key_id):
-    """Local content validation; server account/key authorization is separate."""
+def validate_bundle(raw):
+    """Local content validation; server account and app ID ownership are separate."""
     if len(raw) > MAX_ZIP: raise ValueError('ZIP exceeds %d MiB' % (MAX_ZIP >> 20))
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
@@ -214,7 +214,7 @@ def validate_bundle(raw, public_key, key_id):
     for i, shot in enumerate(shots, 1):
         if shot['path'] != f'screenshots/{i:02d}.png': raise ValueError('screenshot numbering must be continuous')
         png(files[shot['path']],shot['path'],(466,466),1048576)
-    info, parts, metadata, requirements = inspect_package(files['package.trpkg'],public_key,key_id)
+    info, parts, metadata, requirements = inspect_package(files['package.trpkg'])
     for key in ('app_id','title','version'):
         if manifest[key] != info[key]: raise ValueError('package metadata mismatch: '+key)
     if manifest['package'] != metadata or manifest['requirements'] != requirements:
@@ -222,12 +222,7 @@ def validate_bundle(raw, public_key, key_id):
     if manifest['variant'] != ('wasm-aot' if 2 in parts else 'wasm'):
         raise ValueError('package variant mismatch')
     if parts.get(4) != package.encode_cover_png(files['cover.png']):
-        raise ValueError('cover does not match signed package')
-    development = public_key.public_numbers() == package.development_key().public_key().public_numbers()
-    if manifest['signing'] != ('development' if development else 'release'):
-        raise ValueError('signing classification mismatch')
-    if development and (key_id != 1 or manifest['requested_channel'] != 'development' or not re.fullmatch(r'demo\.[a-z0-9._-]+',info['app_id'])):
-        raise ValueError('development signing requires demo. app, key ID 1 and development channel')
+        raise ValueError('cover does not match package')
     if 'build/report.json' in files:
         report = check_report(files['build/report.json'])
         steps = {step['name']:step['result'] for step in report['steps']}

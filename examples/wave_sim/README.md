@@ -14,8 +14,8 @@
 python tests/wave_sim/run_native.py --cc path/to/zig.exe
 python tools/tinyrt.py build examples/wave_sim --cc path/to/zig.exe
 python tools/tinyrt.py run examples/wave_sim --runner path/to/tinyrt-run.exe --events examples/wave_sim/events.json --frames 990,3300,6000
-python tools/tinyrt.py pack examples/wave_sim --aot --development-key --wamrc path/to/wamrc.exe
-python tools/tinyrt.py validate examples/wave_sim/build/demo.wave-sim.trpkg --development-key
+python tools/tinyrt.py pack examples/wave_sim
+python tools/tinyrt.py validate examples/wave_sim/build/demo.wave-sim.trpkg
 ```
 
 临时性能包使用同一应用 ID 和 revision，增加 metrics 显示：
@@ -23,7 +23,7 @@ python tools/tinyrt.py validate examples/wave_sim/build/demo.wave-sim.trpkg --de
 ```powershell
 python examples/wave_sim/tools/build_debug.py
 python tools/tinyrt.py build build/diagnostic-wave --cc path/to/zig.exe
-python tools/tinyrt.py pack build/diagnostic-wave --aot --development-key --wamrc path/to/wamrc.exe
+python tools/tinyrt.py pack build/diagnostic-wave
 ```
 
 测量结束恢复普通包，不安装额外应用。metrics 的 P/R 为毫秒分辨率的 Guest 物理和组合时间，提交 FPS 与真实面板帧率不同。

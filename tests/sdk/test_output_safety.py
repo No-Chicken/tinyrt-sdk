@@ -30,7 +30,7 @@ class OutputSafetyTests(unittest.TestCase):
         (self.app/'app.json').write_text(json.dumps(self.manifest))
 
     def cli(self,command,*args,success=True):
-        options=['--cc',self.cc] if command=='build' else ['--development-key','--key-id','1']
+        options=['--cc',self.cc] if command=='build' else ['--wasm-only']
         result=subprocess.run([sys.executable,str(ROOT/'tools/tinyrt.py'),command,str(self.app),
                                *options,*map(str,args)],capture_output=True,text=True)
         self.assertEqual(result.returncode==0,success,result.stdout+result.stderr)

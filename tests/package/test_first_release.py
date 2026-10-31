@@ -10,22 +10,21 @@ import tinyrt
 
 
 class FirstRelease(unittest.TestCase):
-    def test_signed_audio_permission_is_accepted(self):
+    def test_audio_permission_is_accepted(self):
         raw=package.build_package(b'\0asm\1\0\0\0\0\1\0',b'\0\0',app_id='demo.audio',title='Audio',
-            version=1,abi_version=1,permissions=31,memory_pages=2,budget=100000,key_id=1,
-            private_key=package.development_key())
+            version=1,abi_version=1,permissions=31,memory_pages=2,budget=100000)
         self.assertEqual(struct.unpack_from('<I',raw,40)[0],31)
-        tinyrt.validate_envelope(raw,package.development_key().public_key(),1)
+        package.validate_envelope(raw)
 
     def test_section_table_is_the_only_format_one(self):
         wasm = b'\0asm\1\0\0\0\0\1\0'
         raw = package.build_package(wasm, b'rom', app_id='demo.test', title='Test',
             version=1, abi_version=1, permissions=15, memory_pages=2,
-            budget=100000, key_id=1, private_key=package.development_key())
+            budget=100000)
         self.assertEqual(struct.unpack_from('<HH5I', raw, 8),
                          (1, 256, len(raw), 256, 2, 16, 0))
         self.assertEqual(struct.unpack_from('<4I', raw, 256), (1, 0, 288, len(wasm)))
-        info = tinyrt.validate_envelope(raw, package.development_key().public_key(), 1)
+        info = package.validate_envelope(raw)
         self.assertEqual(info['format_version'], 1)
         self.assertEqual(info['assets_size'], 3)
 

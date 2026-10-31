@@ -2,11 +2,13 @@
 #undef NDEBUG
 #endif
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "../../examples/pixel_quest/main.c"
 
-/* 原生回归：校验记录格式与资源边界，并用确定性自动驾驶走完整关。 */
+/* 原生回归：校验记录格式与资源边界，并用真实物理搜索证明八关都能无伤通关。 */
 static uint32_t time_ms;
 static int32_t stored[16];
 static int audio_count,haptic_count,frames,texts_in_frame,frame_open;
@@ -16,7 +18,7 @@ uint32_t now_ms(void){return time_ms;}
 int32_t input_events(uint32_t mask){assert(mask==(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD));return 0;}
 int32_t clock_interval(int32_t ms){assert(ms==33);return 0;}
 int32_t kv_get(uint32_t key,int32_t fallback){assert(key<16);return stored[key]?stored[key]:fallback;}
-int32_t kv_set(uint32_t key,int32_t value){assert(key==0);stored[key]=value;return 0;}
+int32_t kv_set(uint32_t key,int32_t value){assert(key<=KV_UNLOCKED);stored[key]=value;return 0;}
 int32_t asset_read(uint32_t offset,void *out,uint32_t length){
     assert(length<=4096&&offset<=resource_length&&length<=resource_length-offset);
     memcpy(out,resources+offset,length);return (int32_t)length;
@@ -29,7 +31,7 @@ int32_t haptic_pulse(uint32_t strength,uint32_t ms){assert(strength>=1&&strength
 int32_t draw_skip(void){assert(!frame_open);return 0;}
 uint32_t gfx_caps(void){return TINYRT_GFX_CAPS;}
 int32_t gfx_pal_upload(uint32_t slot,uint32_t first,uint32_t count,const uint16_t *p){
-    assert(slot==0&&first==0&&count==PALETTE_COUNT&&p[0]==0);return 0;
+    assert(slot<THEME_COUNT&&first==0&&count==PALETTE_COUNT&&p[0]==0);return 0;
 }
 int32_t gfx_tex_upload(uint32_t slot,uint32_t format,uint32_t w,uint32_t h,const void *p,uint32_t n,uint32_t flags){
     assert(slot==0&&format==TINYRT_GFX_INDEX8&&w==128&&h==128&&n==w*h&&flags==TINYRT_GFX_FROM_ASSET);
@@ -78,63 +80,144 @@ static void pad(uint32_t buttons,int lx){
 }
 static void tap(int x){assert(tinyrt_event(TINYRT_TOUCH_PRESS,x,233,0)==0);assert(tinyrt_event(TINYRT_TOUCH_RELEASE,x,233,0)==0);}
 
-/* 自动驾驶：前方有墙、坑、尖刺或甲虫时起跳；头顶有障碍且甲虫逼近时后退。 */
-static int low_ceiling(void){
-    int x=px/SUB,y=py/SUB;
-    for(int c=floor_div(x,TILE);c<=floor_div(x+PW+12,TILE);c++)
-        for(int r=floor_div(y-48,TILE);r<floor_div(y,TILE);r++)if(solid(tile_at(c,r)))return 1;
-    return 0;
+/* 求解器：每 4 步（约 130 ms）换一次输入，最优先扩展离终点最近的状态。动作只走
+ * 手柄事件这条真实输入路径，不允许受伤，所以找到的解不靠护盾也不靠无敌时间。 */
+typedef struct {
+    int32_t px,py,pvx,pvy;
+    int on_ground,facing_left,coyote,jump_buffer,jump_held,anim,invuln,riding,spring_lift,shield;
+    int state,state_ticks,lives,gems,score,cam_x;
+    uint32_t stage_ticks,ticks,pad_buttons;
+    enemy_t enemies[MAX_ENEMIES];
+    boss_t boss;
+} snapshot_t;
+typedef struct { int32_t node;int64_t key; } heap_t;
+#define MAX_NODES 120000
+#define HASH_BITS 22
+static snapshot_t *nodes;
+static heap_t *heap;
+static uint64_t *visited;
+static int heap_count,furthest;
+static void save_state(snapshot_t *n){
+#define S(f) n->f=f;
+    S(px)S(py)S(pvx)S(pvy)S(on_ground)S(facing_left)S(coyote)S(jump_buffer)S(jump_held)S(anim)S(invuln)S(riding)S(spring_lift)S(shield)
+    S(state)S(state_ticks)S(lives)S(gems)S(score)S(cam_x)S(stage_ticks)S(ticks)S(pad_buttons)
+#undef S
+    memcpy(n->enemies,enemies,sizeof(enemies));n->boss=boss;
 }
-static int enemy_ahead(int range){
-    int x=px/SUB,y=py/SUB;
-    for(int i=0;i<enemy_count;i++){enemy_t *e=&enemies[i];
-        if(e->state!=1)continue;
-        int ex=e->x/SUB;
-        if(ex>x-8&&ex-x<range&&e->y/SUB+10>y&&e->y/SUB<y+PH+8)return 1;}
-    return 0;
+static void load_state(const snapshot_t *n){
+#define L(f) f=n->f;
+    L(px)L(py)L(pvx)L(pvy)L(on_ground)L(facing_left)L(coyote)L(jump_buffer)L(jump_held)L(anim)L(invuln)L(riding)L(spring_lift)L(shield)
+    L(state)L(state_ticks)L(lives)L(gems)L(score)L(cam_x)L(stage_ticks)L(ticks)L(pad_buttons)
+#undef L
+    memcpy(enemies,n->enemies,sizeof(enemies));boss=n->boss;
 }
-static int needs_jump(void){
-    int x=px/SUB,y=py/SUB,feet=floor_div(y+PH,TILE),body=floor_div(y+PH-1,TILE);
-    int c=floor_div(x+PW+6,TILE);
-    if(solid(tile_at(c,body))||solid(tile_at(c,body-1)))return 1;
-    if(!solid(tile_at(c,feet))&&tile_at(c,feet)!=T_PLANK&&!solid(tile_at(c+1,feet))&&tile_at(c+1,feet)!=T_PLANK)return 1;
-    if(tile_at(c,body)==T_SPIKE)return 1;
-    return enemy_ahead(40)&&!low_ceiling();
+static void heap_push(int node,int64_t key){
+    int i=heap_count++;
+    while(i&&heap[(i-1)/2].key<key){heap[i]=heap[(i-1)/2];i=(i-1)/2;}
+    heap[i].node=node;heap[i].key=key;
 }
-static int autopilot(int max_ticks){
-    int held=0,deaths=0;
-    for(int t=0;t<max_ticks&&state!=ST_CLEAR&&state!=ST_OVER;t++){
-        int tilt_mg=state==ST_PLAY&&enemy_ahead(64)&&low_ceiling()?-450:450;
-        assert(tinyrt_event(TINYRT_EV_MOTION,tilt_mg,0,1000)==0);
-        if(state==ST_PLAY){
-            if(needs_jump()&&on_ground&&!held){assert(tinyrt_event(TINYRT_TOUCH_PRESS,233,200,0)==0);held=12;}
-            if(held&&!--held)assert(tinyrt_event(TINYRT_TOUCH_RELEASE,233,200,0)==0);
+static int heap_pop(void){
+    int top=heap[0].node;heap_t last=heap[--heap_count];int i=0;
+    for(;;){int c=2*i+1;if(c>=heap_count)break;
+        if(c+1<heap_count&&heap[c+1].key>heap[c].key)c++;
+        if(last.key>=heap[c].key)break;
+        heap[i]=heap[c];i=c;}
+    heap[i]=last;return top;
+}
+static int seen(void){
+    int moving=plat_count||has_boss||enemy_count;
+    uint64_t k=(uint64_t)(px>>5)*1000003u+(uint64_t)((py>>5)+64)*10007u+(uint64_t)((pvx>>4)+16)*101u+(uint64_t)((pvy>>5)+16);
+    k=k*31u+(uint64_t)on_ground*2u+(uint64_t)jump_held+(uint64_t)(riding+1)*5u;
+    if(moving)k=k*131u+(stage_ticks>>4);
+    if(has_boss)k=k*7u+(uint64_t)boss.hp;
+    k=k*0x9e3779b97f4a7c15ull+1u;
+    uint32_t slot=(uint32_t)(k>>(64-HASH_BITS));
+    while(visited[slot]){if(visited[slot]==k)return 1;slot=(slot+1)&((1u<<HASH_BITS)-1);}
+    visited[slot]=k;return 0;
+}
+static int64_t rank_state(int depth){
+    int64_t progress=px/SUB;
+    if(has_boss&&boss.hp>0&&px>=boss.left) {
+        /* 进入竞技场后目标是贴近 Boss 头顶，而不是继续向右。 */
+        int gap=(px-boss.x-7*SUB)/SUB;if(gap<0)gap=-gap;
+        progress=boss.left/SUB+2000-gap+(GOLEM_HP-boss.hp)*4000;
+    } else if(has_boss&&!boss.hp)progress+=20000;
+    return progress*4-depth;
+}
+static const uint32_t solver_actions[6]={TINYRT_PAD_RIGHT|TINYRT_PAD_A,TINYRT_PAD_RIGHT,TINYRT_PAD_A,0,
+                                         TINYRT_PAD_LEFT|TINYRT_PAD_A,TINYRT_PAD_LEFT};
+static int solve_stage(void){
+    memset(visited,0,sizeof(uint64_t)<<HASH_BITS);
+    heap_count=0;furthest=0;int count=1,depth_limit=0;
+    save_state(&nodes[0]);heap_push(0,0);
+    int shield_before=shield;
+    while(heap_count){
+        int at=heap_pop();
+        for(unsigned a=0;a<6;a++){
+            load_state(&nodes[at]);
+            if(state!=ST_PLAY)continue;
+            uint32_t buttons=solver_actions[a];pad(buttons,0);
+            int hurt=0;
+            for(int t=0;t<4&&state==ST_PLAY;t++){
+                assert(tick()==0);
+                if(invuln||state==ST_DYING||shield<shield_before)hurt=1;
+            }
+            if(state==ST_CLEAR)return count;
+            if(hurt||state!=ST_PLAY||seen())continue;
+            if(count>=MAX_NODES)return 0;
+            if(px/SUB/TILE>furthest)furthest=px/SUB/TILE;
+            save_state(&nodes[count]);
+            int depth=(int)(stage_ticks/4);if(depth>depth_limit)depth_limit=depth;
+            heap_push(count++,rank_state(depth));
         }
-        int before=state;step();
-        if(before==ST_PLAY&&state==ST_DYING)deaths++;
     }
-    return deaths;
+    return 0;
 }
 int main(int argc,char **argv){
     assert(argc==2);FILE *file=fopen(argv[1],"rb");assert(file);
     resource_length=(uint32_t)fread(resources,1,sizeof(resources),file);fclose(file);
-    assert(resource_length==SOUND_CHECK_OFFSET+SOUND_CHECK_LENGTH);
-    for(int r=0;r<MAP_H;r++)assert(strlen(level_rows[r])==MAP_W);
+    assert(resource_length==SOUND_BOSS_OFFSET+SOUND_BOSS_LENGTH);
+    for(int n=0;n<STAGE_COUNT;n++){
+        assert(stages[n].width<=MAX_W&&stages[n].width*TILE>VIEW&&stages[n].theme<(int)THEME_COUNT);
+        for(int i=0;i<stages[n].run_count;i++){const run_t *run=&stages[n].runs[i];
+            assert(run->row<MAP_H&&run->len>0&&run->col+run->len<=stages[n].width);}
+    }
+    nodes=malloc(sizeof(snapshot_t)*MAX_NODES);heap=malloc(sizeof(heap_t)*MAX_NODES);
+    visited=calloc((size_t)1<<HASH_BITS,sizeof(uint64_t));assert(nodes&&heap&&visited);
 
-    /* 标题 → 开始；倾斜通关且不掉命，最高分写入 KV。 */
-    time_ms=5000;assert(tinyrt_init(466,466)==0);assert(state==ST_TITLE);
+    /* 标题 → 开始：八关全部无伤可解，进度和最高分写入 KV。 */
+    time_ms=5000;assert(tinyrt_init(466,466)==0);assert(state==ST_TITLE&&stage==0);
     for(int i=0;i<20;i++)step();
-    assert(frames>0);tap(233);assert(state==ST_PLAY&&lives==3&&score==0);
-    int deaths=autopilot(30*180);
-    assert(state==ST_CLEAR&&deaths==0&&gems>=10);
-    assert(score==gems*100+1000+lives*500&&stored[0]==score&&best==score);
+    assert(frames>0);tap(233);assert(state==ST_INTRO&&lives==3&&score==0);
+    pad(0,0);assert(tinyrt_event(TINYRT_EV_GAMEPAD,0,0,1<<16)==0);
+    for(int n=0;n<STAGE_COUNT;n++){
+        assert(stage==n&&state==ST_INTRO);
+        for(int i=0;i<4;i++)step();                /* 片头帧也要提交合法记录 */
+        while(state==ST_INTRO)step();
+        int explored=solve_stage();
+        printf("stage %d %-14s states=%d ticks=%u furthest_col=%d\n",n,stages[n].name,explored,stage_ticks,furthest);fflush(stdout);
+        assert(explored>0&&state==ST_CLEAR);
+        pad(0,0);jump_held=0;jump_buffer=0;
+        if(n<STAGE_COUNT-1)assert(stored[KV_UNLOCKED]==n+1&&unlocked==n+1);
+        assert(stored[KV_BEST]==score);
+        for(int i=0;i<80&&state==ST_CLEAR;i++)step();
+    }
+    assert(state==ST_WIN);
+    assert(tinyrt_event(TINYRT_EV_GAMEPAD,0,0,0)==0);paused=0;
     for(int i=0;i<10;i++)step();
-    tap(233);assert(state==ST_CLEAR);             /* 结算 1 秒内不响应误触 */
+    tap(233);assert(state==ST_WIN);               /* 结算 1 秒内不响应误触 */
     for(int i=0;i<25;i++)step();
-    tap(233);assert(state==ST_PLAY&&score==0&&lives==3&&gems==0);
+    tap(233);assert(state==ST_TITLE&&stage==0);
+
+    /* 选关：只能选已解锁的关，下次启动恢复进度。 */
+    tap(420);assert(stage==1);tap(40);assert(stage==0);
+    assert(tinyrt_init(466,466)==0);assert(stage==STAGE_COUNT-1&&unlocked==STAGE_COUNT-1);
+    for(int i=0;i<STAGE_COUNT;i++)tap(40);
+    assert(stage==0);
+    tap(233);assert(state==ST_INTRO&&score==0&&lives==3&&gems==0);
+    while(state==ST_INTRO)step();
     for(int i=0;i<10;i++)assert(tinyrt_event(TINYRT_EV_MOTION,0,0,1000)==0);
     assert(input_dir()==0);
-
     /* 按住左右侧移动；取消清除按住状态。 */
     int x0=px;assert(tinyrt_event(TINYRT_TOUCH_PRESS,420,233,0)==0);
     for(int i=0;i<15;i++)step();
@@ -157,9 +240,9 @@ int main(int argc,char **argv){
 
     /* 踩甲虫：从上方落下得分并反弹。 */
     for(int i=0;i<30;i++)step();
-    enemy_t *e=&enemies[0];e->state=1;e->x=px+2*SUB;e->y=py-30*SUB;e->vx=0;
+    enemy_t *e=&enemies[0];e->state=ES_ALIVE;e->x=px+2*SUB;e->y=py-30*SUB;e->vx=0;
     int s0=score;pvy=100;py=e->y-PH*SUB+2*SUB;
-    step();assert(e->state==2&&score==s0+200&&pvy<0);
+    step();assert(e->state==ES_SQUASHED&&score==s0+200&&pvy<0);
 
     /* 手柄：十字键与左摇杆移动、倾斜失效；A 按住更高、轻点更低。 */
     for(int i=0;i<30;i++)step();
@@ -197,8 +280,45 @@ int main(int argc,char **argv){
     assert(state==ST_PLAY&&lives==l0-1&&invuln>0);
     while(lives>0){py=(MAP_H*TILE+20)*SUB;invuln=0;step();for(int i=0;i<45;i++)step();}
     assert(state==ST_OVER);
-    assert(tinyrt_stop()==0&&stored[0]==best);
+    assert(tinyrt_stop()==0&&stored[KV_BEST]==best);
+
+    /* 机关：护盾挡一次，岩浆不能挡；弹簧弹起；平台带人；每 50 宝石加命。 */
+    for(int i=0;i<35;i++)step();
+    tap(233);assert(state==ST_INTRO&&lives==3);
+    while(state==ST_INTRO)step();
+    shield=1;invuln=0;assert(player_hurt()==0&&state==ST_PLAY&&!shield&&invuln==45);
+    assert(player_hurt()==0&&state==ST_PLAY);     /* 无敌期间不再受伤 */
+    invuln=0;gems=49;assert(add_gem()==0&&gems==50&&lives==4);
+    stage=6;checkpoint_on=0;load_level();place_player();state=ST_PLAY;shield=1;
+    int lava_c=-1;for(int c=0;c<map_w&&lava_c<0;c++)if(tile_at(c,MAP_H-2)==T_LAVA)lava_c=c;
+    assert(lava_c>=0);px=(lava_c*TILE+3)*SUB;py=((MAP_H-2)*TILE)*SUB;pvx=pvy=0;
+    step();assert(state==ST_DYING&&shield==1);
+    for(int i=0;i<45;i++)step();
+    assert(state==ST_PLAY);
+    stage=1;load_level();place_player();state=ST_PLAY;
+    int sc=-1,sr=-1;for(int c=0;c<map_w&&sc<0;c++)for(int r=0;r<MAP_H;r++)if(tile_at(c,r)==T_SPRING){sc=c;sr=r;}
+    assert(sc>=0);px=(sc*TILE+3)*SUB;py=(sr*TILE-PH-2)*SUB;pvy=40;pvx=0;
+    step();assert(pvy<JUMP_V&&spring_lift);
+    stage=2;load_level();place_player();state=ST_PLAY;assert(plat_count>0);
+    plat_t *mover=&plats[0];assert(!mover->vertical);
+    stage_ticks=10;px=(plat_x(mover,stage_ticks)+10)*SUB;py=(plat_y(mover,stage_ticks)-PH-1)*SUB;pvx=pvy=0;
+    step();step();assert(riding==0&&on_ground);
+    int carried=px;for(int i=0;i<5;i++)step();
+    assert(px-carried==(plat_x(mover,stage_ticks)-plat_x(mover,stage_ticks-5))*SUB);
+
+    /* Boss：踩三次打开传送门；在此之前门不生效，正面碰撞受伤。 */
+    stage=7;load_level();place_player();state=ST_PLAY;shield=0;assert(has_boss&&boss.hp==GOLEM_HP);
+    assert(tile_at(portal_col,portal_row)==T_EMPTY);
+    boss.awake=1;
+    for(int hit=GOLEM_HP-1;hit>=0;hit--){
+        boss.hurt=0;boss.vy=0;boss.y=boss.floor;
+        px=boss.x+7*SUB;py=boss.y-(PH+3)*SUB;pvy=120;pvx=0;
+        step();assert(boss.hp==hit&&pvy<0&&state==ST_PLAY);
+    }
+    assert(tile_at(portal_col,portal_row)==T_PORTAL);
+    stage_finished();assert(state==ST_CLEAR);
     assert(audio_count>20&&haptic_count>=3);
     printf("pixel quest: frames=%d audio=%d haptic=%d best=%d\n",frames,audio_count,haptic_count,best);
+    free(nodes);free(heap);free(visited);
     return 0;
 }

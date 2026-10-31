@@ -14,8 +14,6 @@ import time
 import uuid
 import zipfile
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 import package
 import preview
 import tinyrt
@@ -141,7 +139,7 @@ def archive_bytes(files, built_at):
     return output.getvalue()
 
 
-def protect_delivery(folder, archive, inputs, public_key, key_id):
+def protect_delivery(folder, archive, inputs):
     for target in (folder,archive):
         if target.is_symlink() or target.resolve() != target.absolute():
             raise ValueError('release output must not follow symbolic links')
@@ -150,7 +148,7 @@ def protect_delivery(folder, archive, inputs, public_key, key_id):
                 raise ValueError('release output would overwrite an input')
     if archive.exists():
         if not archive.is_file(): raise ValueError('existing ZIP output is not a file')
-        validate_bundle(bounded(archive,'existing release ZIP',12*1024*1024),public_key,key_id)
+        validate_bundle(bounded(archive,'existing release ZIP',12*1024*1024))
     if folder.exists():
         if not folder.is_dir() or not archive.exists(): raise ValueError('existing output directory is not an owned release')
         with zipfile.ZipFile(archive) as previous:
@@ -190,9 +188,9 @@ def delivery_stage(parent):
         if not (stage/'previous').exists(): shutil.rmtree(stage)
 
 
-def deliver(files, raw_zip, folder, archive, inputs, public_key, key_id):
+def deliver(files, raw_zip, folder, archive, inputs):
     archive.parent.mkdir(parents=True,exist_ok=True)
-    protect_delivery(folder,archive,inputs,public_key,key_id)
+    protect_delivery(folder,archive,inputs)
     with delivery_stage(archive.parent) as stage:
         new_folder = stage/'bundle'; new_folder.mkdir()
         for name,raw in files.items():
@@ -231,32 +229,17 @@ def make_release(args):
         report['steps'].append(entry)
     try:
         root, app, listing, assets, snapshots, events = load_inputs(args.app,args.preview_ms)
-        tinyrt.integer(args.key_id,0,0xffffffff,'key ID')
-        if args.development_key:
-            key = package.development_key()
-        else:
-            key_path = Path(args.key).resolve()
-            key_raw = key_path.read_bytes(); snapshots[key_path] = key_raw
-            key = serialization.load_pem_private_key(key_raw,None)
-        if not isinstance(key,ec.EllipticCurvePrivateKey) or not isinstance(key.curve,ec.SECP256R1):
-            raise ValueError('signing key must be an ECDSA P-256 private key')
-        development = key.public_key().public_numbers() == package.development_key().public_key().public_numbers()
-        if development and (args.key_id != 1 or args.channel != 'development' or not re.fullmatch(r'demo\.[a-z0-9._-]+',app['app_id'])):
-            raise ValueError('development key requires demo. app ID, key ID 1 and development channel')
-        if args.variant == 'wasm-aot' and (not args.development_key or args.key_id != 1):
-            raise ValueError('production AOT must use the controlled release_compile.py workflow')
         if args.wamrc and args.variant != 'wasm-aot': raise ValueError('--wamrc requires --variant wasm-aot')
         cc, toolchain = compiler_info(args.cc)
         runner = local_runner(args.runner)
-        target = getattr(args,'target','esp32s3')
+        target = getattr(args,'target','esp32s31')
         wamrc = None
         if args.variant == 'wasm-aot':
-            import development_aot
+            import aot
             # The S31 compiler ships with the SDK; the S3 compiler is placed in bin/ by the developer.
-            bundled = tinyrt.ROOT/('tools/toolchains/esp32s31/windows-x64/wamrc.exe' if target == 'esp32s31' else 'bin/wamrc.exe')
-            path = Path(args.wamrc or bundled).resolve()
+            path = Path(args.wamrc or aot.bundled_compiler(target)).resolve()
             if not path.is_file(): raise ValueError('release needs local pinned AOT compiler; pass --wamrc')
-            wamrc = development_aot.compiler_path(json.loads(development_aot.profile_path(target).read_bytes()),path)
+            wamrc = aot.compiler_path(json.loads(aot.profile_path(target).read_bytes()),path)
         revision, built_at = build_identity(args)
         version = str(app['version'])
         name = f'{app["app_id"]}-v{version}-{args.variant}'
@@ -266,7 +249,7 @@ def make_release(args):
         for path in (output,*output.parents):
             if path.is_symlink(): raise ValueError('release output must not follow directory links')
         output = output.resolve(); folder,archive = output/name,output/(name+'.zip')
-        protect_delivery(folder,archive,snapshots,key.public_key(),args.key_id)
+        protect_delivery(folder,archive,snapshots)
         passed(stage)
         stage = 'native-tests'
         test = root/'tests/run_native.py'
@@ -292,20 +275,20 @@ def make_release(args):
             passed(stage)
             stage = 'pack'
             if args.variant == 'wasm-aot':
-                import development_aot
+                import aot
                 package_path = stage_root/'package.trpkg'
-                development_aot.pack_development(root,wasm,package_path,wamrc,target=target)
+                aot.pack_aot(root,wasm,package_path,wamrc,target=target)
                 package_raw = package.read_bounded(package_path)
             else:
                 package_raw = package.build_package(wasm_raw,
                     snapshots[tinyrt.local_file(root,app['assets'])] if app.get('assets') else b'',
                     cover=package.encode_cover_png(assets['cover.png']),
-                    **{field:app[field] for field in tinyrt.REQUIRED-{'sources'}},key_id=args.key_id,private_key=key)
+                    **{field:app[field] for field in tinyrt.REQUIRED-{'sources'}})
             passed(stage)
             stage = 'validate-envelope'
-            info,parts,metadata,requirements = inspect_package(package_raw,key.public_key(),args.key_id)
-            if parts[1] != wasm_raw: raise ValueError('signed Wasm differs from previewed Wasm')
-            if parts.get(4) != package.encode_cover_png(assets['cover.png']): raise ValueError('signed cover differs from input')
+            info,parts,metadata,requirements = inspect_package(package_raw)
+            if parts[1] != wasm_raw: raise ValueError('packaged Wasm differs from previewed Wasm')
+            if parts.get(4) != package.encode_cover_png(assets['cover.png']): raise ValueError('packaged cover differs from input')
             passed(stage)
             stage = 'screenshots'
             screenshots = []; shot_files = {}
@@ -327,14 +310,12 @@ def make_release(args):
         command = 'python tools/tinyrt.py release '+('examples/'+root.name if root == tinyrt.ROOT/'examples'/root.name else '<app>')
         command += ' --variant '+args.variant
         if args.variant == 'wasm-aot': command += ' --target '+target
-        if args.development_key: command += ' --development-key'
-        elif args.key: command += ' --key <key> --key-id '+str(args.key_id)
         manifest = dict(schema_version=2,app_id=info['app_id'],title=info['title'],version=info['version'],
             variant='wasm-aot' if 2 in parts else 'wasm',requested_channel=args.channel,
             publisher_display=listing['publisher_display'],locale='zh-CN',summary=listing['summary'],
             category=listing['category'],tags=listing['tags'],controls=listing['controls'],
             display=dict(width=466,height=466,shape='round',full_bleed=listing['full_bleed']),
-            package=metadata,requirements=requirements,signing='development' if development else 'release',
+            package=metadata,requirements=requirements,signing='development',
             verification=dict(native=native,wamr='passed',device='passed' if listing['device_verified'] else 'not-run'),
             rights=listing['rights'],cover=file_record('cover.png',assets['cover.png'],width=210,height=210),
             readme=file_record('README.md',assets['README.md']),licenses=file_record('LICENSES.md',assets['LICENSES.md']),
@@ -357,16 +338,16 @@ def make_release(args):
         files, raw_zip = assemble()
         passed(stage)
         stage = 'self-check'
-        validate_bundle(raw_zip,key.public_key(),args.key_id)
+        validate_bundle(raw_zip)
         passed(stage)
         files, raw_zip = assemble()
-        validate_bundle(raw_zip,key.public_key(),args.key_id)
+        validate_bundle(raw_zip)
         stage = 'delivery'
-        deliver(files,raw_zip,folder,archive,snapshots,key.public_key(),args.key_id)
+        deliver(files,raw_zip,folder,archive,snapshots)
         return dict(zip=str(archive),directory=str(folder),sha256=digest(raw_zip),
                     package_version=info['version'],variant=manifest['variant'])
     except (OSError,ValueError,TypeError,UnicodeError,subprocess.SubprocessError):
-        # Fixed relative report path and stage name; subprocess stderr may contain keys/paths.
+        # Fixed relative report path and stage name; subprocess stderr may contain paths.
         report['steps'].append(dict(name=stage,result='failed'))
         target = root/'build/release-report.json'
         try:
@@ -376,7 +357,6 @@ def make_release(args):
                 inputs = [tinyrt.manifest_path(args.app),*snapshots]
                 inputs += [tinyrt.local_file(root,name) for name in app['sources']]
                 inputs += [tinyrt.local_file(root,app[name]) for name in ('assets','cover') if app.get(name)]
-                if args.key: inputs.append(Path(args.key).resolve())
                 for source in inputs:
                     if target.resolve() == source.resolve() or (target.exists() and source.exists() and target.samefile(source)):
                         raise ValueError('failure report must not overwrite an input')

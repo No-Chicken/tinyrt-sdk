@@ -1,4 +1,4 @@
-"""Behavioral CLI tests using independent cryptography verification."""
+"""Behavioral CLI tests; the legacy signature is checked independently."""
 import hashlib
 import json
 from pathlib import Path
@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 TOOL=Path(__file__).resolve().parents[2]/"tools"/"package.py"
 sys.path.insert(0,str(TOOL.parent))
@@ -22,14 +22,13 @@ class PackageCLI(unittest.TestCase):
         self.output=self.root/"app.trpkg"
         self.base=["pack","--wasm",str(self.wasm),"--output",str(self.output),
                    "--app-id","demo.app","--title","\u8ba1\u6570\u5668","--version","3",
-                   "--permissions","15","--memory-pages","8","--budget","12345","--key-id","7"]
+                   "--permissions","15","--memory-pages","8","--budget","12345"]
     def tearDown(self): self.tmp.cleanup()
     def invoke(self,*args):
         return subprocess.run([sys.executable,str(TOOL),*args],capture_output=True,text=True,encoding="utf-8")
-    def test_development_package_signature_hash_and_metadata(self):
-        result=self.invoke(*self.base,"--development-key")
+    def test_legacy_signature_hash_and_metadata(self):
+        result=self.invoke(*self.base)
         self.assertEqual(result.returncode,0,result.stderr)
-        self.assertIn("test",result.stderr.lower())
         data=self.output.read_bytes()
         self.assertEqual(data[:8],b"TRPKG001")
         self.assertEqual(struct.unpack_from("<HH",data,8),(1,256))
@@ -43,30 +42,12 @@ class PackageCLI(unittest.TestCase):
         meta=json.loads(result.stdout)
         self.assertEqual(meta["sha256"],hashlib.sha256(data).hexdigest())
         self.assertEqual(meta["package_size"],len(data))
-        again=self.invoke(*self.base,"--development-key")
+        again=self.invoke(*self.base)
         self.assertEqual(again.returncode,0,again.stderr)
         self.assertEqual(self.output.read_bytes(),data)
-    def test_explicit_private_key_and_assets(self):
-        key=ec.derive_private_key(42,ec.SECP256R1())
-        pem=self.root/"test-only.pem"
-        pem.write_bytes(key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()))
-        assets=self.root/"assets.bin"; assets.write_bytes(bytes(range(256)))
-        result=self.invoke(*self.base,"--key",str(pem),"--assets",str(assets))
-        self.assertEqual(result.returncode,0,result.stderr)
-        data=self.output.read_bytes()
-        self.assertEqual(struct.unpack_from("<4I",data,272),(3,0,304,256))
-        self.assertEqual(data[304:],assets.read_bytes())
-        r=int.from_bytes(data[192:224],"big"); s=int.from_bytes(data[224:256],"big")
-        key.public_key().verify(utils.encode_dss_signature(r,s),b"TinyRT-package-v1\0"+data[:192],ec.ECDSA(hashes.SHA256()))
-    def test_development_public_key_is_explicit(self):
-        pub=self.root/"public.bin"
-        result=self.invoke("development-public-key","--output",str(pub))
-        self.assertEqual(result.returncode,0,result.stderr)
-        self.assertEqual(pub.read_bytes(),ec.derive_private_key(1,ec.SECP256R1()).public_key().public_bytes(
-            serialization.Encoding.X962,serialization.PublicFormat.UncompressedPoint))
     def test_section_wasm_only_layout_and_signature(self):
         assets=self.root/'assets.bin';assets.write_bytes(b'resources')
-        result=self.invoke(*self.base,'--development-key','--assets',str(assets))
+        result=self.invoke(*self.base,'--assets',str(assets))
         self.assertEqual(result.returncode,0,result.stderr)
         data=self.output.read_bytes()
         self.assertEqual(data[:8],b'TRPKG001')
@@ -78,46 +59,38 @@ class PackageCLI(unittest.TestCase):
         r=int.from_bytes(data[192:224],'big');s=int.from_bytes(data[224:256],'big')
         ec.derive_private_key(1,ec.SECP256R1()).public_key().verify(
             utils.encode_dss_signature(r,s),b'TinyRT-package-v1\0'+data[:192],ec.ECDSA(hashes.SHA256()))
-        again=self.invoke(*self.base,'--development-key','--assets',str(assets))
+        again=self.invoke(*self.base,'--assets',str(assets))
         self.assertEqual(again.returncode,0,again.stderr)
         self.assertEqual(self.output.read_bytes(),data)
     def test_generic_packer_does_not_accept_native_artifacts(self):
         native=self.root/'app.aot';native.write_bytes(b'\0aot\5\0\0\0native')
-        result=self.invoke(*self.base,'--development-key','--aot',str(native))
+        result=self.invoke(*self.base,'--aot',str(native))
         self.assertNotEqual(result.returncode,0)
         self.assertFalse(self.output.exists())
     def test_reject_invalid_metadata_without_overwriting(self):
         self.output.write_bytes(b"preserve")
         for flag,value in [("--app-id","BAD"),("--title",""),("--title","x"*64),("--version","0"),
                            ("--abi-version","2"),("--permissions","64"),("--memory-pages","17"),
-                           ("--budget","100001"),("--key-id","4294967296")]:
+                           ("--budget","100001")]:
             with self.subTest(flag=flag):
-                result=self.invoke(*self.base,"--development-key",flag,value)
+                result=self.invoke(*self.base,flag,value)
                 self.assertNotEqual(result.returncode,0)
                 self.assertEqual(self.output.read_bytes(),b"preserve")
-    def test_missing_key_and_bad_wasm_and_oversize(self):
-        self.assertNotEqual(self.invoke(*self.base).returncode,0)
+    def test_bad_wasm_and_oversize(self):
         self.wasm.write_bytes(b"bad-wasm"*4)
-        self.assertNotEqual(self.invoke(*self.base,"--development-key").returncode,0)
+        self.assertNotEqual(self.invoke(*self.base).returncode,0)
         self.wasm.write_bytes(b"\0asm\1\0\0\0"+bytes(package.MAX_PACKAGE_SIZE))
-        self.assertNotEqual(self.invoke(*self.base,"--development-key").returncode,0)
+        self.assertNotEqual(self.invoke(*self.base).returncode,0)
         self.assertFalse(self.output.exists())
-    def test_output_cannot_overwrite_wasm_or_signing_key(self):
+    def test_output_cannot_overwrite_wasm(self):
         original=self.wasm.read_bytes()
-        result=self.invoke(*self.base,"--development-key","--output",str(self.wasm))
+        result=self.invoke(*self.base,"--output",str(self.wasm))
         self.assertNotEqual(result.returncode,0)
         self.assertEqual(self.wasm.read_bytes(),original)
-        pem=self.root/"test-only.pem"
-        secret=ec.derive_private_key(42,ec.SECP256R1()).private_bytes(
-            serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption())
-        pem.write_bytes(secret)
-        result=self.invoke(*self.base,"--key",str(pem),"--output",str(pem))
-        self.assertNotEqual(result.returncode,0)
-        self.assertEqual(pem.read_bytes(),secret)
-    def test_reject_wrong_curve_key(self):
-        pem=self.root/"test-only.pem"
-        pem.write_bytes(ec.generate_private_key(ec.SECP384R1()).private_bytes(
-            serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()))
-        self.assertNotEqual(self.invoke(*self.base,"--key",str(pem)).returncode,0)
-        self.assertFalse(self.output.exists())
+    def test_signature_area_is_never_checked_but_payload_is(self):
+        self.assertEqual(self.invoke(*self.base).returncode,0)
+        data=bytearray(self.output.read_bytes());self.assertEqual(struct.unpack_from('<I',data,52)[0],1)
+        data[192:256]=bytes(64);self.assertEqual(package.validate_envelope(bytes(data))['app_id'],'demo.app')
+        data[-1]^=1
+        with self.assertRaisesRegex(ValueError,'payload hash'):package.validate_envelope(bytes(data))
 if __name__=="__main__": unittest.main()

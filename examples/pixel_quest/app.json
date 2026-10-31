@@ -1,7 +1,7 @@
 {
   "app_id": "demo.pixel-quest",
   "title": "Pixel Quest",
-  "version": 2,
+  "version": 3,
   "abi_version": 1,
   "permissions": 63,
   "memory_pages": 2,

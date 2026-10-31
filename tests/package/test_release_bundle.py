@@ -52,7 +52,7 @@ class ReleaseTests(unittest.TestCase):
         Image.new('RGB', (210, 210), '#101418').save(self.app / 'cover.png')
         self.args = argparse.Namespace(app=self.app, cc='compiler', runner=self.app/'runner',
                                        variant='wasm', output=None, channel='development',
-                                       development_key=True, key=None, key_id=1, wamrc=None, target='esp32s3',
+                                       wamrc=None, target='esp32s3',
                                        preview_ms=60000, sdk_revision='a'*40, built_at='2026-10-03T00:00:00Z')
         self.args.runner.write_bytes(b'local runner')
 
@@ -83,7 +83,7 @@ class ReleaseTests(unittest.TestCase):
         before = archive.read_bytes()
         self.run_release()
         self.assertEqual(before, archive.read_bytes())
-        manifest = self.release.validate_bundle(before, package.development_key().public_key(), 1)
+        manifest = self.release.validate_bundle(before)
         self.assertEqual(manifest['schema_version'], 2)
         self.assertEqual(manifest['version'], 1)
         self.assertEqual(manifest['requirements']['imports'], ['draw_clear'])
@@ -107,15 +107,13 @@ class ReleaseTests(unittest.TestCase):
     def test_required_negative_inputs_fail_before_build(self):
         cases = [('missing changelog', 'CHANGELOG.md'), ('unknown field', 'unknown'),
                  ('late screenshot', 'late'), ('wrong device size', 'device'),
-                 ('wrong cover size', 'cover'), ('BOM', 'bom'), ('CRLF', 'crlf'),
-                 ('development stable', 'channel')]
+                 ('wrong cover size', 'cover'), ('BOM', 'bom'), ('CRLF', 'crlf')]
         for label, kind in cases:
             with self.subTest(label=label):
                 changelog = self.app/'CHANGELOG.md'
                 changelog.write_bytes(b'# Test\n')
                 Image.new('RGB', (210, 210)).save(self.app/'cover.png')
                 self.write_json('listing.json', self.listing)
-                self.args.channel = 'development'
                 if kind == 'CHANGELOG.md': changelog.unlink()
                 elif kind == 'unknown': self.write_json('listing.json', dict(self.listing, unknown=True))
                 elif kind == 'late': self.write_json('listing.json', dict(self.listing, screenshots=[dict(at_ms=60001)]))
@@ -124,8 +122,7 @@ class ReleaseTests(unittest.TestCase):
                     self.write_json('listing.json', dict(self.listing, screenshots=[dict(file='device.png')]))
                 elif kind == 'cover': Image.new('RGB', (100, 100)).save(self.app/'cover.png')
                 elif kind == 'bom': changelog.write_bytes(b'\xef\xbb\xbf# Test\n')
-                elif kind == 'crlf': changelog.write_bytes(b'# Test\r\n')
-                else: self.args.channel = 'stable'
+                else: changelog.write_bytes(b'# Test\r\n')
                 with patch.object(tinyrt, 'build') as build, self.assertRaises(ValueError):
                     self.run_release()
                 build.assert_not_called()
@@ -161,7 +158,7 @@ class ReleaseTests(unittest.TestCase):
                             else: raw += b'Tampered\n'
                         dest.writestr(item, raw)
                 with self.assertRaises(ValueError):
-                    self.release.validate_bundle(data.getvalue(), package.development_key().public_key(), 1)
+                    self.release.validate_bundle(data.getvalue())
 
     def test_failed_rebuild_preserves_existing_deliverable(self):
         archive = Path(self.run_release()['zip'])
@@ -198,7 +195,7 @@ class ReleaseTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(archive)) as source, zipfile.ZipFile(output,'w') as dest:
             for item in reversed(source.infolist()): dest.writestr(item,source.read(item))
         with self.assertRaises(ValueError):
-            self.release.validate_bundle(output.getvalue(),package.development_key().public_key(),1)
+            self.release.validate_bundle(output.getvalue())
 
     def test_events_keep_existing_run_encoding_and_timing_rules(self):
         (self.app/'events.json').write_bytes(b'\xef\xbb\xbf[\r\n{"ms":33,"kind":"press","x":1,"y":1}\r\n]\r\n')
@@ -253,17 +250,17 @@ class ReleaseTests(unittest.TestCase):
     def test_release_accepts_s31_target(self):
         from contextlib import redirect_stdout
         with patch.object(self.release,'make_release',return_value={}) as release, redirect_stdout(io.StringIO()):
-            self.assertEqual(tinyrt.main(['release',str(self.app),'--development-key','--target','esp32s31']),0)
+            self.assertEqual(tinyrt.main(['release',str(self.app)]),0)
         self.assertEqual(release.call_args.args[0].target,'esp32s31')
 
     def test_release_defaults_to_aot_delivery(self):
         from contextlib import redirect_stdout
         with patch.object(self.release,'make_release',return_value={}) as release, redirect_stdout(io.StringIO()):
-            self.assertEqual(tinyrt.main(['release',str(self.app),'--development-key']),0)
+            self.assertEqual(tinyrt.main(['release',str(self.app),'--target','esp32s3']),0)
         self.assertEqual(release.call_args.args[0].variant,'wasm-aot')
 
     def test_release_s31_target_uses_s31_profile_and_bundled_compiler(self):
-        import development_aot
+        import aot
         self.args.variant = 'wasm-aot'; self.args.target = 'esp32s31'
         pin = json.loads((ROOT/'tools/toolchains/esp32s31.json').read_bytes())
         compiler = (ROOT/'tools/toolchains/esp32s31/windows-x64/wamrc.exe').resolve()
@@ -271,11 +268,11 @@ class ReleaseTests(unittest.TestCase):
         def compile(command, **kwargs):
             calls.append(command)
             Path(command[command.index('-o')+1]).write_bytes(b'\0aot'+struct.pack('<I',pin['aot_format'])+b'native-test-output')
-        with patch.object(development_aot.subprocess, 'run', side_effect=compile):
+        with patch.object(aot.subprocess, 'run', side_effect=compile):
             result = self.run_release()
         self.assertEqual(Path(calls[0][0]), compiler)
-        self.assertEqual(calls[0][1:-3], development_aot.target_options('esp32s31'))
-        manifest = self.release.validate_bundle(Path(result['zip']).read_bytes(), package.development_key().public_key(), 1)
+        self.assertEqual(calls[0][1:-3], aot.target_options('esp32s31'))
+        manifest = self.release.validate_bundle(Path(result['zip']).read_bytes())
         self.assertEqual(manifest['variant'], 'wasm-aot')
         self.assertEqual(manifest['requirements']['aot'],
                          dict(target_arch='riscv32', target_cpu='generic-rv32', compat_id=pin['compat_id']))

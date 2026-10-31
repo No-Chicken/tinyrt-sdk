@@ -1,6 +1,6 @@
 PYTHON ?= python
 APP ?= examples/flappy
-RELEASE_ARGS ?= --development-key
+RELEASE_ARGS ?=
 
 .PHONY: release
 release:
