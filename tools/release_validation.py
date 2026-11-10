@@ -121,7 +121,7 @@ def check_report(raw):
     return report
 
 
-def validate_bundle(raw):
+def validate_bundle(raw, *, require_current_core=True):
     """Local content validation; server account and app ID ownership are separate."""
     if len(raw) > MAX_ZIP: raise ValueError('ZIP exceeds %d MiB' % (MAX_ZIP >> 20))
     try:
@@ -171,6 +171,10 @@ def validate_bundle(raw):
     info, parts, metadata, requirements = inspect_package(files['package.trpkg'])
     for key in ('app_id','title','version'):
         if manifest[key] != info[key]: raise ValueError('package metadata mismatch: '+key)
+    # Replacing our own output may span SDK upgrades. The old revision is
+    # provenance, already checked by the release schema, not part of the package header.
+    if not require_current_core:
+        requirements['core_contract_revision'] = manifest['requirements']['core_contract_revision']
     if manifest['package'] != metadata or manifest['requirements'] != requirements:
         raise ValueError('package metadata/imports/AOT/core revision mismatch')
     if manifest['variant'] != ('wasm-aot' if 2 in parts else 'wasm'):

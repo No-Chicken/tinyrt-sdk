@@ -149,7 +149,9 @@ def protect_delivery(folder, archive, inputs):
                 raise ValueError('release output would overwrite an input')
     if archive.exists():
         if not archive.is_file(): raise ValueError('existing ZIP output is not a file')
-        validate_bundle(bounded(archive,'existing release ZIP',12*1024*1024))
+        previous = validate_bundle(bounded(archive,'existing release ZIP',12*1024*1024), require_current_core=False)
+        if folder.name != f"{previous['app_id']}-v{previous['version']}-{previous['variant']}":
+            raise ValueError('existing ZIP identity does not match output directory')
     if folder.exists():
         if not folder.is_dir() or not archive.exists(): raise ValueError('existing output directory is not an owned release')
         with zipfile.ZipFile(archive) as previous:
