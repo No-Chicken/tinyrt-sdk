@@ -52,7 +52,7 @@ class ReleaseTests(unittest.TestCase):
         Image.new('RGB', (210, 210), '#101418').save(self.app / 'cover.png')
         self.args = argparse.Namespace(app=self.app, cc='compiler', runner=self.app/'runner',
                                        variant='wasm', output=None, channel='development',
-                                       wamrc=None, target='esp32s3',
+                                       wamrc=None, target='esp32s31',
                                        preview_ms=60000, sdk_revision='a'*40, built_at='2026-10-03T00:00:00Z')
         self.args.runner.write_bytes(b'local runner')
 
@@ -256,7 +256,7 @@ class ReleaseTests(unittest.TestCase):
     def test_release_defaults_to_aot_delivery(self):
         from contextlib import redirect_stdout
         with patch.object(self.release,'make_release',return_value={}) as release, redirect_stdout(io.StringIO()):
-            self.assertEqual(tinyrt.main(['release',str(self.app),'--target','esp32s3']),0)
+            self.assertEqual(tinyrt.main(['release',str(self.app),'--target','esp32s31']),0)
         self.assertEqual(release.call_args.args[0].variant,'wasm-aot')
 
     def test_release_s31_target_uses_s31_profile_and_bundled_compiler(self):

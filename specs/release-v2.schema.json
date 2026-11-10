@@ -176,27 +176,6 @@
               "type": "object",
               "properties": {
                 "target_arch": {
-                  "const": "xtensa"
-                },
-                "target_cpu": {
-                  "const": "esp32s3"
-                },
-                "compat_id": {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
-                }
-              },
-              "required": [
-                "target_arch",
-                "target_cpu",
-                "compat_id"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "properties": {
-                "target_arch": {
                   "const": "riscv32"
                 },
                 "target_cpu": {
@@ -556,27 +535,6 @@
             "properties": {
               "aot": {
                 "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "target_arch": {
-                        "const": "xtensa"
-                      },
-                      "target_cpu": {
-                        "const": "esp32s3"
-                      },
-                      "compat_id": {
-                        "type": "string",
-                        "pattern": "^[0-9a-f]{64}$"
-                      }
-                    },
-                    "required": [
-                      "target_arch",
-                      "target_cpu",
-                      "compat_id"
-                    ],
-                    "additionalProperties": false
-                  },
                   {
                     "type": "object",
                     "properties": {

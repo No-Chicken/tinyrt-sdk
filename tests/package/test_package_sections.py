@@ -19,7 +19,7 @@ def rehashed(raw):
 
 def meta(wasm):
     raw=bytearray(256);struct.pack_into('<HHII',raw,0,1,256,5,7)
-    raw[16:32]=b'xtensa'.ljust(16,b'\0');raw[32:48]=b'esp32s3'.ljust(16,b'\0')
+    raw[16:32]=b'riscv32'.ljust(16,b'\0');raw[32:48]=b'generic-rv32'.ljust(16,b'\0')
     raw[48:216]=bytes(range(1,169));raw[216:248]=hashlib.sha256(wasm).digest()
     return bytes(raw)
 

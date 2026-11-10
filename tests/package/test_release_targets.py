@@ -12,7 +12,7 @@ class ReleaseTargetTests(unittest.TestCase):
                schema['allOf'][0]['else']['properties']['requirements']['properties']['aot']]
         for node in nodes:
             validator=Draft202012Validator(node)
-            for arch,cpu,valid in [('xtensa','esp32s3',True),('riscv32','generic-rv32',True),
+            for arch,cpu,valid in [('xtensa','esp32s3',False),('riscv32','generic-rv32',True),
                                    ('xtensa','generic-rv32',False),('riscv32','esp32s3',False),
                                    ('arm','generic-rv32',False)]:
                 with self.subTest(arch=arch,cpu=cpu):

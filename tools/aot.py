@@ -12,17 +12,13 @@ import package
 import tinyrt
 
 TOOLCHAINS=Path(__file__).resolve().parent/'toolchains'
-OPTIONS=['--target=xtensa','--cpu=esp32s3','--bounds-checks=1','--stack-bounds-checks=1',
-         '--opt-level=3','--size-level=0','--disable-simd','--disable-ref-types','--enable-loop-poll']
-
 def target_options(target):
-    if target=='esp32s3':return list(OPTIONS)
-    if target=='esp32s31':
-        options=['--target=riscv32','--cpu=generic-rv32',*OPTIONS[2:],
-                 '--target-abi=ilp32f','--cpu-features=+m,+a,+c,+f,-d']
-        options[5]='--size-level=3'
-        return options
-    raise ValueError('unsupported AOT target: '+str(target))
+    if target != 'esp32s31':
+        raise ValueError('unsupported AOT target: ' + str(target))
+    return ['--target=riscv32', '--cpu=generic-rv32', '--bounds-checks=1',
+            '--stack-bounds-checks=1', '--opt-level=3', '--size-level=3',
+            '--disable-simd', '--disable-ref-types', '--enable-loop-poll',
+            '--target-abi=ilp32f', '--cpu-features=+m,+a,+c,+f,-d']
 
 
 def profile_path(target):
@@ -31,7 +27,8 @@ def profile_path(target):
 
 
 def bundled_compiler(target):
-    return tinyrt.ROOT/('tools/toolchains/esp32s31/windows-x64/wamrc.exe' if target=='esp32s31' else 'bin/wamrc.exe')
+    target_options(target)
+    return TOOLCHAINS / target / 'windows-x64/wamrc.exe'
 
 
 def sha(raw):return hashlib.sha256(raw).hexdigest()
@@ -73,8 +70,8 @@ def compile_module(compiler, options, source):
 
 
 def target_of(aot):
-    for target,arch in (('esp32s31','riscv32'),('esp32s3','xtensa')):
-        if aot['target_arch']==arch:return target
+    if (aot['target_arch'], aot['target_cpu']) == ('riscv32', 'generic-rv32'):
+        return 'esp32s31'
     raise ValueError('unsupported AOT target: '+aot['target_arch'])
 
 

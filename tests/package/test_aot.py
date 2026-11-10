@@ -18,10 +18,9 @@ class AOT(unittest.TestCase):
         import aot as tool
         options=tool.target_options('esp32s31')
         self.assertEqual(options[:2],['--target=riscv32','--cpu=generic-rv32'])
-        expected=list(tool.OPTIONS[2:]);expected[3]='--size-level=3'
-        self.assertEqual(options[2:9],expected)
+        self.assertEqual(options[2:9], ['--bounds-checks=1','--stack-bounds-checks=1','--opt-level=3',
+                                        '--size-level=3','--disable-simd','--disable-ref-types','--enable-loop-poll'])
         self.assertEqual(options[9:],['--target-abi=ilp32f','--cpu-features=+m,+a,+c,+f,-d'])
-        self.assertEqual(tool.target_options('esp32s3'),tool.OPTIONS)
         with self.assertRaises(ValueError):tool.target_options('unknown')
     def test_fixed_profile_own_compilation_and_tamper_rejection(self):
         import aot as tool
@@ -35,27 +34,27 @@ class AOT(unittest.TestCase):
             Image.new('RGB',(210,210),'red').save(root/'cover.png')
             metadata['cover']='cover.png'
             manifest.write_text(json.dumps(metadata),encoding='utf-8')
-            profile=json.loads(tool.profile_path('esp32s3').read_text(encoding='utf-8'))
+            profile=json.loads(tool.profile_path('esp32s31').read_text(encoding='utf-8'))
             profile['compiler']['sha256']=hashlib.sha256(compiler.read_bytes()).hexdigest()
             pin=root/'pin.json';pin.write_text(json.dumps(profile),encoding='utf-8')
             output=root/'game.trpkg';calls=[]
             def compile(command,**kwargs):
                 calls.append(command)
-                self.assertEqual(command[1:10],tool.OPTIONS)
+                self.assertEqual(command[1:-3],profile['options'])
                 self.assertEqual(Path(command[-1]).read_bytes(),wasm.read_bytes())
                 Path(command[command.index('-o')+1]).write_bytes(b'\0aot'+struct.pack('<I',5)+b'native-test-output')
             with patch.object(tool,'profile_path',return_value=pin),patch.object(tool.subprocess,'run',side_effect=compile):
-                tool.pack_aot(manifest,wasm,output,compiler,target='esp32s3')
+                tool.pack_aot(manifest,wasm,output,compiler,target='esp32s31')
                 checked=package.validate_envelope(output.read_bytes())
                 self.assertEqual(checked['aot']['compat_id'],profile['compat_id'])
                 self.assertEqual(checked['cover']['size'],133232)
                 self.assertEqual(len(calls),1)
                 saved=output.read_bytes();compiler.write_bytes(b'tampered')
-                with self.assertRaises(ValueError):tool.pack_aot(manifest,wasm,output,compiler,target='esp32s3')
+                with self.assertRaises(ValueError):tool.pack_aot(manifest,wasm,output,compiler,target='esp32s31')
                 self.assertEqual(len(calls),1);self.assertEqual(output.read_bytes(),saved)
                 compiler.write_bytes(b'test compiler')
                 metadata['app_id']='my-game';manifest.write_text(json.dumps(metadata),encoding='utf-8')
-                tool.pack_aot(manifest,wasm,output,compiler,target='esp32s3')
+                tool.pack_aot(manifest,wasm,output,compiler,target='esp32s31')
                 self.assertEqual(package.validate_envelope(output.read_bytes())['app_id'],'my-game')
     def test_rebuild_detects_aot_that_is_not_compiled_from_the_packaged_wasm(self):
         import aot as tool

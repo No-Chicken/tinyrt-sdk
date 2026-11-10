@@ -24,7 +24,7 @@ def details(fmt=1,wasm=11,aot=29,assets=3,backend=2,fallback=0,cover=False):
     raw[80:144]='原生'.encode().ljust(64,b'\0')
     struct.pack_into('<10I',raw,144,42,1,15,16,100000,wasm,assets,aot,5 if aot else 0,7 if aot else 0)
     if aot:
-        raw[184:200]=b'xtensa'.ljust(16,b'\0');raw[200:216]=b'esp32s3'.ljust(16,b'\0');raw[216:248]=bytes(range(32))
+        raw[184:200]=b'riscv32'.ljust(16,b'\0');raw[200:216]=b'generic-rv32'.ljust(16,b'\0');raw[216:248]=bytes(range(32))
     return bytes(raw)
 
 
@@ -32,7 +32,7 @@ def profile(aot=True,development=False):
     raw=bytearray(136);struct.pack_into('<HHI',raw,0,1,1,1|(2 if aot else 0)|(4 if development else 0))
     if aot:
         struct.pack_into('<II',raw,8,5,1)
-        raw[16:32]=b'xtensa'.ljust(16,b'\0');raw[32:48]=b'esp32s3'.ljust(16,b'\0')
+        raw[16:32]=b'riscv32'.ljust(16,b'\0');raw[32:48]=b'generic-rv32'.ljust(16,b'\0')
         raw[48:80]=bytes(range(32));raw[80:112]=bytes(range(1,33));raw[112:132]=bytes(range(20))
         struct.pack_into('<I',raw,132,7)
     return bytes(raw)
