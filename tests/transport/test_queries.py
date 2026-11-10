@@ -47,6 +47,22 @@ class Peer:
         raise AssertionError(op)
 
 class Queries(unittest.IsolatedAsyncioTestCase):
+    async def test_last_crash(self):
+        class CrashPeer:
+            async def management(self, op, payload=b''):
+                self.calls = (op, payload)
+                return self.raw
+        peer = CrashPeer()
+        reason = b'integer divide by zero'
+        peer.raw = struct.pack('<HBBII', 1, 2, len(reason), 0xffffffff, 0) + identity()[:68] + reason
+        result = await client.last_crash(peer)
+        self.assertEqual(peer.calls, (0x1f, b''))
+        self.assertEqual((result['app_id'], result['phase'], result['reason']), ('demo.game', 'event', reason.decode()))
+        self.assertIsNone(result['function_index'])
+        self.assertEqual(result['pc'], 0)
+        peer.raw = peer.raw[:-1]
+        with self.assertRaises(ValueError): await client.last_crash(peer)
+
     async def test_device_info_new_opcode_empty_request_and_schema(self):
         class VersionPeer:
             async def management(self,op,payload=b''):
@@ -121,7 +137,12 @@ class Queries(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(value['title'],'迷宫 🐍');self.assertEqual(value['key_id'],42)
         self.assertEqual(value['sha256'],bytes(range(32)).hex());self.assertEqual(peer.asserted,b'\x01\0'+identity()[:68])
         self.assertEqual(value['wasm_size']+value['assets_size']+290,value['size'])
-        for offset,kind,value in ((40,'I',8),(44,'B',255),(76,'I',301),(148,'I',2),(152,'I',64),(156,'I',0),(156,'I',17),(160,'I',0),(160,'I',100001),(164,'I',8),(168,'I',15),(164,'I',0xffffffff),(168,'I',0xffffffff)):
+        raw=bytearray(peer.info)
+        struct.pack_into('<II',raw,156,20,125000)
+        peer.info=raw
+        info=await client.app_info(peer,identity())
+        self.assertEqual((info['memory_pages'],info['instruction_budget']),(20,125000))
+        for offset,kind,value in ((40,'I',8),(44,'B',255),(76,'I',301),(148,'I',2),(152,'I',64),(156,'I',0),(156,'I',21),(160,'I',0),(160,'I',125001),(164,'I',8),(168,'I',15),(164,'I',0xffffffff),(168,'I',0xffffffff)):
             with self.subTest(offset=offset):
                 peer=Peer();raw=bytearray(peer.info);struct.pack_into('<'+kind,raw,offset,value);peer.info=raw
                 with self.assertRaises(ValueError):await client.app_info(peer,identity())

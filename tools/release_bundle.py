@@ -75,7 +75,9 @@ def load_inputs(app, preview_ms):
     for name in manifest['sources']:
         path = tinyrt.local_file(root,name); snapshots[path] = path.read_bytes()
     if manifest.get('assets'):
-        path = tinyrt.local_file(root,manifest['assets']); snapshots[path] = package.read_bounded(path)
+        for path in tinyrt.asset_inputs(root,manifest['assets']):
+            snapshots[path] = package.read_bounded(path)
+        path = tinyrt.resource_file(root,manifest['assets']); snapshots[path] = package.read_bounded(path)
     return root, manifest, listing, files, snapshots, events
 
 
@@ -92,8 +94,7 @@ def compiler_info(override):
 
 
 def local_runner(override):
-    path = override or os.environ.get('TINYRT_RUNNER') or tinyrt.ROOT/'bin/tinyrt-run.exe'
-    path = Path(path).resolve()
+    path = preview.runner_path(override)
     if not path.is_file(): raise ValueError('release needs a local WAMR runner; pass --runner')
     return path
 
@@ -280,8 +281,11 @@ def make_release(args):
                 aot.pack_aot(root,wasm,package_path,wamrc,target=target)
                 package_raw = package.read_bounded(package_path)
             else:
+                asset_path = tinyrt.resource_file(root, app.get('assets'))
+                if asset_path and asset_path not in snapshots:
+                    raise ValueError('release assets changed during build')
                 package_raw = package.build_package(wasm_raw,
-                    snapshots[tinyrt.local_file(root,app['assets'])] if app.get('assets') else b'',
+                    snapshots[asset_path] if asset_path else b'',
                     cover=package.encode_cover_png(assets['cover.png']),
                     **tinyrt.package_metadata(app))
             passed(stage)
@@ -356,7 +360,8 @@ def make_release(args):
                 app = tinyrt.load_manifest(args.app)
                 inputs = [tinyrt.manifest_path(args.app),*snapshots]
                 inputs += [tinyrt.local_file(root,name) for name in app['sources']]
-                inputs += [tinyrt.local_file(root,app[name]) for name in ('assets','cover') if app.get(name)]
+                inputs += tinyrt.asset_inputs(root,app.get('assets'))
+                if app.get('cover'): inputs.append(tinyrt.local_file(root,app['cover']))
                 for source in inputs:
                     if target.resolve() == source.resolve() or (target.exists() and source.exists() and target.samefile(source)):
                         raise ValueError('failure report must not overwrite an input')

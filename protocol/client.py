@@ -11,6 +11,8 @@ LIST_PAGE = 0x18
 STORAGE, APP_INFO, RUNTIME_INFO = 0x19, 0x1a, 0x1b
 APP_COVER, MOBILE_STATUS = 0x1c, 0x1d
 GET_DEVICE_INFO = 0x1e
+LAST_CRASH = 0x1f
+PREPARE_PERMISSIONS = 0x20
 CAP_COVER_MOBILE_CONFIRM = 128
 CAP_QUARANTINE = 8
 CAP_PAGED_LIST = 16
@@ -233,7 +235,8 @@ def _app_info_sections(raw, identity, maximum):
     key_id,abi,permissions,pages,budget,wasm,assets,aot,aot_format,safety=struct.unpack_from('<10I',raw,144)
     size=struct.unpack_from('<I',raw,76)[0]
     expected_sections=int(bool(wasm)) | (2 if aot else 0) | (4 if assets else 0)
-    if (abi!=1 or permissions & ~63 or not 1<=pages<=16 or not 1<=budget<=100000
+    # APP_INFO carries no package API level. Check the largest supported policy.
+    if (abi!=1 or permissions & ~959 or not 1<=pages<=20 or not 1<=budget<=125000
             or (wasm and wasm<=8) or not (wasm or aot) or (sections & 7)!=expected_sections):
         raise ValueError('invalid format-1 app details policy or sections')
     if aot:
@@ -253,6 +256,24 @@ def _app_info_sections(raw, identity, maximum):
         size=size,title=title,key_id=key_id,abi_version=abi,permissions=permissions,memory_pages=pages,
         instruction_budget=budget,wasm_size=wasm,assets_size=assets,aot_size=aot,cover_size=133232 if sections & 8 else 0,aot_format=aot_format,
         safety_flags=safety,target_arch=arch,target_cpu=cpu,compat_id=raw[216:248].hex())
+
+
+async def last_crash(link):
+    try:
+        raw = await link.management(LAST_CRASH)
+    except RemoteError as error:
+        if error.status == 8:
+            return None
+        raise
+    if len(raw) < 80:
+        raise ValueError('truncated crash report')
+    schema, phase, length, function, pc = struct.unpack_from('<HBBII', raw)
+    phases = {1: 'init', 2: 'event', 3: 'render', 4: 'stop'}
+    if schema != 1 or phase not in phases or not 1 <= length <= 160 or len(raw) != 80 + length:
+        raise ValueError('invalid crash report')
+    return dict(app_id=raw[12:44].rstrip(b'\0').decode('ascii'), version=struct.unpack_from('<I', raw, 44)[0],
+                sha256=raw[48:80].hex(), phase=phases[phase], reason=raw[80:].decode(),
+                function_index=None if function == 0xffffffff else function, pc=None if pc == 0xffffffff else pc)
 
 
 async def device_info(link):
@@ -325,11 +346,18 @@ async def check_install_compatibility(link, data):
         if (meta[120:152].hex() != profile['compat_id']
                 or struct.unpack_from('<I', meta, 4)[0] != profile['aot_format']):
             raise ValueError('AOT 世代或格式不匹配，请使用当前 SDK 重新 pack')
-        return
+        return host
     raise ValueError('此应用缺少 AOT，请使用当前 SDK 重新 pack')
 
 
-async def install(connect, data, progress=None):
+async def install(connect, data, progress=None, *, launch=False):
+    async def launch_confirmed(link, identity):
+        if launch:
+            try:
+                await link.management(LAUNCH, identity[:68])
+            except (RemoteError, OSError, RuntimeError) as error:
+                raise ValueError(f'应用已安装，启动未确认（{error}）。请打开设备的应用接收页后重试 dev。') from error
+
     info = package_info(data); transfers = 0; last_error = None; reconcile_only = False
     # Two transfer attempts; a final connection can only resolve the durable result.
     for _ in range(3):
@@ -342,6 +370,7 @@ async def install(connect, data, progress=None):
                 if abi != 1 or maximum < len(data) or count < 1 or not flags & 1 or not flags & CAP_PACKAGE_SECTIONS:
                     raise ValueError('device does not support this package')
                 if await installed(link, info, allow_repair=True):
+                    await launch_confirmed(link, info)
                     confirmed_result = 'installed' if transfers else 'already-installed'
                     return confirmed_result
                 if isinstance(last_error, RemoteError) or transfers >= 2 or reconcile_only: raise last_error
@@ -350,11 +379,15 @@ async def install(connect, data, progress=None):
                     required=(len(data)+4095)//4096*4096
                     if required>capacity['free_bytes'] or required>capacity['largest_free_bytes']:
                         raise RemoteError(5)
-                await check_install_compatibility(link, data)
-                await confirmed_operation(link,PREPARE,info)
+                host = await check_install_compatibility(link, data)
+                if host and host.get('perm') == 1:
+                    await confirmed_operation(link, PREPARE_PERMISSIONS, info + data[40:44])
+                else:
+                    await confirmed_operation(link, PREPARE, info)
                 transfers += 1
                 await link.transfer(data, progress)
                 if await installed(link, info):
+                    await launch_confirmed(link, info)
                     confirmed_result = 'installed'
                     return confirmed_result
                 raise RuntimeError('FINISH acknowledged but package is not committed')
@@ -442,12 +475,12 @@ class Link:
 
 async def confirmed_operation(link, opcode, payload, *, poll_interval=0.25, timeout=20):
     """Wait for device UI consent before START or durable uninstall query."""
-    if opcode not in (PREPARE,UNINSTALL):raise ValueError('operation does not support consent')
+    if opcode not in (PREPARE,PREPARE_PERMISSIONS,UNINSTALL):raise ValueError('operation does not support consent')
     raw=await link.management(opcode,payload)
     if not raw:return raw # Older hosts and an open receive window complete immediately.
     if len(raw)!=8:raise ValueError('invalid confirmation receipt')
     schema,kind,reserved,token=struct.unpack('<HBBI',raw)
-    expected=2 if opcode==PREPARE else 1
+    expected=1 if opcode==UNINSTALL else 2
     if schema!=1 or kind!=expected or reserved or not token:raise ValueError('invalid confirmation receipt')
     deadline=asyncio.get_running_loop().time()+timeout
     while asyncio.get_running_loop().time()<deadline:

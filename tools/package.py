@@ -105,6 +105,18 @@ def required_api_level(wasm, permissions, declared=1):
     return required
 
 
+def validate_quotas(memory_pages, budget, declared):
+    if declared < 4 and (memory_pages > 16 or budget > 100000):
+        raise ValueError('extended memory_pages or budget requires explicit min_api_level: 4 in app.json')
+    if declared >= 4:
+        limits = abi_contract()['quotas']['level_4']
+        pages_max, budget_max = limits['memory_pages'], limits['instruction_budget']
+    else:
+        pages_max, budget_max = 16, 100000
+    if not 1 <= memory_pages <= pages_max or not 1 <= budget <= budget_max:
+        raise ValueError('memory pages or instruction budget exceed declared API level policy')
+
+
 def metadata_header(wasm, assets, *, app_id, title, version, abi_version,
                   permissions, memory_pages, budget, min_api_level=1):
     """Encode validated metadata; runtime still validates Wasm/ABI."""
@@ -117,8 +129,7 @@ def metadata_header(wasm, assets, *, app_id, title, version, abi_version,
         raise ValueError("version must be positive uint32 and ABI must be 1")
     if not 0 <= permissions <= 0xffffffff:
         raise ValueError("unknown permission bits")
-    if not 1 <= memory_pages <= 16 or not 1 <= budget <= 100000:
-        raise ValueError("memory pages or instruction budget exceed v1 policy")
+    validate_quotas(memory_pages, budget, min_api_level)
     if len(wasm) <= 8 or not wasm.startswith(b"\0asm\x01\0\0\0"):
         raise ValueError("input must begin with Wasm v1 magic and contain sections")
     header = bytearray(HEADER_SIZE)
@@ -232,7 +243,9 @@ def validate_envelope(data):
     if (fmt,header,total,table,entry,flags) != (1,256,len(data),256,16,0) or not 1 <= count <= 4:
         raise ValueError('invalid format-1 header')
     version,abi,permissions,pages,budget,key_id = struct.unpack_from('<6I',data,32)
-    if not version or abi!=1 or not 1<=pages<=16 or not 1<=budget<=100000 or any(data[188:192]):
+    level = struct.unpack_from('<I', data, 184)[0] or 1
+    validate_quotas(pages, budget, level)
+    if not version or abi!=1 or any(data[188:192]):
         raise ValueError('invalid package policy')
     app_id = _text(data[56:88],'ascii',r'[a-z0-9._-]{1,31}')
     title = _text(data[88:152],'utf-8')
@@ -256,7 +269,6 @@ def validate_envelope(data):
             raise ValueError('native header does not match metadata')
         if wasm and hashlib.sha256(wasm).hexdigest()!=aot['source_wasm_sha256']:
             raise ValueError('AOT source identity mismatch')
-    level = struct.unpack_from('<I', data, 184)[0] or 1
     if level < required_api_level(wasm, permissions):
         raise ValueError('package declares a lower API level than its capabilities require')
     cover=decode_cover(sections[4]) if 4 in sections else None

@@ -1,0 +1,13 @@
+{
+  "app_id": "my-app",
+  "title": "Local watchface",
+  "version": 1,
+  "abi_version": 1,
+  "permissions": 9,
+  "memory_pages": 2,
+  "budget": 100000,
+  "sources": [
+    "main.c"
+  ],
+  "cover": "cover.png"
+}

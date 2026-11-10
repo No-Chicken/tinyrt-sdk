@@ -2,6 +2,12 @@
 
 在设备应用大厅打开“添加”页后，运行 `python tools/tinyrt.py install <pkg>`。默认优先 USB，多台 USB 设备用 `--port COM11` 指定，也可用 `--transport ble --address <地址>` 选择蓝牙。
 
+开发固件支持 `python tools/tinyrt.py dev examples/gyro_ball --watch`。命令构建并打包应用，自动寻找 USB 开发板，安装后等待设备显示应用页面，再持续输出 `app:` 日志。修改源码、清单或素材会触发重新构建和安装，按 Ctrl+C 退出。使用 BLE 时，先在设备上打开“添加”页，再指定 `--transport ble --address <地址>`，以便在同一连接内安装和启动。
+
+支持权限预览的固件会在安装页和远程确认弹窗列出应用权限。使用旧工具时，远程确认弹窗提示发送端未提供权限，接收包头后安装页会显示实际权限。
+
+在“添加”页运行 `python tools/tinyrt.py info` 可读取本次开机最近一次应用崩溃的包身份、回调阶段和原因。连接参数与 `install` 相同。设备保留一条记录，后续崩溃会覆盖它。当前 S31 配置无法提供出错指令的函数索引和 PC，命令会显示“未知”。
+
 Magie（S31）设备只运行 AOT 应用。`pack` 默认编译并附带 S31 AOT。桌面预览使用解释器，帧耗时不能用来估计设备性能。
 
 独立开发、编译、预览和打包 TinyRT ABI 1 的 C/Wasm 应用。当前是开发预览：包格式、store 与 BLE schema 都为 1。普通 C/Wasm 构建不依赖 ESP-IDF；桌面预览使用真实 WAMR runner，AOT 使用固定目标与来源的编译器。权威契约与运行验证属于 TinyRT core。
@@ -20,10 +26,10 @@ Wave 为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](exa
 安装 requirements.txt 并准备本地工具后，从 SDK 根目录执行：
 
 ```powershell
-python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe
+python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe
 ```
 
-设置 `TINYRT_CC`、`TINYRT_RUNNER` 后也可执行 `make release APP=examples/flappy`。
+设置 `TINYRT_CC` 后也可执行 `make release APP=examples/flappy`。
 Windows 没有 make 时直接使用 Python 命令。Wasm 诊断包用
 `RELEASE_ARGS="--variant wasm"` 指定。
 
@@ -31,9 +37,9 @@ Windows 没有 make 时直接使用 Python 命令。Wasm 诊断包用
 本项目只交付 AOT：Flappy 输出 `examples/flappy/release/<app_id>-v<version>-wasm-aot.zip` 及同名展开目录。
 ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单和构建报告。
 release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s31`，使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`）。
-`--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留它用于回退；独立 Wasm ZIP 不作为本项目交付件。
+`--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留源 Wasm 供复编译比对。S31 安装要求兼容的 AOT section。
 失败保留此前完整交付件；诊断报告写入应用 `build/release-report.json`（安全可写时）。
-两个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。
+四个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。
 
 开发者维护 listing.json、三个 Markdown 和封面。完整 listing 示例：
 
@@ -67,22 +73,22 @@ at_ms 与 file 二选一，1–6 张。封面必须为 210×210 RGB/RGBA PNG、�
 
 Windows x64 的已打包 `wamrc.exe` 还需要 Microsoft Visual C++ v14 x64 运行库（14.51或以上）；可安装[微软最新运行库](https://learn.microsoft.com/zh-CN/cpp/windows/latest-supported-vc-redist)。已打包桌面 runner 使用静态CRT。
 
-需要 Python 3.10+，以及可生成 wasm32 的 Clang 或 Zig 0.13.0。安装 `requirements.txt`（打包用 cryptography，PNG 用 Pillow）；用 `--cc` 或 `TINYRT_CC` 指定编译器。AI 与人都可以从 [AGENTS.md](AGENTS.md) 开始，它包含全部 ABI 函数、回调边界和完整小游戏模板。
+需要 Python 3.10+，以及可生成 wasm32 的 Clang 或 Zig 0.13.0。安装 `requirements.txt`（打包用 cryptography，PNG 用 Pillow）；用 `--cc` 或 `TINYRT_CC` 指定编译器。AI 与人都可以从 [AGENTS.md](AGENTS.md) 开始，各导入函数的签名、权限、调用阶段、限额和错误处理见 [API 参考](docs/api.md)。
 
 ```powershell
 python -m pip install -r requirements.txt
 python tools/tinyrt.py new my-game --title "My game" --template game
 python tools/tinyrt.py build my-game --cc path/to/zig.exe
-python tools/tinyrt.py run my-game --runner path/to/tinyrt-run.exe --frames 0,330
+python tools/tinyrt.py run my-game --frames 0,330
 python tools/tinyrt.py pack my-game
 python tools/tinyrt.py validate my-game/build/my-game.trpkg
 ```
 
-`new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单或资源；损坏产物需选择新路径。
+`new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放，`tool` 提供触摸计数器，`watchface` 演示本地时间和分钟事件。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单或资源；损坏产物需选择新路径。
 
 `app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入整包长度。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](https://github.com/No-Chicken/tinyrt/blob/main/specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](https://github.com/No-Chicken/tinyrt/blob/main/specs/mobile-management.md)。
 
-`run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
+`run --events events.json` 按时间驱动真实 WAMR 解释器，输入示例见 [Wave 事件脚本](examples/wave_sim/events.json)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner 优先使用 `--runner` 或 `TINYRT_RUNNER` 指定的路径。默认使用 SDK 内置的本机 runner，按对应平台的 pin 校验 SHA-256 和大小。缺少本机 pin 或二进制时，按提示安装对应的 SDK 或指定自建 runner。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
 
 `pack` 默认为 ESP32-S31 编译 AOT 并保留源 Wasm，使用仓库内编译器，不需要任何密钥或额外参数；`app_id` 只要合法就行，不要求命名空间。`--wasm-only` 跳过 AOT（S31 固件不运行这种包）。SDK 用 pin 校验编译器 SHA-256，目标 ABI 与 bounds/stack/loop-poll 检查均固定，不接受上传者提供的 AOT 或自报安全参数；`--wamrc` 也必须匹配固定摘要。文件说明见[编译器目录](tools/toolchains/esp32s31/windows-x64/README.md)，目标细节见[设备目标](specs/device-targets.md)。
 
@@ -104,7 +110,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id my-game
 python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/my-game.trpkg
 ```
 
-按设备显示PIN配对；自动化终端用`--pin`提供六位PIN。完整包身份的最终QUERY确认安装结果。`info`中的`selected_backend=2`表示AOT，`1`表示Wasm；带AOT包选择Wasm时结合`fallback_reason`显示“兼容模式，性能降低”。手机安装入口尚未完成时使用电脑流程。分享包时说明固件目标。
+按设备显示PIN配对；自动化终端用`--pin`提供六位PIN。完整包身份的最终QUERY确认安装结果。`ble_install.py info` 的 `selected_backend=2`、`fallback_reason=0` 表示应用使用已验证的 S31 AOT。手机安装入口尚未完成时使用电脑流程。分享包时说明固件目标。
 
 ## 马达反馈
 
@@ -154,20 +160,36 @@ input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
 | `title` | 1..63 字节严格 UTF-8，不含 NUL |
 | `version` | 1..4294967295 的整数；同 ID 的不同包会直接替换旧包并保留存档，设备不要求递增，上架要递增 |
 | `abi_version` | 当前只能为 1 |
-| `permissions` | 0..63；draw=1、input=2、storage=4、clock=8、audio=16、haptic=32 |
+| `permissions` | 位掩码。DRAW=1、INPUT=2、STORAGE=4、CLOCK=8、AUDIO=16、HAPTIC=32、SENSOR=128、SYSTEM=256、ACCESSORY=512。 |
 | `min_api_level` | 可选。SDK 取此值和导入、权限要求的最高 Level，基线为 1。 |
 | `graphics` | 可选。immediate、raster 或 framebuffer，默认 immediate。 |
-| `memory_pages` | 1..16，页面为 64 KiB；这是 Wasm 线性内存上限 |
-| `budget` | 每回调 1..100000 条受计量指令 |
+| `memory_pages` | Level 1–3 为 1..16，Level 4 为 1..20。每页为 64 KiB。 |
+| `budget` | 解释器每回调的指令预算。Level 1–3 为 1..100000，Level 4 为 1..125000。S31 AOT 使用时间守卫。 |
 | `sources` | 1..64 个不重复的本地 `.c` 相对路径 |
-| `assets` | 可选：应用目录内现有文件的相对路径，或 null |
+| `assets` | 可选：资源文件的相对路径、按顺序转换的 PNG/WAV 列表，或 null |
 | `defines` | 可选：最多 32 个 C 标识符到整数的映射，值为 -2147483648..4294967295 |
 
 当前只支持section包格式1；应用`version`整数与平台版本独立。
 
-拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整包没有单独的单包上限，资源计入总长；`pack` 只做 16 MiB 格式检查，安装时以目标宿主 HELLO 公布的包库数据区为准（S31 V2 为 3960 KiB）。更新同一应用需要再有一段同样大小的连续空闲区，超过数据区一半的包需先卸载再安装。Flash 容量增加不改变 ABI 1 的 16 页线性内存与每回调 100000 指令限额；较大的 Wasm 仍需通过宿主运行时的独立内存检查。
+拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整包没有单独的单包上限，资源计入总长；`pack` 只做 16 MiB 格式检查，安装时以目标宿主 HELLO 公布的包库数据区为准（S31 V2 为 3960 KiB）。更新同一应用需要再有一段同样大小的连续空闲区，超过数据区一半的包需先卸载再安装。使用扩展配额时须在清单填写 `"min_api_level": 4`。宿主另行检查运行时总内存。
 
-`assets` 指定包内的原始字节。`asset_read(offset,ptr,len)`在init/event中只读当前包资源，每次最多4096字节；尚无通用私有文件系统API。KV 是每应用 16 个 i32，不能把它描述为文件系统。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
+字符串形式的 `assets` 原样打包文件。列表形式按顺序拼接图像和声音，例如：
+
+```json
+{
+  "assets": [
+    "background.png",
+    {"path": "art/hero.png", "format": "index8", "name": "player"},
+    "audio/click.wav"
+  ]
+}
+```
+
+PNG 默认生成小端 RGB565（忽略透明度）。`index8` 输出逐像素索引，后接小端 RGB565 调色板。索引 0 表示透明，最多使用 255 个不透明颜色。以 0 为透明索引的调色板 PNG 保留原有索引顺序。其他 PNG 按像素首次出现的颜色分配索引，alpha 小于 128 的像素透明。PCM WAV 支持 8、16、24、32 位采样，混合声道并线性重采样到 16 kHz 单声道 PCM16。WAV 条目可设置 `"clip": "effect"` 去除首尾静音、截取至多一秒，并将末尾 10 ms 淡出。
+
+`build` 会生成 `build/assets/<摘要>/resources.bin` 和 `assets_generated.h`。在 C 源码中使用 `#include <assets_generated.h>`，即可引用如 `ASSET_PLAYER_OFFSET` 和 `ASSET_PLAYER_LENGTH` 的字节偏移及长度。图像还提供 `WIDTH`、`HEIGHT`，索引图另提供 `PALETTE_OFFSET`、`PALETTE_COUNT`。修改素材或顺序后重新执行 `build`，再预览或打包。
+
+`asset_read(offset,ptr,len)`在init/event中只读当前包资源，每次最多4096字节；尚无通用私有文件系统API。每个应用可保存 16 个 i32 KV 槽，Level 4 可保存 24 个槽，并新增最多 2048 字节的私有 blob。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
 
 当前 core 将普通 KV 保存尝试按 manager 全局五秒合并，正常停止强制刷新；`kv_set` 成功只表示 RAM 更新，突然断电可能丢失未持久化变化。故障回调不会获得 stop 补救机会。正常停止及重启是节流例外，应用仍应只保存有意义的变化。
 
@@ -243,3 +265,26 @@ python scripts/sync_contracts.py --core path/to/tinyrt --check
 除显式更新 revision 外，普通同步也要求锁定的来源 hash 一致。同步方向始终为 core → SDK，核心构建不读取 SDK。
 
 应用版本、ZIP 命名和兼容性注意事项见 [版本管理](specs/version-management.md)。
+
+## Linux 和 macOS 桌面工具链
+
+在与 SDK 配套的 core 仓库中，检出 SDK `contracts/source.json` 指定的 core revision，初始化 `third_party/wamr` 子模块，用 CMake、Ninja 和本机 C/C++ 编译器生成桌面 runner。macOS 构建需要 Xcode Command Line Tools 的系统头文件。
+
+```sh
+git submodule update --init third_party/wamr
+python3 tools/toolchain/build.py --runner-only --work build-tools --jobs 4
+export TINYRT_RUNNER="$PWD/build-tools/runner-build/tinyrt-run"
+```
+
+回到 SDK 根目录。Wasm 构建需要支持 wasm32 的 Zig 或 Clang。打包 S31 AOT 时，SDK 校验随包的 Windows x64 wamrc 的 SHA-256，在 POSIX 上经 PATH 中的 `wine` 或 `wine64` 执行。Wine 环境需支持 x86-64 PE 和 Microsoft Visual C++ v14 x64 运行库。S31 的目标选项、编译器哈希和 `compat_id` 与 Windows 发布包相同。当前 SDK 提供的发行二进制校验值覆盖 Windows x64。
+
+```sh
+python3 tools/tinyrt.py new demo --template tool
+python3 tools/tinyrt.py build demo --cc "$(command -v zig)"
+python3 tools/tinyrt.py run demo
+python3 tools/tinyrt.py pack demo
+python3 tools/tinyrt.py validate demo/build/demo.trpkg --rebuild-aot
+python3 tools/tinyrt.py release demo --cc "$(command -v zig)"
+```
+
+`--wasm-only` 可在没有 Wine 时生成解释器诊断包。S31 设备发布需要包含 AOT 的包。

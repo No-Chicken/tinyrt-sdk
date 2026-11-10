@@ -2,19 +2,44 @@
 #define TINYRT_SDK_H
 #include <stdint.h>
 #define TINYRT_API_LEVEL_BASE 1
-#define TINYRT_API_LEVEL TINYRT_API_LEVEL_BASE
+#define TINYRT_API_LEVEL_SYSTEM 2
+#define TINYRT_API_LEVEL_HARDWARE 3
+#define TINYRT_API_LEVEL_EXTENDED 4
+#define TINYRT_API_LEVEL TINYRT_API_LEVEL_EXTENDED
+#define TINYRT_EV_ACC_DATA 13
+#define TINYRT_EV_GYRO 10
+#define TINYRT_EV_GESTURE 11
+#define TINYRT_EV_MINUTE 12
+#define TINYRT_IMU_ACCEL 1u
+#define TINYRT_IMU_GYRO 2u
+#define TINYRT_IMU_GESTURE 4u
+#define TINYRT_TIME_MINUTE 1u
+typedef struct {int32_t ax,ay,az,gx,gy,gz;uint32_t timestamp_ms;} tinyrt_imu_t;
+typedef struct {int32_t year,month,day,hour,minute,second,weekday,utc_offset_min,valid;} tinyrt_datetime_t;
+typedef struct {int32_t level_pct,charging,full,voltage_mv;} tinyrt_battery_t;
 #define TINYRT_ERR_UNAVAILABLE (-2)
 #if defined(__wasm__)
 #define TINYRT_IMPORT(name) __attribute__((import_module("tinyrt"), import_name(#name)))
 #else
 #define TINYRT_IMPORT(name)
 #endif
+TINYRT_IMPORT(acc_read) int32_t acc_read(void *dst,uint32_t capacity);
+TINYRT_IMPORT(acc_send) int32_t acc_send(uint32_t type,const void *src,uint32_t length);
 /* Current authenticated resources, init/event only, reads <=4096 bytes. */
 TINYRT_IMPORT(asset_read) int32_t asset_read(uint32_t offset,void *destination,uint32_t length);
 /* AUDIO=16, init/event only, PCM16 LE mono16000Hz, 2..32000 even bytes; max4 requests. 0 queued,1 busy. */
 TINYRT_IMPORT(audio_play) int32_t audio_play(uint32_t resource_offset,uint32_t byte_length,uint32_t sample_rate);
+TINYRT_IMPORT(audio_queue_free) int32_t audio_queue_free(void);
+TINYRT_IMPORT(audio_tone) int32_t audio_tone(uint32_t hz,uint32_t ms);
+TINYRT_IMPORT(audio_write) int32_t audio_write(const void *pcm,uint32_t length);
+TINYRT_IMPORT(battery_info) int32_t battery_info(void *dst,uint32_t length);
+TINYRT_IMPORT(blob_read) int32_t blob_read(void *dst,uint32_t capacity);
+TINYRT_IMPORT(blob_write) int32_t blob_write(const void *src,uint32_t length);
 /* CLOCK=8, init/event only, interval1..1000ms. */
 TINYRT_IMPORT(clock_interval) int32_t clock_interval(int32_t ms);
+/* UTF-8, max 128 bytes, at most 50 messages per second per instance. */
+TINYRT_IMPORT(debug_log) int32_t debug_log(const char *text,uint32_t length);
+TINYRT_IMPORT(display_brightness) int32_t display_brightness(int32_t percent);
 TINYRT_IMPORT(draw_arc) int32_t draw_arc(int32_t cx,int32_t cy,int32_t radius,int32_t thickness,int32_t start_deg,int32_t end_deg,uint32_t rgb);
 TINYRT_IMPORT(draw_clear) int32_t draw_clear(uint32_t rgb);
 TINYRT_IMPORT(draw_rect) int32_t draw_rect(int32_t x,int32_t y,int32_t w,int32_t h,uint32_t rgb);
@@ -40,18 +65,35 @@ TINYRT_IMPORT(gfx_submit) int32_t gfx_submit(const void *records,uint32_t length
 TINYRT_IMPORT(gfx_tex_free) int32_t gfx_tex_free(uint32_t slot);
 TINYRT_IMPORT(gfx_tex_update_rows) int32_t gfx_tex_update_rows(uint32_t slot,uint32_t y,uint32_t rows,const void *source,uint32_t length);
 TINYRT_IMPORT(gfx_tex_upload) int32_t gfx_tex_upload(uint32_t slot,uint32_t format,uint32_t w,uint32_t h,const void *source,uint32_t length,uint32_t flags);
-/* INPUT=2, init only, lifecycle0x38/userkey0x40/motion0x80/gamepad0x100; zero legacy release. */
+TINYRT_IMPORT(haptic_pattern) int32_t haptic_pattern(const uint16_t *steps,uint32_t count);
 /* HAPTIC=32, init/event only. Strength1..100%, duration1..2000ms.
  * Nonblocking; new pulse replaces old. 0 accepted,1 unavailable; invalid use traps.
  * Host stops active output when the application ends. */
 TINYRT_IMPORT(haptic_pulse) int32_t haptic_pulse(uint32_t strength,uint32_t duration_ms);
 TINYRT_IMPORT(haptic_stop) int32_t haptic_stop(void);
+TINYRT_IMPORT(imu_config) int32_t imu_config(uint32_t rate_hz,uint32_t mask);
+TINYRT_IMPORT(imu_read) int32_t imu_read(void *dst,uint32_t length);
+/* INPUT=2, init only, lifecycle0x38/userkey0x40/motion0x80/gamepad0x100; zero legacy release. */
 TINYRT_IMPORT(input_events) int32_t input_events(uint32_t mask);
 TINYRT_IMPORT(kv_get) int32_t kv_get(uint32_t key,int32_t fallback);
 TINYRT_IMPORT(kv_set) int32_t kv_set(uint32_t key,int32_t value);
 TINYRT_IMPORT(now_ms) uint32_t now_ms(void);
+TINYRT_IMPORT(random_u32) uint32_t random_u32(void);
 /* 0 instruction-metered interpreter,1 deadline-guarded AOT. */
 TINYRT_IMPORT(runtime_backend) int32_t runtime_backend(void);
+typedef struct {
+    uint32_t api_level, screen_w, screen_h, safe_x, safe_y, safe_w, safe_h;
+    uint32_t mem_pages_max, budget_max;
+} tinyrt_sys_info_t;
+typedef struct {
+    tinyrt_sys_info_t base;
+    uint32_t text_bytes_max,image_count_max,commands_max,kv_keys_max;
+} tinyrt_sys_info_v4_t;
+TINYRT_IMPORT(screen_keep_on) int32_t screen_keep_on(int32_t on);
+/* Writes the 36-byte baseline or the full 52-byte quota record when the buffer fits. */
+TINYRT_IMPORT(sys_info) int32_t sys_info(void *destination,uint32_t length);
+TINYRT_IMPORT(time_local) int32_t time_local(void *dst,uint32_t length);
+TINYRT_IMPORT(time_subscribe) int32_t time_subscribe(uint32_t flags);
 #define TINYRT_TOUCH_RELEASE 1
 #define TINYRT_CLOCK_EVENT 2
 #define TINYRT_TOUCH_PRESS 3
@@ -98,8 +140,9 @@ TINYRT_IMPORT(runtime_backend) int32_t runtime_backend(void);
  * Accept masks 0, 0x38, 0x40 or 0x78, optionally OR 0x80 and/or 0x100. CANCEL clears touch and keys. */
 /* Export these exact signatures. Return 0 on success. Each host call is bounded;
  * only render may draw, and every drawn frame starts with draw_clear. Text is UTF-8,
- * 1..63 bytes. Storage keys 0..15 contain signed 32-bit values; host scopes to app.
- * Avoid WASI/libc, constructors, unbounded loops, and floating point for this MVP. */
+ * 1..63 bytes (Level 4: 95). Storage keys 0..15 (Level 4: 0..23) contain app-scoped i32 values.
+ * Avoid WASI, constructors and unbounded loops. S31 accelerates single precision;
+ * measure double and hot loops on the device. */
 int32_t tinyrt_init(int32_t width,int32_t height);
 int32_t tinyrt_event(int32_t kind,int32_t x,int32_t y,int32_t arg);
 int32_t tinyrt_render(void);
@@ -116,8 +159,8 @@ int32_t tinyrt_stop(void);
  * Arc radius>0, 0<thickness<=radius; outer radius, 0 degrees right, clockwise,
  * 0<=start<=end<=360. 0..360 is a full circle; equal angles draw nothing.
  * Text boxes are single-line, clipped, vertically centered; font_px=18/24/36/48,
- * align=0 left, 1 center, 2 right. Text remains UTF-8, 1..63 bytes.
- * RGB565: at most one image per frame, 1..256 wide, 1..240 high, inside viewport;
+ * align=0 left, 1 center, 2 right. Text is UTF-8, 1..63 bytes (Level 4: 95).
+ * RGB565: one image per frame (Level 4: two, 122880 total bytes), 1..256 wide, 1..240 high, inside viewport;
  * length=w*h*2, little-endian packed bytes, copied immediately; no scaling.
  * draw_skip: only as the sole render operation, including no draw_clear; keep
  * the previous displayed frame. Requires DRAW permission like other drawing.

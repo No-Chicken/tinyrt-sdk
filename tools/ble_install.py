@@ -192,9 +192,11 @@ async def run(args):
         raise ValueError('this command requires a TinyRT package file')
     if args.command=='install':
         def progress(done,total):print(f'PROGRESS {done}/{total}',flush=True)
-        result=await protocol.install(connect,data,progress)
+        result=await protocol.install(connect,data,progress,launch=getattr(args,'launch_after_install',False))
         print(json.dumps({'result':result,**info_json(info)}));return
     async with connect() as link:
+        if args.command=='crash':
+            return await protocol.last_crash(link)
         if args.command=='device':
             if data is not None:raise ValueError('device does not take a package file')
             print(json.dumps(await protocol.device_info(link)));return

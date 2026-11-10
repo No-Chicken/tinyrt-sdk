@@ -3,8 +3,10 @@ import hashlib
 import json
 from pathlib import Path
 import platform
+import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import urllib.request
 
@@ -61,7 +63,17 @@ def compile_module(compiler, options, source):
     with tempfile.TemporaryDirectory(prefix='tinyrt-aot-') as directory:
         staged=Path(directory);input_wasm=staged/'input.wasm';native=staged/'output.aot'
         input_wasm.write_bytes(source)
-        subprocess.run([str(compiler),*options,'-o',str(native),str(input_wasm)],
+        command=[str(compiler),*options,'-o',str(native),str(input_wasm)]
+        with compiler.open('rb') as stream:
+            windows_executable=stream.read(2)==b'MZ'
+        if windows_executable and sys.platform in ('linux','darwin'):
+            wine=shutil.which('wine') or shutil.which('wine64')
+            if not wine:
+                raise ValueError('S31 AOT packaging requires Wine to run the SHA-verified Windows x64 wamrc on this host')
+            # Wine maps the current working directory. Relative guest paths
+            # also work when the host temp directory has spaces or no Z: drive.
+            command=[wine,str(compiler),*options,'-o',native.name,input_wasm.name]
+        subprocess.run(command,cwd=staged,
                        check=True,capture_output=True,timeout=300)
         if native.is_symlink() or not native.is_file():raise ValueError('compiler did not produce a regular AOT artifact')
         code=package.read_bounded(native)
@@ -102,7 +114,7 @@ def pack_aot(manifest, wasm, output, wamrc=None, target='esp32s31'):
     compiler=compiler_path(pin,wamrc or (bundled_compiler(target) if bundled_compiler(target).is_file() else None))
     paths=[manifest,Path(wasm).resolve(),profile,compiler]
     paths += [tinyrt.local_file(manifest.parent,name) for name in app['sources']]
-    asset=tinyrt.local_file(manifest.parent,app['assets']) if app.get('assets') else None
+    asset=tinyrt.resource_file(manifest.parent,app.get('assets'))
     if asset:paths.append(asset)
     cover=tinyrt.local_file(manifest.parent,app['cover']) if app.get('cover') is not None else None
     if cover:paths.append(cover)

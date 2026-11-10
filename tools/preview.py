@@ -6,28 +6,29 @@ import os
 import platform
 from pathlib import Path
 import subprocess
-import urllib.request
 
 import tinyrt
+import package
 
 
 def runner_path(override=None):
     if override:return Path(override).resolve()
     if os.environ.get('TINYRT_RUNNER'):return Path(os.environ['TINYRT_RUNNER']).resolve()
-    bundled=tinyrt.ROOT/'bin/tinyrt-run.exe'
-    pin_path=Path(__file__).parent/'toolchains/desktop-windows-x64.json'
+    system=platform.system()
+    host={'Windows':'windows','Linux':'linux','Darwin':'macos'}.get(system)
+    arch={'amd64':'x64','x86_64':'x64','arm64':'arm64','aarch64':'arm64'}.get(platform.machine().lower())
+    if not host or not arch:
+        raise ValueError('unsupported desktop runner host; pass --runner for a local build')
+    bundled=tinyrt.ROOT/'bin'/('tinyrt-run.exe' if system=='Windows' else 'tinyrt-run')
+    pin_path=Path(__file__).parent/'toolchains'/f'desktop-{host}-{arch}.json'
     if not pin_path.is_file():
-        if bundled.is_file():return bundled
-        raise ValueError('desktop runtime is missing; pass --runner or use the SDK release with bin/tinyrt-run.exe')
+        raise ValueError('no published runner pin for this host; build the matching core with tools/toolchain/build.py --runner-only and set TINYRT_RUNNER')
     pin=json.loads(pin_path.read_text(encoding='utf-8'))
-    if platform.system()!='Windows' or platform.machine().lower() not in ('amd64','x86_64'):
-        raise ValueError('automatic desktop runtime selection supports Windows x64; pass --runner for a local build')
-    target=bundled if bundled.is_file() else Path.home()/'.cache/tinyrt'/pin['sha256']/'tinyrt-run.exe'
-    if not target.exists():
-        with urllib.request.urlopen(pin['url'],timeout=60) as response:data=response.read(16*1024*1024+1)
-        if len(data)!=pin['size'] or hashlib.sha256(data).hexdigest()!=pin['sha256']:raise ValueError('desktop runtime download size or hash mismatch')
-        tinyrt.write_atomic(target,data)
-    if target.stat().st_size!=pin['size'] or hashlib.sha256(target.read_bytes()).hexdigest()!=pin['sha256']:raise ValueError('desktop runtime size or hash mismatch')
+    target=bundled
+    if not target.is_file():
+        raise ValueError('SDK runner missing; reinstall the SDK or pass --runner')
+    if target.stat().st_size!=pin['size'] or hashlib.sha256(target.read_bytes()).hexdigest()!=pin['sha256']:
+        raise ValueError('desktop runtime size or hash mismatch')
     return target
 
 
@@ -87,7 +88,9 @@ def raster(frame):
         elif kind in (7,8):
             sw,sh=(c['source_w'],c['source_h']) if kind==8 else (w,h)
             raw=bytes.fromhex(frame['pixels_hex'])
-            if len(raw)!=sw*sh*2:raise ValueError('runtime pixel payload does not match command')
+            offset=c.get('pixel_offset',0)
+            if offset<0 or offset+sw*sh*2>len(raw):raise ValueError('runtime pixel payload does not match command')
+            raw=raw[offset:offset+sw*sh*2]
             image=Image.frombytes('RGB',(sw,sh),raw,'raw','BGR;16',0,1)
             if kind==8:image=floor_scale(image,w,h)
             canvas.paste(image,(x,y))
@@ -132,6 +135,20 @@ def run(app,events=None,frames='0,330',output=None,runner=None,step_ms=None):
     points={ms:[] for ms in captures}
     for event in scripted:
         if not isinstance(event,dict):raise ValueError('event must be an object')
+        hardware_fields={
+            'rtc':(('epoch',0,0xffffffff),('offset',-840,840),('valid',0,1)),
+            'battery':(('pct',0,100),('charging',0,1),('full',0,1),('mv',0,6000)),
+            'gyro':(('x',-20480,20480),('y',-20480,20480),('arg',-20480,20480)),
+            'gesture':(('x',1,5),('y',0,0),('arg',0,0)),
+        }
+        hardware=hardware_fields.get(event.get('kind'))
+        if hardware:
+            if set(event)!={'ms','kind',*(name for name,_,_ in hardware)}:
+                raise ValueError('unexpected hardware event fields')
+            ms=tinyrt.integer(event['ms'],0,captures[-1],'event time')
+            values=[tinyrt.integer(event[name],low,high,name) for name,low,high in hardware]
+            points.setdefault(ms,[]).append(event['kind']+' '+' '.join(map(str,values)))
+            continue
         pad_fields=('buttons','lx','ly','rx','ry','lt','rt','connected')
         expected={'ms','kind','x','y','arg'} if event.get('kind')=='motion' else \
             {'ms','kind',*pad_fields} if event.get('kind')=='gamepad' else {'ms','kind','x','y'}
@@ -165,18 +182,23 @@ def run(app,events=None,frames='0,330',output=None,runner=None,step_ms=None):
         if ms in captures:lines.append('capture')
     runtime=runner_path(runner)
     inputs=[manifest,wasm,runtime,events,*[tinyrt.local_file(manifest.parent,name) for name in m['sources']]]
-    asset=tinyrt.local_file(manifest.parent,m['assets']) if m.get('assets') else None
-    if asset:inputs.append(asset)
+    asset=tinyrt.resource_file(manifest.parent,m.get('assets'))
+    if asset:inputs.extend([asset,*tinyrt.asset_inputs(manifest.parent,m.get('assets'))])
     destination=Path(output or manifest.parent/'build/preview').resolve()
     paths={ms:protect_artifact(destination/f'frame-{ms:06d}.png',inputs,'png') for ms in captures}
     report_path=protect_artifact(destination/'report.json',inputs,'report')
-    command=[str(runtime),str(wasm),'--pages',str(m['memory_pages']),
+    level=package.required_api_level(package.read_bounded(wasm),m['permissions'],m.get('min_api_level',1))
+    command=[str(runtime),str(wasm),'--min-api-level',str(level),'--pages',str(m['memory_pages']),
              '--permissions',str(m['permissions']),'--budget',str(m['budget'])]
     if asset:command+=['--assets',str(asset)]
     result=subprocess.run(command,input='\n'.join(lines)+'\n',capture_output=True,text=True,encoding='utf-8',timeout=120)
     records=[json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
     errors=[item for item in records if item['status']]
-    if result.returncode or errors:raise ValueError('desktop runtime rejected app: '+json.dumps(errors or result.stderr))
+    if result.returncode or errors:
+        detail=json.dumps(errors or result.stderr)
+        if level<4 and any(msg in detail for msg in ('frame command limit exceeded','image count limit exceeded','text bounds or length invalid')):
+            detail+='; check the API level quotas, set min_api_level: 4 for extended limits'
+        raise ValueError('desktop runtime rejected app: '+detail)
     actual_captures=[record['now_ms'] for record in records if record['phase']=='capture']
     if actual_captures!=captures:raise ValueError('desktop runtime did not return the requested capture times')
     destination.mkdir(parents=True,exist_ok=True)

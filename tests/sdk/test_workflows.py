@@ -3,6 +3,7 @@ import copy
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import struct
@@ -176,7 +177,12 @@ class SDKTests(unittest.TestCase):
         app=self.sdk.load_manifest(ROOT/'examples/flappy/app.json')
         self.assertEqual(app['permissions'],31)
         self.assertEqual(app['app_id'],'demo.sky-hop')
-        self.assertEqual(sorted(p.name for p in (ROOT/'examples').iterdir() if p.is_dir()),['flappy','pixel_quest','wave_sim'])
+        examples = ROOT / 'examples'
+        catalog = (examples / 'README.md').read_text(encoding='utf-8')
+        listed = re.findall(r'\]\(([a-z0-9_]+)/README\.md\)', catalog)
+        self.assertCountEqual(listed, [p.name for p in examples.iterdir() if p.is_dir()])
+        for name in listed:
+            self.assertTrue((examples / name / 'README.md').is_file())
         wave=self.sdk.load_manifest(ROOT/'examples/wave_sim/app.json')
         self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',13))
         quest=self.sdk.load_manifest(ROOT/'examples/pixel_quest/app.json')

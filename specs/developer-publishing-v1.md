@@ -71,9 +71,9 @@ my-game/
 | title | 1–63 UTF-8 字节，无 NUL；中文按字节计数 |
 | version | 1–4294967295 的整数，上架更新必须递增（设备不强制）；不要填字符串 `1.0.0` |
 | abi_version | 当前固定 1 |
-| permissions | 位掩码 DRAW=1、INPUT=2、STORAGE=4、CLOCK=8、AUDIO=16，其他位必须为 0 |
-| memory_pages | 1–16，每页 65536 字节；还存在 runtime 总配额，不能只看线性内存 |
-| budget | 每回调 1–100000 指令预算；AOT 使用对应保护机制，不视为设备耗时保证 |
+| permissions | 位掩码 DRAW=1、INPUT=2、STORAGE=4、CLOCK=8、AUDIO=16、HAPTIC=32、SENSOR=128、SYSTEM=256、ACCESSORY=512 |
+| memory_pages | Level 1–3 为 1–16，Level 4 为 1–20，每页 65536 字节，另受 runtime 总配额约束 |
+| budget | 解释器每回调指令预算为 1–100000，Level 4 为 1–125000。AOT 使用回调截止时间 |
 | sources | 1–64 个应用目录内部的唯一 `.c` 文件 |
 | cover/assets | 可选，本地路径解析后仍须在应用目录内；网站 v1 要求实际发布包具有 cover |
 
@@ -85,9 +85,9 @@ my-game/
 
 466×466 圆屏的四角不可见，重要按钮与文字放在中央安全区域；背景可铺满正方形画布，由屏幕裁剪成圆。实际 hitbox 应与可见按钮一致。测试触摸按下/释放/取消、拖动、KEY1、宿主退出和队列溢出。CANCEL 清理所有保持输入，防止释放事件丢失后卡住。
 
-资源通过 `asset_read` 读取，只允许 init/event，每次最多 4096 字节。一帧最多 128 条绘制命令；RGB565 合计只能提交一张图，源尺寸不超过 256×240，可缩放到 466×466。大像素处理分片，避免解释器预算超限。KV 为每应用 16 个 i32，按变化保存；成功不表示已经立即写入 Flash。
+资源通过 `asset_read` 读取，只允许 init/event，每次最多 4096 字节。Level 1–3 每帧最多提交 128 条即时绘制命令和一张 RGB565 图，文本最长 63 字节，KV 有 16 个 i32 槽。Level 4 分别放宽到 144 条命令、两张图、95 字节和 24 个槽。每张图的源尺寸最多 256×240，每帧图像合计最多 122880 字节。使用扩展配额时在 app.json 声明 `"min_api_level": 4`。
 
-`audio_play(offset,length,16000)` 从当前包资源播放 PCM16 LE、单声道、16 kHz；长度 2–32000 偶数字节，最多 1 秒。仅 init/event，每回调最多 4 次请求；0 接受、1 忙/不可用，队列满可丢弃音效，不让游戏退出。SDK 不自动把任意 WAV/MP3 转换成此格式；开发者的资源管线负责转换及偏移表。桌面 runner 静音接受请求，不能据此标记喇叭实测通过。
+`audio_play(offset,length,16000)` 从当前包资源播放 PCM16 LE、单声道、16 kHz；长度 2–32000 偶数字节，最多 1 秒。仅 init/event，每回调最多 4 次请求；0 接受、1 忙/不可用，队列满可丢弃音效，不让游戏退出。SDK 支持在 `assets` 列表中指定 PCM WAV，构建时重采样并生成偏移头文件。桌面 runner 静音接受请求，不能据此标记喇叭实测通过。
 
 ## 5. PNG 和说明文件规范
 
@@ -166,10 +166,10 @@ v2 机器约束见 `release-v2.schema.json`；v1 语义、字节数、跨文件�
 python -m pip install -r requirements.txt
 python tools/tinyrt.py new my-game --title "My Game" --template game
 python tools/tinyrt.py build my-game --cc path/to/zig.exe
-python tools/tinyrt.py run my-game --runner path/to/tinyrt-run.exe --events my-game/events.json --frames 32,1000,5000
+python tools/tinyrt.py run my-game --frames 32,1000,5000
 ```
 
-先编写逻辑、封面及资源，再编译；模板不会自动生成你的截图、授权说明和发布清单。为游戏添加有效的交互/碰撞/存档测试，检查实际圆屏布局、预算和资源上限。
+模板自带占位封面、授权说明和 listing.json。发布前替换为应用自己的封面、说明和发布资料。为游戏添加有效的交互/碰撞/存档测试，检查实际圆屏布局、预算和资源上限。
 
 开发期 Wasm：
 

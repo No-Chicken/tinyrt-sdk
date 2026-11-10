@@ -112,7 +112,7 @@ class USBTransport:
         for attempt in range(attempts):
             self._send_frame(frame)
             start = time.monotonic()
-            deadline = start + (timeout if timeout is not None else 45 if kind in (FINISH, MANAGEMENT, ERASE) else 12)
+            deadline = start + (timeout if timeout is not None else 100 if kind == START else 45 if kind in (FINISH, MANAGEMENT, ERASE) else 12)
             next_nudge = start + self.NUDGE_AFTER
             while time.monotonic() < deadline:
                 for rkind, seq, data in self.decoder.feed(self.serial.read(4096)):
@@ -143,7 +143,7 @@ def usb_ports():
     return [p.device for p in comports() if p.vid == 0x303a and p.pid == 0x1001]
 
 
-def resolve_transport(mode, port=None, address=None, *, scan=False):
+def resolve_transport(mode, port=None, address=None, *, scan=False, debug_probe=None):
     """只探测 EEBadge 协议身份；一旦选定介质，传输失败不切换。"""
     if port and address:
         raise ValueError('--port 与 --address 不能同时使用')
@@ -157,6 +157,9 @@ def resolve_transport(mode, port=None, address=None, *, scan=False):
     except ImportError: return 'ble', None
     matches = []
     for candidate in candidates:
+        if debug_probe and debug_probe(candidate):
+            matches.append(candidate)
+            continue
         link = None
         try:
             link = USBTransport(candidate)
@@ -183,9 +186,11 @@ class USBApplicationLink:
     async def __aexit__(self, *_): self.link.close()
     async def management(self, opcode, payload=b''):
         import asyncio
-        from client import RemoteError
+        from client import GET_DEVICE_INFO, RemoteError
+        if opcode == GET_DEVICE_INFO and not payload:
+            return json.dumps(await asyncio.to_thread(self.link.device_info)).encode('utf-8')
         raw = await asyncio.to_thread(self.link.request_payload, MANAGEMENT, bytes([opcode]) + payload,
-                                     timeout=45 if opcode==0x13 else 12)
+                                     timeout=45 if opcode in (0x13,0x20) else 12)
         if len(raw) < 4: raise ValueError('invalid USB management response')
         status, = struct.unpack_from('<I', raw)
         if status: raise RemoteError(status)

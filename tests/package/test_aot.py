@@ -14,6 +14,24 @@ import tinyrt
 
 
 class AOT(unittest.TestCase):
+    def test_posix_invokes_pinned_windows_compiler_with_wine(self):
+        import aot as tool
+        with tempfile.TemporaryDirectory() as directory:
+            compiler=Path(directory)/'wamrc.exe'
+            compiler.write_bytes(b'MZfixture')
+            options=tool.target_options('esp32s31')
+            def run(argv, *, cwd, **kwargs):
+                self.assertEqual(argv,['/bin/wine',str(compiler),*options,'-o','output.aot','input.wasm'])
+                self.assertEqual((cwd/'input.wasm').read_bytes(), b'guest')
+                (cwd/'output.aot').write_bytes(b'output')
+            for host in ('linux','darwin'):
+                with self.subTest(host=host), patch.object(tool.sys,'platform',host), \
+                     patch.object(tool.shutil,'which',return_value='/bin/wine'), \
+                     patch.object(tool.subprocess,'run',side_effect=run):
+                    self.assertEqual(tool.compile_module(compiler,options,b'guest'),b'output')
+            with patch.object(tool.sys,'platform','linux'), patch.object(tool.shutil,'which',return_value=None):
+                with self.assertRaisesRegex(ValueError,'requires Wine'):
+                    tool.compile_module(compiler,options,b'guest')
     def test_s31_options_preserve_safety_and_soft_float_calling_convention(self):
         import aot as tool
         options=tool.target_options('esp32s31')

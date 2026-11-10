@@ -1,0 +1,10 @@
+{
+  "app_id": "test.platform-level2",
+  "title": "Platform probe",
+  "version": 1,
+  "abi_version": 1,
+  "permissions": 9,
+  "memory_pages": 2,
+  "budget": 100000,
+  "sources": ["main.c"]
+}

@@ -1,0 +1,13 @@
+{
+  "app_id": "demo.blob-palette",
+  "title": "Saved palette",
+  "version": 1,
+  "abi_version": 1,
+  "permissions": 7,
+  "memory_pages": 2,
+  "budget": 100000,
+  "sources": [
+    "main.c"
+  ],
+  "cover": "cover.png"
+}

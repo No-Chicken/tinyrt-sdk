@@ -49,6 +49,20 @@ def local_file(root, name):
     return target
 
 
+def asset_inputs(root, spec):
+    if isinstance(spec, list):
+        import asset_pipeline
+        return [item[0] for item in asset_pipeline.entries(root, spec, local_file)]
+    return [local_file(root, spec)] if spec is not None else []
+
+
+def resource_file(root, spec):
+    if isinstance(spec, list):
+        import asset_pipeline
+        return asset_pipeline.generate(root, spec, local_file, write_atomic)
+    return local_file(root, spec) if spec is not None else None
+
+
 def load_manifest(path):
     path = manifest_path(path)
     if path.stat().st_size > 16384: raise ValueError('manifest exceeds 16 KiB')
@@ -61,10 +75,14 @@ def load_manifest(path):
     title = value['title']
     if not isinstance(title,str) or not 1 <= len(title.encode('utf-8')) <= 63 or '\0' in title:
         raise ValueError('title must be 1..63 UTF-8 bytes without NUL')
-    for key,low,high in [('version',1,0xffffffff),('abi_version',1,1),('permissions',0,63),
-                         ('memory_pages',1,16),('budget',1,100000)]:
+    for key,low,high in [('version',1,0xffffffff),('abi_version',1,1),('permissions',0,0xffffffff),
+                         ('memory_pages',1,0xffffffff),('budget',1,0xffffffff)]:
         integer(value[key],low,high,key)
     integer(value.get('min_api_level',1),1,0xffffffff,'min_api_level')
+    import package
+    package.validate_quotas(value['memory_pages'], value['budget'], value.get('min_api_level',1))
+    known_permissions=sum(item['value'] for item in package.abi_contract()['permissions'].values())
+    if value['permissions'] & ~known_permissions: raise ValueError('unknown permission bits')
     sources = value['sources']
     if not isinstance(sources,list) or not 1 <= len(sources) <= 64:
         raise ValueError('sources must contain 1..64 local C source paths')
@@ -73,7 +91,7 @@ def load_manifest(path):
         item=local_file(path.parent,source)
         if item.suffix != '.c' or item in resolved: raise ValueError('sources must be unique C files')
         resolved.append(item)
-    if value.get('assets') is not None: local_file(path.parent,value['assets'])
+    asset_inputs(path.parent,value.get('assets'))
     if value.get('cover') is not None: local_file(path.parent,value['cover'])
     if value.get('graphics','immediate') not in ('immediate','raster','framebuffer'):
         raise ValueError('unsupported graphics requirement; use immediate, raster or framebuffer')
@@ -180,7 +198,7 @@ def build(path,cc=None,output=None):
     if resolved_cc: cc=resolved_cc
     cc=str(Path(cc).resolve())
     sources=[local_file(path.parent,name) for name in m['sources']]
-    assets=local_file(path.parent,m['assets']) if m.get('assets') is not None else None
+    assets=resource_file(path.parent,m.get('assets'))
     cover=local_file(path.parent,m['cover']) if m.get('cover') is not None else None
     output=protect_output(output or path.parent/'build'/(m['app_id']+'.wasm'),[path,*sources,assets,cover],'.wasm',b'\0asm\x01\0\0\0')
     output.parent.mkdir(parents=True,exist_ok=True)
@@ -194,6 +212,7 @@ def build(path,cc=None,output=None):
     # Zig 0.13 rejects --export-if-defined. The bundled guest declaration uses
     # export_name only when compiling Wasm; a declaration alone emits no export.
     if Path(cc).stem.lower()!='zig': command+=['-Wl,--export-if-defined=tinyrt_stop']
+    if isinstance(m.get('assets'), list): command += ['-I',str(assets.parent)]
     command += [f'-D{name}={value}' for name,value in m.get('defines',{}).items()]
     env=os.environ.copy();env.setdefault('ZIG_GLOBAL_CACHE_DIR',str(output.parent/'zig-cache'))
     with tempfile.TemporaryDirectory(prefix='tinyrt-build-',dir=output.parent) as temp:
@@ -210,7 +229,7 @@ def main(argv=None):
     commands=parser.add_subparsers(dest='command',required=True)
     new=commands.add_parser('new',help='create a minimal app in a new directory')
     new.add_argument('directory',type=Path);new.add_argument('--app-id',help='default: derived from the directory name');new.add_argument('--title',default='TinyRT app')
-    new.add_argument('--template',choices=('minimal','game'),default='minimal')
+    new.add_argument('--template',choices=('minimal','game','tool','watchface'),default='minimal')
     compile_cmd=commands.add_parser('build',help='compile freestanding C to Wasm without ESP-IDF')
     compile_cmd.add_argument('app',type=Path);compile_cmd.add_argument('--cc');compile_cmd.add_argument('--output',type=Path)
     preview_cmd=commands.add_parser('run',help='real WAMR desktop preview; timings are not device performance')
@@ -237,13 +256,17 @@ def main(argv=None):
     validate.add_argument('package',type=Path)
     validate.add_argument('--rebuild-aot',action='store_true',help='also recompile the Wasm and require identical AOT bytes')
     validate.add_argument('--wamrc',type=Path,help='compiler override for --rebuild-aot')
+    logs_cmd=commands.add_parser('logs',help='print application logs from the EEDB debug console')
+    logs_cmd.add_argument('--port')
+    logs_cmd.add_argument('--seconds',type=float)
     install_cmd=commands.add_parser('install',help='install a package through USB or BLE')
     install_cmd.add_argument('package',type=Path)
     dev_cmd=commands.add_parser('dev',help='build, pack, install and launch an application')
     dev_cmd.add_argument('app',type=Path)
     dev_cmd.add_argument('--cc')
     dev_cmd.add_argument('--watch',action='store_true')
-    for cmd in (install_cmd,dev_cmd):
+    info_cmd=commands.add_parser('info',help='show the last guest crash reported by the device')
+    for cmd in (install_cmd,dev_cmd,info_cmd):
         cmd.add_argument('--transport',choices=('auto','usb','ble'),default='auto')
         cmd.add_argument('--port')
         cmd.add_argument('--address')
@@ -260,6 +283,15 @@ def main(argv=None):
                 load_manifest(staged)
                 shutil.copytree(staged,args.directory)
             result={'app':str(args.directory.resolve()),'app_id':app_id}
+        elif args.command=='info':
+            import asyncio
+            import device
+            print(asyncio.run(device.crash_info(args)))
+            return 0
+        elif args.command=='logs':
+            import device
+            device.print_logs(args.port,seconds=args.seconds)
+            return 0
         elif args.command in ('install','dev'):
             import asyncio
             import device
@@ -280,7 +312,7 @@ def main(argv=None):
                 wasm=args.wasm or path.parent/'build'/(m['app_id']+'.wasm')
                 if not Path(wasm).is_file():raise ValueError(f'找不到 {wasm}；先运行 python tools/tinyrt.py build {args.app}')
                 raw_wasm=package.read_bounded(wasm);check_graphics_imports(raw_wasm)
-                assets=local_file(path.parent,m['assets']) if m.get('assets') is not None else None
+                assets=resource_file(path.parent,m.get('assets'))
                 cover=local_file(path.parent,m['cover']) if m.get('cover') is not None else None
                 inputs=[path,wasm,assets,cover,*[local_file(path.parent,s) for s in m['sources']]]
                 output=protect_output(args.output or path.parent/'build'/(m['app_id']+'.trpkg'),inputs,'.trpkg',b'TRPKG001')
@@ -303,7 +335,9 @@ def main(argv=None):
                     result.update(aot.check_rebuild(data,args.wamrc))
                 elif args.wamrc:raise ValueError('--wamrc requires --rebuild-aot')
         print(json.dumps(result,sort_keys=True));return 0
-    except (OSError,ValueError,TypeError,UnicodeError,subprocess.SubprocessError) as error:
+    except KeyboardInterrupt:
+        return 130
+    except (OSError,RuntimeError,ValueError,TypeError,UnicodeError,subprocess.SubprocessError) as error:
         parser.exit(2,f'tinyrt: {error}\n')
 
 if __name__=='__main__':raise SystemExit(main())
