@@ -13,11 +13,12 @@ import re
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = {'app_id','title','version','abi_version','permissions','memory_pages','budget','sources'}
-OPTIONAL = {'assets','defines','cover','graphics'}
+OPTIONAL = {'assets','defines','cover','graphics','min_api_level'}
 
 
 def integer(value, low, high, name):
@@ -63,6 +64,7 @@ def load_manifest(path):
     for key,low,high in [('version',1,0xffffffff),('abi_version',1,1),('permissions',0,63),
                          ('memory_pages',1,16),('budget',1,100000)]:
         integer(value[key],low,high,key)
+    integer(value.get('min_api_level',1),1,0xffffffff,'min_api_level')
     sources = value['sources']
     if not isinstance(sources,list) or not 1 <= len(sources) <= 64:
         raise ValueError('sources must contain 1..64 local C source paths')
@@ -81,6 +83,12 @@ def load_manifest(path):
         if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*',name) is None: raise ValueError('invalid define name')
         integer(number,-2147483648,4294967295,'define value')
     return value
+
+
+def package_metadata(manifest):
+    fields = {key: manifest[key] for key in REQUIRED - {'sources'}}
+    fields['min_api_level'] = manifest.get('min_api_level', 1)
+    return fields
 
 
 def protect_output(output, inputs, suffix, magic):
@@ -229,6 +237,16 @@ def main(argv=None):
     validate.add_argument('package',type=Path)
     validate.add_argument('--rebuild-aot',action='store_true',help='also recompile the Wasm and require identical AOT bytes')
     validate.add_argument('--wamrc',type=Path,help='compiler override for --rebuild-aot')
+    install_cmd=commands.add_parser('install',help='install a package through USB or BLE')
+    install_cmd.add_argument('package',type=Path)
+    dev_cmd=commands.add_parser('dev',help='build, pack, install and launch an application')
+    dev_cmd.add_argument('app',type=Path)
+    dev_cmd.add_argument('--cc')
+    dev_cmd.add_argument('--watch',action='store_true')
+    for cmd in (install_cmd,dev_cmd):
+        cmd.add_argument('--transport',choices=('auto','usb','ble'),default='auto')
+        cmd.add_argument('--port')
+        cmd.add_argument('--address')
     args=parser.parse_args(argv)
     try:
         if args.command=='new':
@@ -242,6 +260,11 @@ def main(argv=None):
                 load_manifest(staged)
                 shutil.copytree(staged,args.directory)
             result={'app':str(args.directory.resolve()),'app_id':app_id}
+        elif args.command in ('install','dev'):
+            import asyncio
+            import device
+            action=device.develop(args) if args.command=='dev' else device.deploy(args,args.package,False)
+            result=asyncio.run(action)
         elif args.command=='build':result=build(args.app,args.cc,args.output)
         elif args.command=='run':
             import preview
@@ -257,7 +280,6 @@ def main(argv=None):
                 wasm=args.wasm or path.parent/'build'/(m['app_id']+'.wasm')
                 if not Path(wasm).is_file():raise ValueError(f'找不到 {wasm}；先运行 python tools/tinyrt.py build {args.app}')
                 raw_wasm=package.read_bounded(wasm);check_graphics_imports(raw_wasm)
-                release_validation.wasm_imports(raw_wasm,m['permissions'])
                 assets=local_file(path.parent,m['assets']) if m.get('assets') is not None else None
                 cover=local_file(path.parent,m['cover']) if m.get('cover') is not None else None
                 inputs=[path,wasm,assets,cover,*[local_file(path.parent,s) for s in m['sources']]]
@@ -266,12 +288,13 @@ def main(argv=None):
                     import aot
                     result=aot.pack_aot(path,wasm,output,args.wamrc,target=args.target)
                     print(json.dumps(result,sort_keys=True));return 0
+                print('警告：S31 设备无法运行此 Wasm 诊断包。',file=sys.stderr)
                 if args.wamrc:raise ValueError('--wamrc cannot be combined with --wasm-only')
                 data=package.build_package(raw_wasm,package.read_bounded(assets) if assets else b'',
                     cover=package.read_cover_png(cover) if cover else None,
-                    **{k:m[k] for k in REQUIRED-{'sources'}})
+                    **package_metadata(m))
                 write_atomic(output,data)
-                result={'package':str(output),'app_id':m['app_id'],'package_size':len(data),
+                result={'abi':package.validate_envelope(data)['abi'],'package':str(output),'app_id':m['app_id'],'package_size':len(data),
                         'sha256':hashlib.sha256(data).hexdigest()}
             else:
                 data=package.read_bounded(args.package);result=package.validate_envelope(data)

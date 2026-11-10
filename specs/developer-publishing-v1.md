@@ -12,15 +12,15 @@
 |---|---|---|
 | 内容 | Wasm、资源、可选封面 | 相同 Wasm、资源、封面，加目标机器码和来源元数据 |
 | 编译路径 | C → Wasm → 打包 | C → Wasm → 固定 wamrc 编译 → AOT → 打包 |
-| 执行 | WAMR 解释器 | 条件满足时执行目标 AOT，否则按严格规则决定是否回退 |
+| 执行 | 桌面预览解释器 | 设备校验并执行兼容的 AOT |
 | 兼容性 | 要求正确 ABI、权限和导入 | 还要求目标 CPU 和兼容 ID |
 | 性能 | 需要在设备实测 | 通常减少解释开销，仍须实测，不能承诺固定 FPS |
 
 两个文件都是完整的包。“裸的”只是文件名没有 `-wasm`，不是未编译或裸二进制。网站必须解析 section，不得按文件名猜后端。
 
-**回退限制**：结构与来源检查通过后，后端禁用或目标/兼容 ID 不匹配时才可能回退到 Wasm；S31 固件不运行 Wasm，这种包能装但不能启动。修改文件名无法绕过。
+网站只接收同时包含 Wasm 与 AOT 的包。S31 只执行 AOT。网站用当前登记世代的固定编译器运行 `validate --rebuild-aot`，核对 compat_id 并保存复编译结果。设备安装前检查目标、格式和完整 compat_id。
 
-v1 网站默认支持 Wasm；可增加 `wasm+aot` 变体。暂不接收 AOT-only。纯 Wasm 不等于任何固件都能运行，新音频导入仍需匹配固件。
+从包头偏移 184 读取最低 API Level（0 表示 1），按 [兼容矩阵](compat-matrix.md) 展示最低固件版本、ABI 1.N 和目标 S31。矩阵中没有的 Level 或 AOT 世代不得上架。
 
 ## 2. 各层职责和开发前提
 
@@ -110,10 +110,10 @@ README 不嵌入原始 HTML，不引用外部图片；允许链接 HTTPS 文档�
 
 ## 6. 上传 ZIP 布局
 
-推荐名称 `<app_id>-v<version>-<variant>.zip`，variant 为 `wasm` 或 `wasm-aot`。文件名只用于人读，真实身份以清单和应用包为准。
+推荐名称 `<app_id>-v<version>-<variant>.zip`，上架 variant 为 `wasm-aot`。文件名只用于人读，真实身份以清单和应用包为准。
 
 ```text
-demo.sky-hop-v2-wasm.zip
+demo.sky-hop-v2-wasm-aot.zip
   release.json
   package.trpkg
   cover.png
@@ -178,7 +178,7 @@ python tools/tinyrt.py pack my-game --wasm-only --output my-game/build/game-wasm
 python tools/tinyrt.py validate my-game/build/game-wasm.trpkg
 ```
 
-开发期 Wasm+AOT，仅对具备开发 AOT 授权的固件：
+S31 设备安装包：
 
 ```powershell
 python tools/tinyrt.py pack my-game --output my-game/build/game-wasm-aot.trpkg
@@ -188,8 +188,8 @@ python tools/tinyrt.py validate my-game/build/game-wasm-aot.trpkg
 设备打开安装窗口后：
 
 ```powershell
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install my-game/build/game-wasm.trpkg
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/game-wasm.trpkg
+python tools/tinyrt.py install my-game/build/game-wasm-aot.trpkg
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/game-wasm-aot.trpkg
 python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id my-game
 python tools/ble_install.py --address AA:BB:CC:DD:EE:FF runtime
 ```

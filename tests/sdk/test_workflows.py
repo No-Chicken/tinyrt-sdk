@@ -144,7 +144,7 @@ class SDKTests(unittest.TestCase):
     def test_envelope_rejects_corruption_and_ignores_signature(self):
         import package
         data=self.package()
-        for offset in (0,8,10,12,16,20,24,28,36,40,44,56,88,152,184,256):
+        for offset in (0,8,10,12,16,20,24,28,36,40,44,56,88,152,188,256):
             changed=bytearray(data);changed[offset]^=0xff
             with self.subTest(offset=offset),self.assertRaises(ValueError):
                 package.validate_envelope(bytes(changed))

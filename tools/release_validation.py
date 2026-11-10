@@ -78,52 +78,6 @@ def sections(raw):
     return result
 
 
-class WasmReader:
-    def __init__(self, raw): self.raw, self.pos = raw, 0
-    def byte(self):
-        if self.pos >= len(self.raw): raise ValueError('truncated Wasm import table')
-        value = self.raw[self.pos]; self.pos += 1
-        return value
-    def uint(self):
-        value = 0
-        for shift in range(0, 35, 7):
-            byte = self.byte()
-            if shift == 28 and byte > 15: raise ValueError('invalid Wasm uint32')
-            value |= (byte & 127) << shift
-            if not byte & 128: return value
-        raise ValueError('invalid Wasm uint32')
-    def take(self, size):
-        end = self.pos + size
-        if end > len(self.raw): raise ValueError('truncated Wasm section')
-        raw = self.raw[self.pos:end]; self.pos = end
-        return raw
-    def name(self): return self.take(self.uint()).decode('utf-8')
-
-
-def wasm_imports(raw, permissions):
-    if raw[:8] != b'\0asm\1\0\0\0': raise ValueError('invalid Wasm header')
-    abi = json.loads((tinyrt.ROOT/'contracts/abi-v1.json').read_bytes())
-    allowed = {item['name']: item['permission'] for item in abi['imports']}
-    source = WasmReader(raw[8:]); names = []; seen = False
-    while source.pos < len(source.raw):
-        kind = source.byte(); content = WasmReader(source.take(source.uint()))
-        if kind != 2: continue
-        if seen: raise ValueError('duplicate Wasm import section')
-        seen = True
-        count = content.uint()
-        if count > 64: raise ValueError('too many Wasm imports')
-        for _ in range(count):
-            module, name, kind = content.name(), content.name(), content.byte()
-            if module != 'tinyrt' or name not in allowed or kind != 0:
-                raise ValueError('unsupported Wasm import: '+module+'.'+name)
-            content.uint()  # function type index; runtime checks the signature.
-            if allowed[name] & permissions != allowed[name]:
-                raise ValueError(f'缺少权限：{name} 需要 app.json 的 permissions 包含 {allowed[name]}（missing permission for Wasm import: {name}）')
-            names.append(name)
-        if content.pos != len(content.raw): raise ValueError('trailing Wasm import bytes')
-    return sorted(set(names))
-
-
 def file_record(path, raw, **extra):
     return dict(path=path, size=len(raw), sha256=digest(raw), **extra)
 
@@ -145,7 +99,7 @@ def inspect_package(raw):
                            budget=budget, key_id=actual_key)
     aot = info['aot']
     requirements = dict(core_contract_revision=core_contract_revision(),
-                        imports=wasm_imports(parts[1], permissions),
+                        imports=package.wasm_imports(parts[1], permissions),
                         aot={name:aot[name] for name in ('target_arch','target_cpu','compat_id')} if aot else None)
     return info, parts, metadata, requirements
 

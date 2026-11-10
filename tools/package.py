@@ -33,8 +33,80 @@ def uint32(value):
         raise argparse.ArgumentTypeError("expected uint32")
     return result
 
+def abi_contract():
+    return json.loads((Path(__file__).resolve().parents[1] / 'contracts/abi-v1.json').read_bytes())
+
+
+class WasmReader:
+    def __init__(self, raw): self.raw, self.pos = raw, 0
+    def byte(self):
+        if self.pos >= len(self.raw): raise ValueError('truncated Wasm import table')
+        value = self.raw[self.pos]; self.pos += 1
+        return value
+    def uint(self):
+        value = 0
+        for shift in range(0, 35, 7):
+            byte = self.byte()
+            if shift == 28 and byte > 15: raise ValueError('invalid Wasm uint32')
+            value |= (byte & 127) << shift
+            if not byte & 128: return value
+        raise ValueError('invalid Wasm uint32')
+    def take(self, size):
+        end = self.pos + size
+        if end > len(self.raw): raise ValueError('truncated Wasm section')
+        raw = self.raw[self.pos:end]; self.pos = end
+        return raw
+    def name(self): return self.take(self.uint()).decode('utf-8')
+
+
+def wasm_imports(raw, permissions, abi=None):
+    if raw[:8] != b'\0asm\1\0\0\0': raise ValueError('invalid Wasm header')
+    if abi is None:
+        abi = abi_contract()
+    allowed = {item['name']: item['permission'] for item in abi['imports']}
+    source = WasmReader(raw[8:]); names = []; seen = False
+    while source.pos < len(source.raw):
+        kind = source.byte(); content = WasmReader(source.take(source.uint()))
+        if kind != 2: continue
+        if seen: raise ValueError('duplicate Wasm import section')
+        seen = True
+        count = content.uint()
+        if count > 64: raise ValueError('too many Wasm imports')
+        for _ in range(count):
+            module, name, kind = content.name(), content.name(), content.byte()
+            if module != 'tinyrt' or name not in allowed or kind != 0:
+                raise ValueError('unsupported Wasm import: '+module+'.'+name)
+            content.uint()  # function type index; runtime checks the signature.
+            if allowed[name] & permissions != allowed[name]:
+                raise ValueError(f'缺少权限：{name} 需要 app.json 的 permissions 包含 {allowed[name]}（missing permission for Wasm import: {name}）')
+            names.append(name)
+        if content.pos != len(content.raw): raise ValueError('trailing Wasm import bytes')
+    return sorted(set(names))
+
+
+def required_api_level(wasm, permissions, declared=1):
+    if type(declared) is not int or not 1 <= declared <= 0xffffffff:
+        raise ValueError('min_api_level must be a positive uint32')
+    contract = abi_contract()
+    required = declared
+    known = 0
+    for capability in contract['permissions'].values():
+        bit = capability['value']
+        known |= bit
+        if permissions & bit:
+            required = max(required, capability['since_level'])
+    if permissions & ~known:
+        raise ValueError('unknown permission bits')
+    if wasm:
+        names = set(wasm_imports(wasm, permissions, contract))
+        for item in contract['imports']:
+            if item['name'] in names:
+                required = max(required, item['since_level'])
+    return required
+
+
 def metadata_header(wasm, assets, *, app_id, title, version, abi_version,
-                  permissions, memory_pages, budget):
+                  permissions, memory_pages, budget, min_api_level=1):
     """Encode validated metadata; runtime still validates Wasm/ABI."""
     if re.fullmatch(r"[a-z0-9._-]{1,31}", app_id) is None:
         raise ValueError("app_id must be 1..31 ASCII [a-z0-9._-] bytes")
@@ -43,7 +115,7 @@ def metadata_header(wasm, assets, *, app_id, title, version, abi_version,
         raise ValueError("title must be 1..63 UTF-8 bytes without NUL")
     if not 1 <= version <= 0xFFFFFFFF or abi_version != 1:
         raise ValueError("version must be positive uint32 and ABI must be 1")
-    if not 0 <= permissions <= 63:
+    if not 0 <= permissions <= 0xffffffff:
         raise ValueError("unknown permission bits")
     if not 1 <= memory_pages <= 16 or not 1 <= budget <= 100000:
         raise ValueError("memory pages or instruction budget exceed v1 policy")
@@ -52,6 +124,8 @@ def metadata_header(wasm, assets, *, app_id, title, version, abi_version,
     header = bytearray(HEADER_SIZE)
     struct.pack_into('<6I', header, 32, version, abi_version, permissions,
                      memory_pages, budget, KEY_ID)
+    level = required_api_level(wasm, permissions, min_api_level)
+    struct.pack_into('<I', header, 184, level if level > 1 else 0)
     header[56:56+len(app_id)] = app_id.encode('ascii')
     header[88:88+len(encoded_title)] = encoded_title
     return header
@@ -158,7 +232,7 @@ def validate_envelope(data):
     if (fmt,header,total,table,entry,flags) != (1,256,len(data),256,16,0) or not 1 <= count <= 4:
         raise ValueError('invalid format-1 header')
     version,abi,permissions,pages,budget,key_id = struct.unpack_from('<6I',data,32)
-    if not version or abi!=1 or permissions & ~63 or not 1<=pages<=16 or not 1<=budget<=100000 or any(data[184:192]):
+    if not version or abi!=1 or not 1<=pages<=16 or not 1<=budget<=100000 or any(data[188:192]):
         raise ValueError('invalid package policy')
     app_id = _text(data[56:88],'ascii',r'[a-z0-9._-]{1,31}')
     title = _text(data[88:152],'utf-8')
@@ -182,9 +256,12 @@ def validate_envelope(data):
             raise ValueError('native header does not match metadata')
         if wasm and hashlib.sha256(wasm).hexdigest()!=aot['source_wasm_sha256']:
             raise ValueError('AOT source identity mismatch')
+    level = struct.unpack_from('<I', data, 184)[0] or 1
+    if level < required_api_level(wasm, permissions):
+        raise ValueError('package declares a lower API level than its capabilities require')
     cover=decode_cover(sections[4]) if 4 in sections else None
     return dict(validation_level='envelope',wasm_validation='not_performed',aot_validation='not_performed',
-                format_version=1,app_id=app_id,title=title,version=version,package_size=len(data),key_id=key_id,
+                format_version=1,min_api_level=level,abi=f'ABI {abi}.{level}',app_id=app_id,title=title,version=version,package_size=len(data),key_id=key_id,
                 sha256=hashlib.sha256(data).hexdigest(),wasm_size=len(wasm),assets_size=len(sections.get(3,b'')),
                 aot_size=native_size,aot=aot,cover=cover)
 

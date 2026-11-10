@@ -1,5 +1,9 @@
 # Flappy Bird · 466×466 圆屏演示
 
+从 SDK 根目录运行 `python tools/tinyrt.py dev examples/flappy` 可构建、安装并启动。加 `--watch` 后会在源码变化时重装。
+
+目标设备为 Magie S31，最低固件为 0.1.0（ABI 1.1）。使用 SDK 的 `pack` 或 `release` 生成包含 S31 AOT 的包。
+
 应用发布版本唯一来源为 app.json.version，构建不自动递增。
 
 精灵后端每 33 ms CLOCK 更新物理并提交完整画面，固定 33 ms 物理步长及余数补偿保留。旧 RGB565 后端继续使用 8 ms CLOCK 和四条合成路径。
@@ -30,7 +34,7 @@ python tools/tinyrt.py validate examples/flappy/build/demo.sky-hop.trpkg
 python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe
 ```
 
-应用 ID 为 demo.sky-hop。游戏中分数显示在屏幕 y=88。旧固件不支持 AUDIO 权限和导入，必须配套更新固件。
+应用 ID 为 demo.sky-hop。游戏中分数显示在屏幕 y=88。
 
 游戏使用 33 ms 固定整数物理与有界补帧；8 ms 时钟分四条带合成 233×233 RGB565 完整帧，再由宿主放大到 466×466。一帧只提交一张图，部分合成帧不显示；像素素材通过包内只读资源读取，避免超出解释器回调预算。32 ms 合成周期是软件目标，不是设备帧率实测结果。
 
@@ -40,7 +44,7 @@ python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner pat
 
 `release/<app_id>-v<version>-wasm-aot.zip` 是本项目唯一交付 ZIP，包含 AOT 应用包、封面、三张真实 WAMR 截图、README、CHANGELOG、LICENSES、网站 v2 清单和构建报告；同目录保留展开文件夹。
 listing.json 提供展示资料与截图时刻，release 自动执行原生测试、编译、预览、打包和自检。
-应用版本只使用 app.json.version 整数，反复本地构建不自动升版本。release 默认 AOT，需要 或 SDK bin/wamrc.exe。
+应用版本只使用 app.json.version 整数，反复本地构建不自动升版本。release 默认 AOT，默认使用 SDK 内置的 S31 wamrc。
 Wasm 文件用于编译与预览，也保留在 AOT 包内；独立 Wasm ZIP 不用于交付。设备验收要确认实际选择 AOT 后端。
 
 原始素材和音效保存在 assets/，转换结果为 resources.bin 与 assets_generated.h。来源与版权说明见 [assets/NOTICE.md](assets/NOTICE.md)。原版素材权利并不因仓库代码开源而自动转授；网页资料明确标注素材授权尚未核实。

@@ -261,6 +261,10 @@ async def device_info(link):
     value = json.loads(raw.decode('utf-8'))
     if not isinstance(value, dict) or value.get('schema') != 1:
         raise ValueError('unsupported device info schema')
+    for field in ('abi', 'api_level'):
+        number = value.setdefault(field, 1)
+        if type(number) is not int or not 1 <= number <= 0xffffffff:
+            raise ValueError('invalid device info field: ' + field)
     return value
 
 
@@ -297,6 +301,34 @@ async def installed(link, info, *, allow_repair=False):
     if result != info: raise ValueError('query returned a different identity or size')
     return True
 
+async def check_install_compatibility(link, data):
+    host = await device_info(link)
+    abi = struct.unpack_from('<I', data, 36)[0]
+    level = struct.unpack_from('<I', data, 184)[0] or 1
+    if abi != host['abi'] or level > host['api_level']:
+        raise ValueError(f"需要更新固件（需要 ABI {abi}.{level}，当前 {host['abi']}.{host['api_level']}）")
+    count = struct.unpack_from('<I', data, 20)[0]
+    for i in range(count):
+        entry = 256 + 16 * i
+        if entry + 16 > len(data):
+            raise ValueError('truncated package section table')
+        kind, flags, offset, size = struct.unpack_from('<4I', data, entry)
+        if kind != 2:
+            continue
+        if flags or size <= 256 or offset < 256 + 16 * count or offset + size > len(data):
+            raise ValueError('invalid AOT section')
+        meta = data[offset:offset+256]
+        profile = await runtime_info(link)
+        if (not profile['aot_enabled'] or _target_text(meta[16:32]) != profile['target_arch']
+                or _target_text(meta[32:48]) != profile['target_cpu']):
+            raise ValueError('此应用不是为本设备编译的，请使用当前 SDK 重新 pack')
+        if (meta[120:152].hex() != profile['compat_id']
+                or struct.unpack_from('<I', meta, 4)[0] != profile['aot_format']):
+            raise ValueError('AOT 世代或格式不匹配，请使用当前 SDK 重新 pack')
+        return
+    raise ValueError('此应用缺少 AOT，请使用当前 SDK 重新 pack')
+
+
 async def install(connect, data, progress=None):
     info = package_info(data); transfers = 0; last_error = None; reconcile_only = False
     # Two transfer attempts; a final connection can only resolve the durable result.
@@ -318,6 +350,7 @@ async def install(connect, data, progress=None):
                     required=(len(data)+4095)//4096*4096
                     if required>capacity['free_bytes'] or required>capacity['largest_free_bytes']:
                         raise RemoteError(5)
+                await check_install_compatibility(link, data)
                 await confirmed_operation(link,PREPARE,info)
                 transfers += 1
                 await link.transfer(data, progress)

@@ -283,7 +283,7 @@ def make_release(args):
                 package_raw = package.build_package(wasm_raw,
                     snapshots[tinyrt.local_file(root,app['assets'])] if app.get('assets') else b'',
                     cover=package.encode_cover_png(assets['cover.png']),
-                    **{field:app[field] for field in tinyrt.REQUIRED-{'sources'}})
+                    **tinyrt.package_metadata(app))
             passed(stage)
             stage = 'validate-envelope'
             info,parts,metadata,requirements = inspect_package(package_raw)

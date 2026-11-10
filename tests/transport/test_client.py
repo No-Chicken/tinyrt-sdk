@@ -4,7 +4,13 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'protocol'))
 import client
 
 def package():
-    p=bytearray(300);p[:8]=b'TRPKG001';struct.pack_into('<HH5I',p,8,1,256,len(p),256,1,16,0);struct.pack_into('<I',p,12,len(p));struct.pack_into('<I',p,32,2);p[56:63]=b'counter'
+    p=bytearray(560);p[:8]=b'TRPKG001';struct.pack_into('<HH5I',p,8,1,256,len(p),256,1,16,0);struct.pack_into('<I',p,12,len(p));struct.pack_into('<I',p,32,2);p[56:63]=b'counter'
+    struct.pack_into('<I',p,36,1)
+    struct.pack_into('<4I',p,256,2,0,272,len(p)-272)
+    struct.pack_into('<HHII',p,272,1,256,5,7)
+    p[288:304]=b'riscv32'.ljust(16,b'\0')
+    p[304:320]=b'generic-rv32'.ljust(16,b'\0')
+    p[392:424]=bytes(range(32))
     return bytes(p)
 
 class CodecTests(unittest.TestCase):
@@ -21,7 +27,7 @@ class CodecTests(unittest.TestCase):
     def test_package_identity_whole_hash_and_bad_header(self):
         data=package(); ident=client.package_info(data)
         self.assertEqual(ident[:32],b'counter'+bytes(25));self.assertEqual(ident[32:36],b'\x02\0\0\0')
-        self.assertEqual(ident[36:68],hashlib.sha256(data).digest());self.assertEqual(ident[68:],b',\x01\0\0')
+        self.assertEqual(ident[36:68],hashlib.sha256(data).digest());self.assertEqual(ident[68:],struct.pack('<I',len(data)))
         for off in (0,12,56):
             bad=bytearray(data);bad[off]=0xff
             with self.assertRaises(ValueError):client.package_info(bytes(bad))
@@ -34,6 +40,10 @@ class FakePeer:
         yield self
     async def management(self,op,payload=b''):
         if op==client.HELLO:return struct.pack('<HIBB',1,303104,2,71)
+        if op==client.GET_DEVICE_INFO:return b'{"schema":1}'
+        if op==client.RUNTIME_INFO:
+            from test_section_queries import profile
+            return profile()
         if op==client.QUERY:
             if not self.installed:raise client.RemoteError(8)
             return client.package_info(package())
@@ -47,6 +57,14 @@ class FakePeer:
         self.installed=True
 
 class InstallTests(unittest.IsolatedAsyncioTestCase):
+    async def test_higher_level_rejected_before_transfer(self):
+        data=bytearray(package())
+        struct.pack_into('<I',data,184,2)
+        peer=FakePeer('ok')
+        with self.assertRaisesRegex(ValueError,'ABI 1.2'):
+            await client.install(peer.connect,bytes(data))
+        self.assertEqual(peer.transfers,0)
+
     async def test_windows_cancel_after_commit_only_reconciles_identity(self):
         class WindowsCancel(FakePeer):
             async def transfer(self,data,progress=None):

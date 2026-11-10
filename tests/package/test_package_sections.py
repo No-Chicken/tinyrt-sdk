@@ -6,7 +6,7 @@ import sys
 import unittest
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'tools'))
-import package
+from unittest.mock import patch
 import package
 
 WASM=b'\0asm\x01\0\0\0\0\x01\0'
@@ -24,6 +24,24 @@ def meta(wasm):
     return bytes(raw)
 
 class SectionEnvelope(unittest.TestCase):
+    def test_required_api_level_combines_import_permissions_and_manifest(self):
+        contract=package.abi_contract()
+        contract['imports'].append(dict(name='future',since_level=2,permission=0))
+        contract['permissions']['MIC']=dict(value=64,since_level=3)
+        record=b'\x01\x06tinyrt\x06future\x00\x00'
+        wasm=WASM[:8]+bytes([2,len(record)])+record
+        with patch.object(package,'abi_contract',return_value=contract):
+            for source,permissions,declared,want in [
+                    (WASM,0,1,1),(wasm,0,1,2),(WASM,64,1,3),(wasm,64,1,3),(wasm,64,4,4)]:
+                options=dict(KW,permissions=permissions,min_api_level=declared)
+                data=package.build_package(source,b'',**options)
+                self.assertEqual(struct.unpack_from('<I',data,184)[0],0 if want==1 else want)
+                self.assertEqual(package.validate_envelope(data)['min_api_level'],want)
+            damaged=bytearray(data)
+            struct.pack_into('<I',damaged,184,2)
+            with self.assertRaisesRegex(ValueError,'lower API level'):
+                package.validate_envelope(damaged)
+
     def verify(self,raw):return package.validate_envelope(raw)
 
     def test_table_header_padding_and_tail_rejections(self):

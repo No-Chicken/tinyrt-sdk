@@ -1,5 +1,9 @@
 # Pixel Quest · 466×466 圆屏横版跳跃
 
+从 SDK 根目录运行 `python tools/tinyrt.py dev examples/pixel_quest` 可构建、安装并启动。加 `--watch` 后会在源码变化时重装。
+
+目标设备为 Magie S31，最低固件为 0.1.0（ABI 1.1）。使用 SDK 的 `pack` 或 `release` 生成包含 S31 AOT 的包。
+
 应用发布版本唯一来源为 app.json.version，构建不自动递增。应用 ID 为 `pixel-quest`。
 
 原创横版平台跳跃：小探险机器人「豆豆」穿过草原、洞穴、云海和熔炉四个主题共八关，收集宝石，踩扁甲虫，最后打败熔核魔像。关卡布局全部原创，由 `prepare_levels.py` 生成；单关约 30 到 40 秒，每关一个检查点。

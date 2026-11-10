@@ -1,5 +1,9 @@
 # TinyRT SDK
 
+在设备应用大厅打开“添加”页后，运行 `python tools/tinyrt.py install <pkg>`。默认优先 USB，多台 USB 设备用 `--port COM11` 指定，也可用 `--transport ble --address <地址>` 选择蓝牙。
+
+Magie（S31）设备只运行 AOT 应用。`pack` 默认编译并附带 S31 AOT。桌面预览使用解释器，帧耗时不能用来估计设备性能。
+
 独立开发、编译、预览和打包 TinyRT ABI 1 的 C/Wasm 应用。当前是开发预览：包格式、store 与 BLE schema 都为 1。普通 C/Wasm 构建不依赖 ESP-IDF；桌面预览使用真实 WAMR runner，AOT 使用固定目标与来源的编译器。权威契约与运行验证属于 TinyRT core。
 
 游戏模板默认使用 `clock_interval(33)`，约 30 Hz。每次 `TINYRT_CLOCK_EVENT` 更新游戏逻辑，随后在 `tinyrt_render()` 提交一张完整帧；静止画面可以 `draw_skip()`。不要靠累计多次 CLOCK 才提交来控制帧率。物理固定步长应保留实际经过时间的余数补偿；需要更高帧率的应用可显式请求其他周期，实际显示频率受宿主和送屏能力限制。
@@ -7,7 +11,7 @@
 SDK 对外版本以根目录 VERSION 为准，用 `python tools/tinyrt.py --version` 查询。
 应用发布版本见各自 `app.json.version`；反复编译不自动升版本。
 
-Wave 为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](examples/wave_sim/README.md)。高速画布条带通路说明见 [高速画布 V1](specs/fast-canvas-v1.md)。
+Wave 为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](examples/wave_sim/README.md)。
 
 图形批次、GRID、驻留精灵与兼容要求见 [graphics-v1.md](specs/graphics-v1.md)。
 
@@ -21,12 +25,12 @@ python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner pat
 
 设置 `TINYRT_CC`、`TINYRT_RUNNER` 后也可执行 `make release APP=examples/flappy`。
 Windows 没有 make 时直接使用 Python 命令。Wasm 诊断包用
-`RELEASE_ARGS="--variant wasm --target esp32s3"` 指定。
+`RELEASE_ARGS="--variant wasm"` 指定。
 
 命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、打包、网站 v2 清单和 ZIP 自检。
 本项目只交付 AOT：Flappy 输出 `examples/flappy/release/<app_id>-v<version>-wasm-aot.zip` 及同名展开目录。
 ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单和构建报告。
-release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s31`，使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`）。S3 用 `--wamrc` 指定 SDK 固定摘要的本地编译器，也可放在 SDK bin/wamrc.exe。
+release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s31`，使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`）。
 `--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留它用于回退；独立 Wasm ZIP 不作为本项目交付件。
 失败保留此前完整交付件；诊断报告写入应用 `build/release-report.json`（安全可写时）。
 两个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。
@@ -76,11 +80,11 @@ python tools/tinyrt.py validate my-game/build/my-game.trpkg
 
 `new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单或资源；损坏产物需选择新路径。
 
-`app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入整包长度。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](https://github.com/No-Chicken/tinyrt/blob/main/specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](specs/mobile-management.md)。
+`app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入整包长度。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](https://github.com/No-Chicken/tinyrt/blob/main/specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](https://github.com/No-Chicken/tinyrt/blob/main/specs/mobile-management.md)。
 
 `run --events events.json` 按时间驱动真实 WAMR 解释器，输入格式见 [AGENTS.md](AGENTS.md)。`--frames` 是0..60000 ms的截图时间列表，最多120张；默认尊重Guest的`clock_interval`，按虚拟deadline执行CLOCK；截图与输入时点不会额外触发CLOCK或render。回调墙钟耗时不推进虚拟时钟。`--step-ms`仅在显式传入时强制按固定间隔注入CLOCK，覆盖Guest请求的周期，用于诊断。默认输出 `build/preview/` 下的466×466圆形PNG和`report.json`。报告含回调耗时与heap_bytes；桌面耗时不是设备FPS，字体与设备也不完全一致。runner依次取`--runner`、`TINYRT_RUNNER`、SDK `bin/tinyrt-run.exe`或Windows x64固定下载来源；发布二进制按`desktop-windows-x64.json`校验SHA-256和大小。输出只更新当前工具标记的PNG和report，未知已有文件、输入及链接目标会被拒绝；旧版未标记预览请用新的`--output`目录。RGB565缩放使用与Host一致的floor最近邻采样。源码用户可以按 [core构建说明](https://github.com/No-Chicken/tinyrt) 构建runner后显式传入。
 
-`pack` 默认为 ESP32-S31 编译 AOT 并保留源 Wasm，使用仓库内编译器，不需要任何密钥或额外参数；`app_id` 只要合法就行，不要求命名空间。`--target esp32s3` 打 S3 包，`--wasm-only` 跳过 AOT（S31 固件不运行这种包）。SDK 用 pin 校验编译器 SHA-256，目标 ABI 与 bounds/stack/loop-poll 检查均固定，不接受上传者提供的 AOT 或自报安全参数；`--wamrc` 也必须匹配固定摘要。文件说明见[编译器目录](tools/toolchains/esp32s31/windows-x64/README.md)，目标细节见[设备目标](specs/device-targets.md)。
+`pack` 默认为 ESP32-S31 编译 AOT 并保留源 Wasm，使用仓库内编译器，不需要任何密钥或额外参数；`app_id` 只要合法就行，不要求命名空间。`--wasm-only` 跳过 AOT（S31 固件不运行这种包）。SDK 用 pin 校验编译器 SHA-256，目标 ABI 与 bounds/stack/loop-poll 检查均固定，不接受上传者提供的 AOT 或自报安全参数；`--wamrc` 也必须匹配固定摘要。文件说明见[编译器目录](tools/toolchains/esp32s31/windows-x64/README.md)，目标细节见[设备目标](specs/device-targets.md)。
 
 设备不校验签名，只校验包结构、完整性、ABI、权限和 AOT 兼容性。SDK 仍在包头写入公开的兼容签名，开发者无感，只为让包能装到旧固件；不能证明作者身份。
 
@@ -108,7 +112,7 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF launch my-game/build/my-
 在 `tinyrt_init` 或 `tinyrt_event` 中调用 `haptic_pulse(50, 100)`，以 50% 强度震动 100 ms；
 `haptic_stop()` 提前停止。调用非阻塞，新脉冲替换旧脉冲；强度范围 1..100%，时长 1..2000 ms。
 返回 0 表示成功，1 表示设备无马达或不可用；非法参数、缺权限或在 render/stop 调用会失败。
-宿主在应用退出、异常或切换时停止马达。S31 支持，S3 与桌面预览返回不支持。
+宿主在应用退出、异常或切换时停止马达。S31 支持，桌面预览返回不支持。
 需要支持这些 import 的宿主与桌面 runner；旧宿主拒绝新 import。
 
 ## 外设手柄
@@ -151,6 +155,8 @@ input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
 | `version` | 1..4294967295 的整数；同 ID 的不同包会直接替换旧包并保留存档，设备不要求递增，上架要递增 |
 | `abi_version` | 当前只能为 1 |
 | `permissions` | 0..63；draw=1、input=2、storage=4、clock=8、audio=16、haptic=32 |
+| `min_api_level` | 可选。SDK 取此值和导入、权限要求的最高 Level，基线为 1。 |
+| `graphics` | 可选。immediate、raster 或 framebuffer，默认 immediate。 |
 | `memory_pages` | 1..16，页面为 64 KiB；这是 Wasm 线性内存上限 |
 | `budget` | 每回调 1..100000 条受计量指令 |
 | `sources` | 1..64 个不重复的本地 `.c` 相对路径 |
@@ -159,7 +165,7 @@ input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
 
 当前只支持section包格式1；应用`version`整数与平台版本独立。
 
-拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整包没有单独的单包上限，资源计入总长；`pack` 只做 16 MiB 格式检查，安装时以目标宿主 HELLO 公布的包库数据区为准（S31 V2 为 3960 KiB，S3 V1 为 4984 KiB）。更新同一应用需要再有一段同样大小的连续空闲区，超过数据区一半的包需先卸载再安装。Flash 容量增加不改变 ABI 1 的 16 页线性内存与每回调 100000 指令限额；较大的 Wasm 仍需通过宿主运行时的独立内存检查。
+拒绝未知字段、重复 JSON 键、用 bool/小数代替整数、越界值和逃出应用目录的路径。编译器按代码和 16 KiB 栈选择初始内存，最大内存受清单限制。完整包没有单独的单包上限，资源计入总长；`pack` 只做 16 MiB 格式检查，安装时以目标宿主 HELLO 公布的包库数据区为准（S31 V2 为 3960 KiB）。更新同一应用需要再有一段同样大小的连续空闲区，超过数据区一半的包需先卸载再安装。Flash 容量增加不改变 ABI 1 的 16 页线性内存与每回调 100000 指令限额；较大的 Wasm 仍需通过宿主运行时的独立内存检查。
 
 `assets` 指定包内的原始字节。`asset_read(offset,ptr,len)`在init/event中只读当前包资源，每次最多4096字节；尚无通用私有文件系统API。KV 是每应用 16 个 i32，不能把它描述为文件系统。guest 不能依赖 WASI/libc、构造器或耗尽预算来让出执行；长任务需主动分片并成功返回。
 

@@ -1,7 +1,5 @@
 # TinyRT minimal application
 
-Version: 0.0.1.
-
 A greeting rendered on the 466x466 round display. Use host back to exit.
 
 ## Build a website ZIP
@@ -13,7 +11,7 @@ python tools/tinyrt.py release <app> --cc path/to/zig.exe --runner path/to/tinyr
 ```
 
 Edit listing.json, this README, CHANGELOG.md, LICENSES.md and cover.png for your application.
-The template cover is a geometric placeholder. The default delivery package is ESP32-S3 AOT, with Wasm retained for fallback.
+The template cover is a geometric placeholder. The default delivery package is ESP32-S31 AOT, with Wasm retained for desktop preview and rebuild verification.
 
 ## Known limitations
 

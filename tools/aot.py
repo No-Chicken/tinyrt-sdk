@@ -110,7 +110,7 @@ def pack_aot(manifest, wasm, output, wamrc=None, target='esp32s31'):
     source=snapshots[Path(wasm).resolve()];assets=snapshots[asset] if asset else b''
     tinyrt.check_graphics_imports(source)
     cover_bytes=package.encode_cover_png(snapshots[cover]) if cover else None
-    metadata={name:app[name] for name in tinyrt.REQUIRED-{'sources'}}
+    metadata=tinyrt.package_metadata(app)
     package.metadata_header(source,assets,**metadata)
     if len(source)>package.MAX_PACKAGE_SIZE or len(assets)>package.MAX_PACKAGE_SIZE:
         raise ValueError('Wasm or resources exceed the package format limit')
@@ -126,7 +126,7 @@ def pack_aot(manifest, wasm, output, wamrc=None, target='esp32s31'):
         header[start:start+(20 if start<88 else 32)]=bytes.fromhex(pin[name])
     header[184:216]=bytes.fromhex(pin['compiler']['sha256']);header[216:248]=hashlib.sha256(source).digest()
     data=package._assemble(source,assets,native=code,native_metadata=header,cover=cover_bytes,**metadata)
-    package.validate_envelope(data)
+    info=package.validate_envelope(data)
     output=tinyrt.protect_output(output,paths,'.trpkg',b'TRPKG001');tinyrt.write_atomic(output,data)
-    return dict(package=str(output),package_size=len(data),sha256=sha(data),
+    return dict(abi=info['abi'],package=str(output),package_size=len(data),sha256=sha(data),
                 compat_id=pin['compat_id'],compiler_sha256=pin['compiler']['sha256'],backend='aot')
