@@ -1,0 +1,20 @@
+{
+  "app_id": "puff",
+  "title": "Puff",
+  "version": 2,
+  "abi_version": 1,
+  "min_api_level": 3,
+  "permissions": 75,
+  "memory_pages": 4,
+  "budget": 100000,
+  "sources": [
+    "main.c"
+  ],
+  "assets": "resources.bin",
+  "cover": "cover.png",
+  "graphics": "raster",
+  "defines": {
+    "PUFF_CAL_FLOOR_Q8": -17461,
+    "PUFF_CAL_REF_Q8": -6403
+  }
+}

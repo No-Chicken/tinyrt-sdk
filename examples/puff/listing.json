@@ -1,0 +1,19 @@
+{
+  "summary": "吹气带着豆豆和两只气球飞向云顶，停下悬停，躲过黄蜂，在 25 秒内抵达终点。",
+  "category": "game",
+  "tags": ["麦克风", "气球", "像素"],
+  "controls": [
+    "点击开始，倒计时后吹气上升，停止吹气时悬停",
+    "默认力度模式；开始前可切换匀速模式",
+    "结算页点击再飞一次；短按设备按键返回应用大厅"
+  ],
+  "publisher_display": "EEBadge 示例",
+  "release_notes": "v2：接入吹气与力度输入，增加冲击声筛选，限时 25 秒，放大模式按钮，精确碰撞，更新英文标题与独立方形封面。",
+  "rights": {
+    "status": "unverified",
+    "note": "项目像素画、脚本绘图及 ImageGen 封面，文字使用本机 Microsoft YaHei；见 LICENSES.md，发布前由发布方确认。"
+  },
+  "full_bleed": true,
+  "device_verified": true,
+  "screenshots": [{"at_ms": 0, "caption": "Puff"}]
+}
