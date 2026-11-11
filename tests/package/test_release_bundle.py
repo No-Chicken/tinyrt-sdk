@@ -111,6 +111,18 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_release()
 
+    def test_extended_quotas_require_level_four_through_release(self):
+        self.manifest.update(memory_pages=20, budget=125000, min_api_level=3)
+        self.write_json('app.json', self.manifest)
+        with self.assertRaisesRegex(ValueError, 'requires explicit min_api_level'):
+            self.run_release()
+        self.manifest['min_api_level'] = 4
+        self.write_json('app.json', self.manifest)
+        archive = Path(self.run_release()['zip'])
+        manifest = self.release.validate_bundle(archive.read_bytes())
+        self.assertEqual(manifest['package']['memory_pages'], 20)
+        self.assertEqual(manifest['package']['budget'], 125000)
+
     def test_required_negative_inputs_fail_before_build(self):
         cases = [('missing changelog', 'CHANGELOG.md'), ('unknown field', 'unknown'),
                  ('late screenshot', 'late'), ('wrong device size', 'device'),

@@ -4,8 +4,8 @@
   "platform": "windows-x64",
   "engine": "WAMR classic interpreter",
   "wamr_commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
-  "sha256": "b15916f8de8bea48a2381b687b7eba7fa8d837755c72d17e7cbd04c66e0bc0bb",
-  "size": 435712,
-  "core_revision": "5cbcca210b6cc34cb3fd3648c3cdc8b81940dde3",
+  "sha256": "cf3d158980755e8822c999228a9884f7b286b3f07001e44c07ef56110ef117bc",
+  "size": 436736,
+  "core_revision": "51c1c5290ffd8a4b6d9374a59f911a4c2d1e9ef7",
   "build_script_sha256": "7b4768c0deb68670332360db6196cbdb9bc89f320e1a509f4d850bebcafa3b82"
 }
