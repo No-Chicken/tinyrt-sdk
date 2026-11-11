@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "sdk_version": "0.4.0-alpha.1",
+  "sdk_version": "0.4.0",
   "platform": "windows-x64",
   "engine": "WAMR classic interpreter",
   "wamr_commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
