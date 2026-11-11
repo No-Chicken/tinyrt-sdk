@@ -33,9 +33,14 @@ class FakeSerial:
         return len(part)
 
     def read(self, size):
-        data = bytes(self.inbound[:5])
-        del self.inbound[:5]
+        assert size <= max(1, self.in_waiting)
+        data = bytes(self.inbound[:size])
+        del self.inbound[:size]
         return data
+
+    @property
+    def in_waiting(self):
+        return min(5, len(self.inbound))
 
 
 class TransportTests(unittest.IsolatedAsyncioTestCase):
@@ -50,7 +55,7 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(link.link.serial.calls, [(7,b'')])
 
     async def test_usb_package_multiblock_offsets_and_cancellation(self):
-        image = bytes(range(256)) * 150
+        image = bytes(range(256)) * 15 + b'last block'
         class Receiver:
             def __init__(self, reject):
                 self.reject = reject
@@ -66,6 +71,7 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
                     session,offset,crc = struct.unpack_from('<III',payload)
                     block = payload[12:]
                     assert session == 7 and offset == len(self.received) and crc == zlib.crc32(block)
+                    assert len(eeot.encode_frame(kind, 1, payload)) <= 4096
                     self.received.extend(block)
                     return int(self.reject),7,len(self.received),1
                 assert struct.unpack('<I',payload)[0] == 7

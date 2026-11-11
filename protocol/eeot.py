@@ -9,6 +9,8 @@ MAGIC = b'EEOT'
 VERSION = 1
 BLOCK_MAX = 32768
 PAYLOAD_MAX = BLOCK_MAX + 12
+# S31 的 USB 接收环为 4096 B。把整帧（含 30 B 开销）放进环内再等 ACK。
+USB_DATA_BYTES = 3840
 HEADER = struct.Struct('<4sBBII')
 ACK = struct.Struct('<IIII')
 QUERY, START, DATA, FINISH, CANCEL, STATUS, INFO, ERASE, MANAGEMENT, RESULT_ACK = range(1, 11)
@@ -54,8 +56,8 @@ def transfer_image(request, image, progress=None, *, target=0):
         err, session, offset, state = request(START, struct.pack('<BII', target, len(image), nonce))
         if err or not session: raise RuntimeError(f'设备拒绝开始: err=0x{err:04x}（设备忙或页面类型不符；请退出接收页后重试）')
         if offset != 0: raise RuntimeError('设备存在未完成会话，请退出接收页后重试')
-        for offset in range(0, len(image), BLOCK_MAX):
-            block = image[offset:offset + BLOCK_MAX]
+        for offset in range(0, len(image), USB_DATA_BYTES):
+            block = image[offset:offset + USB_DATA_BYTES]
             payload = struct.pack('<III', session, offset, zlib.crc32(block)) + block
             err, token, received, state = request(DATA, payload)
             if err or token != session or received != offset + len(block):
@@ -115,7 +117,9 @@ class USBTransport:
             deadline = start + (timeout if timeout is not None else 100 if kind == START else 45 if kind in (FINISH, MANAGEMENT, ERASE) else 12)
             next_nudge = start + self.NUDGE_AFTER
             while time.monotonic() < deadline:
-                for rkind, seq, data in self.decoder.feed(self.serial.read(4096)):
+                # 无数据时只等首字节；短 ACK 已到齐时立即解码。
+                size = min(self.serial.in_waiting, 4096) or 1
+                for rkind, seq, data in self.decoder.feed(self.serial.read(size)):
                     if rkind == kind | 0x80 and seq == self.sequence:
                         return data
                 if time.monotonic() >= next_nudge:
