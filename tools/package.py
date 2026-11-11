@@ -88,6 +88,8 @@ def required_api_level(wasm, permissions, declared=1):
     if type(declared) is not int or not 1 <= declared <= 0xffffffff:
         raise ValueError('min_api_level must be a positive uint32')
     contract = abi_contract()
+    if declared > contract['api_level']:
+        raise ValueError(f"min_api_level {declared} exceeds the highest published API level {contract['api_level']}")
     required = declared
     known = 0
     for capability in contract['permissions'].values():
@@ -244,6 +246,8 @@ def validate_envelope(data):
         raise ValueError('invalid format-1 header')
     version,abi,permissions,pages,budget,key_id = struct.unpack_from('<6I',data,32)
     level = struct.unpack_from('<I', data, 184)[0] or 1
+    if level > abi_contract()['api_level']:
+        raise ValueError('package requires an API level newer than this SDK knows')
     validate_quotas(pages, budget, level)
     if not version or abi!=1 or any(data[188:192]):
         raise ValueError('invalid package policy')

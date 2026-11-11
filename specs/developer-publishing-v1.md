@@ -6,17 +6,9 @@
 
 本文定义 release.json、上传 ZIP 布局与网站对接契约；v2 增量见 [release-bundle-v2.md](release-bundle-v2.md)。
 
-## 1. Wasm 包和 AOT 包的区别
+## 1. 包类型
 
-| 项目 | Wasm 包 | Wasm 加 AOT 包 |
-|---|---|---|
-| 内容 | Wasm、资源、可选封面 | 相同 Wasm、资源、封面，加目标机器码和来源元数据 |
-| 编译路径 | C → Wasm → 打包 | C → Wasm → 固定 wamrc 编译 → AOT → 打包 |
-| 执行 | 桌面预览解释器 | 设备校验并执行兼容的 AOT |
-| 兼容性 | 要求正确 ABI、权限和导入 | 还要求目标 CPU 和兼容 ID |
-| 性能 | 需要在设备实测 | 通常减少解释开销，仍须实测，不能承诺固定 FPS |
-
-两个文件都是完整的包。“裸的”只是文件名没有 `-wasm`，不是未编译或裸二进制。网站必须解析 section，不得按文件名猜后端。
+网站只接收 `wasm-aot` 包：包内同时有 Wasm 和 S31 AOT。设备只执行 AOT；Wasm 用于网站复编译校验和桌面预览。`pack --wasm-only` 生成的包只用于诊断，S31 设备无法运行，网站拒收。
 
 网站只接收同时包含 Wasm 与 AOT 的包。S31 只执行 AOT。网站用当前登记世代的固定编译器运行 `validate --rebuild-aot`，核对 compat_id 并保存复编译结果。设备安装前检查目标、格式和完整 compat_id。
 
@@ -26,7 +18,7 @@
 
 - ESP-IDF/FreeRTOS：固件和任务调度；LVGL：设备 UI 与最终显示；BSP/svc：屏幕、音频、输入等硬件服务。
 - TinyRT core：WAMR 沙箱、ABI/权限、资源与内存限制、包校验、安装库和应用生命周期。
-- TinyRT SDK：C 头文件、模板、Wasm 编译、桌面预览、资源打包与 BLE 安装工具。应用开发不需要单独编译 ESP-IDF。
+- TinyRT SDK：C 头文件、模板、Wasm 编译、桌面预览、资源打包与 USB/BLE 安装工具。应用开发不需要单独编译 ESP-IDF。
 - 网站：账号与 app_id 归属、上传解析、AOT 复编译比对、审核、目录和下载。设备不校验来源，这些是上架的安全边界。
 - 固件部署方：提供与 SDK pin 一致的 AOT 运行能力。固件 OTA 签名与应用包无关。
 
@@ -136,7 +128,7 @@ v2 机器约束见 `release-v2.schema.json`；v1 语义、字节数、跨文件�
 |---|---|
 | schema_version | 固定 1；不认识的版本拒绝，不猜测兼容 |
 | app_id/title/version | 必须与应用包逐项相等 |
-| variant | `wasm` 或 `wasm-aot`；从 section 验证，不能仅相信声明 |
+| variant | 固定为 `wasm-aot`；从 section 验证，不能仅相信声明 |
 | requested_channel | `development`、`beta`、`stable`；只是申请，服务器决定最终状态 |
 | publisher_display | 作者显示名；1–80 字符，不作为账号身份依据 |
 | locale | v1 固定 `zh-CN`；多语言使用未来版本 |
@@ -154,7 +146,7 @@ v2 机器约束见 `release-v2.schema.json`；v1 语义、字节数、跨文件�
 
 所有 SHA-256 使用原始文件全部字节计算，输出64个小写十六进制字符；JSON、Markdown 不做换行归一化后再比较。release.json 不包含自己的哈希，避免循环；服务器另外计算整个 ZIP 的 SHA-256。禁止任意 URL 代替包内文件路径。
 
-`requirements.imports` 从真实 Wasm 导入表提取，必须等于包内全集；不得有 WASI 或未支持模块。`wasm` 要求 AOT section 不存在且 requirements.aot=null；`wasm-aot` 要求两种 section 均存在，requirements.aot 与 AOT 元数据一致。不要用权限位推断所有导入能力，例如同为 DRAW，不同固件不一定支持同样绘制函数。
+`requirements.imports` 从真实 Wasm 导入表提取，必须等于包内全集；不得有 WASI 或未支持模块。`wasm-aot` 要求两种 section 均存在，requirements.aot 与 AOT 元数据一致。不要用权限位推断所有导入能力，例如同为 DRAW，不同固件不一定支持同样绘制函数。
 
 未知字段按 v1 拒绝。新增字段通过新版 Schema 演进，不依赖各端忽略陌生字段。
 
@@ -170,13 +162,6 @@ python tools/tinyrt.py run my-game --frames 32,1000,5000
 ```
 
 模板自带占位封面、授权说明和 listing.json。发布前替换为应用自己的封面、说明和发布资料。为游戏添加有效的交互/碰撞/存档测试，检查实际圆屏布局、预算和资源上限。
-
-开发期 Wasm：
-
-```powershell
-python tools/tinyrt.py pack my-game --wasm-only --output my-game/build/game-wasm.trpkg
-python tools/tinyrt.py validate my-game/build/game-wasm.trpkg
-```
 
 S31 设备安装包：
 
@@ -231,9 +216,9 @@ v1 ZIP 是**已构建分发物上传协议**。若网站以后支持“仅上传
 
 应用身份为 app_id；版本为 app_id+version；构建产物为 app_id+version+variant；设备安装身份还包含完整 `.trpkg` SHA-256。
 
-同一版本允许分别上传 wasm 与 wasm-aot；包内 title、permissions、abi、memory_pages、budget 和来源 Wasm 必须一致，避免把两个不同游戏装成两个变体。相同产物键重复上传相同包、相同资源与规范化清单视为幂等；仅 ZIP 压缩或时间戳不同不算新版本。相同产物键内容不同返回冲突，禁止覆盖。
+相同产物键重复上传相同包、相同资源与规范化清单视为幂等；仅 ZIP 压缩或时间戳不同不算新版本。相同产物键内容不同返回冲突，禁止覆盖。
 
-**设备注意**：同一 app_id 的不同包（包括同版本不同摘要）会直接替换旧包并保留存档，因此 Wasm v2 可直接换为 AOT v2。网站仍要求已发布版本递增，便于更新检测。
+**设备注意**：同一 app_id 的不同包（包括同版本不同摘要）会直接替换旧包并保留存档。网站仍要求已发布版本递增，便于更新检测。
 
 建议流程状态：uploaded → validating → awaiting_review → published；校验失败为 rejected，主动撤回为 withdrawn。channel（development/beta/stable）与状态分开。作者不得自行写入 published、平台验收通过或服务器时间。
 

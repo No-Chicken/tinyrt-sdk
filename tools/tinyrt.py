@@ -229,7 +229,7 @@ def main(argv=None):
     commands=parser.add_subparsers(dest='command',required=True)
     new=commands.add_parser('new',help='create a minimal app in a new directory')
     new.add_argument('directory',type=Path);new.add_argument('--app-id',help='default: derived from the directory name');new.add_argument('--title',default='TinyRT app')
-    new.add_argument('--template',choices=('minimal','game','tool','watchface'),default='minimal')
+    new.add_argument('--template',choices=('minimal','game','watchface'),default='minimal')
     compile_cmd=commands.add_parser('build',help='compile freestanding C to Wasm without ESP-IDF')
     compile_cmd.add_argument('app',type=Path);compile_cmd.add_argument('--cc');compile_cmd.add_argument('--output',type=Path)
     preview_cmd=commands.add_parser('run',help='real WAMR desktop preview; timings are not device performance')

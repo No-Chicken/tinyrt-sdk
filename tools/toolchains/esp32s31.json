@@ -4,7 +4,7 @@
   "aot_format": 5,
   "wamr_commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
   "llvm_commit": "344b928e67bfc1d07cb150609c55548e86a9bf19",
-  "source_lock_sha256": "57bff42ced57d6dc7e4c89fde606b6def1ddb672d7dfe89253cdf5d6a8f917d4",
+  "source_lock_sha256": "e88e7c352b4395b416c0f528309354100c2253ba8a6ccdc87b7c98f46884a3f6",
   "compiler_patch_sha256": "76dcf328f12555dda85a023fecfbd6296d94587b1e8e7506c66307cf269fe8e7",
   "runtime_patch_sha256": "7e24e36feb030f28dcfe7193718564e92d65c75687204086a69d28b6957c2e44",
   "runtime_abi_revision": 1,

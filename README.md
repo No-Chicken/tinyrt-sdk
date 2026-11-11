@@ -2,7 +2,7 @@
 
 在设备应用大厅打开“添加”页后，运行 `python tools/tinyrt.py install <pkg>`。默认优先 USB，多台 USB 设备用 `--port COM11` 指定，也可用 `--transport ble --address <地址>` 选择蓝牙。
 
-开发固件支持 `python tools/tinyrt.py dev examples/gyro_ball --watch`。命令构建并打包应用，自动寻找 USB 开发板，安装后等待设备显示应用页面，再持续输出 `app:` 日志。修改源码、清单或素材会触发重新构建和安装，按 Ctrl+C 退出。使用 BLE 时，先在设备上打开“添加”页，再指定 `--transport ble --address <地址>`，以便在同一连接内安装和启动。
+开发固件支持 `python tools/tinyrt.py dev examples/pixel_quest --watch`。命令构建并打包应用，自动寻找 USB 开发板，安装后等待设备显示应用页面，再持续输出 `app:` 日志。修改源码、清单或素材会触发重新构建和安装，按 Ctrl+C 退出。使用 BLE 时，先在设备上打开“添加”页，再指定 `--transport ble --address <地址>`，以便在同一连接内安装和启动。
 
 支持权限预览的固件会在安装页和远程确认弹窗列出应用权限。使用旧工具时，远程确认弹窗提示发送端未提供权限，接收包头后安装页会显示实际权限。
 
@@ -50,7 +50,7 @@ release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s
   "tags": ["像素"],
   "controls": ["点击起跳", "KEY1 长按退出"],
   "publisher_display": "开发者",
-  "release_notes": "0.0.2：新增通用图形绘制。",
+  "release_notes": "v2：新增通用图形绘制。",
   "full_bleed": true,
   "rights": {"status": "unverified", "note": "来源与许可见 LICENSES.md"},
   "device_verified": false,
@@ -84,7 +84,7 @@ python tools/tinyrt.py pack my-game
 python tools/tinyrt.py validate my-game/build/my-game.trpkg
 ```
 
-`new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放，`tool` 提供触摸计数器，`watchface` 演示本地时间和分钟事件。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单或资源；损坏产物需选择新路径。
+`new` 创建尚不存在的目录；默认模板为 `minimal`，`game` 提供触摸、时钟、帧缓冲与缩放，`watchface` 演示本地时间和分钟事件（需要 ABI 1.3、固件 0.4.0 及以上）。`build` 编译清单中的 C 文件，产物为 `build/<app_id>.wasm`；`pack` 默认读取此文件并写入 `build/<app_id>.trpkg`。`--output` 自定义输出，`pack --wasm` 选择既有 Wasm。输出后缀、魔数和链接目标受检查，不能覆盖源文件、清单或资源；损坏产物需选择新路径。
 
 `app.json` 可选 `"cover": "cover.png"`，输入为单帧 210×210 PNG，最多 64 KiB。`pack` 将其转换为 cover section，内含 210/150 两档 RGB565；整包增加 133232 字节，计入整包长度。透明区使用大厅底色 `#101418`。封面独立于 Guest resources，完整字节格式见 [包规格](https://github.com/No-Chicken/tinyrt/blob/main/specs/package.md)。 手机封面分块读取、设备确认 token 与空间预检字段见 [手机应用管理](https://github.com/No-Chicken/tinyrt/blob/main/specs/mobile-management.md)。
 
@@ -279,7 +279,7 @@ export TINYRT_RUNNER="$PWD/build-tools/runner-build/tinyrt-run"
 回到 SDK 根目录。Wasm 构建需要支持 wasm32 的 Zig 或 Clang。打包 S31 AOT 时，SDK 校验随包的 Windows x64 wamrc 的 SHA-256，在 POSIX 上经 PATH 中的 `wine` 或 `wine64` 执行。Wine 环境需支持 x86-64 PE 和 Microsoft Visual C++ v14 x64 运行库。S31 的目标选项、编译器哈希和 `compat_id` 与 Windows 发布包相同。当前 SDK 提供的发行二进制校验值覆盖 Windows x64。
 
 ```sh
-python3 tools/tinyrt.py new demo --template tool
+python3 tools/tinyrt.py new demo --template game
 python3 tools/tinyrt.py build demo --cc "$(command -v zig)"
 python3 tools/tinyrt.py run demo
 python3 tools/tinyrt.py pack demo

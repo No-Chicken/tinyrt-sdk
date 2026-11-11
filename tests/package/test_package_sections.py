@@ -41,6 +41,8 @@ class SectionEnvelope(unittest.TestCase):
             struct.pack_into('<I',damaged,184,2)
             with self.assertRaisesRegex(ValueError,'lower API level'):
                 package.validate_envelope(damaged)
+            with self.assertRaisesRegex(ValueError,'exceeds the highest published API level'):
+                package.build_package(WASM,b'',**dict(KW,min_api_level=contract['api_level']+1))
 
     def verify(self,raw):return package.validate_envelope(raw)
 

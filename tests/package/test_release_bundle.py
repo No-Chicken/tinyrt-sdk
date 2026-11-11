@@ -51,10 +51,17 @@ class ReleaseTests(unittest.TestCase):
             (self.app / name).write_bytes(b'# Test\n')
         Image.new('RGB', (210, 210), '#101418').save(self.app / 'cover.png')
         self.args = argparse.Namespace(app=self.app, cc='compiler', runner=self.app/'runner',
-                                       variant='wasm', output=None, channel='development',
+                                       variant='wasm-aot', output=None, channel='development',
                                        wamrc=None, target='esp32s31',
                                        preview_ms=60000, sdk_revision='a'*40, built_at='2026-10-03T00:00:00Z')
         self.args.runner.write_bytes(b'local runner')
+        # The website accepts only wasm-aot bundles; stand in for the pinned wamrc.
+        import aot
+        pin = json.loads((ROOT/'tools/toolchains/esp32s31.json').read_bytes())
+        def fake_wamrc(command, **kwargs):
+            Path(command[command.index('-o')+1]).write_bytes(b'\0aot'+struct.pack('<I',pin['aot_format'])+b'native-test-output')
+        wamrc=patch.object(aot.subprocess, 'run', side_effect=fake_wamrc)
+        wamrc.start();self.addCleanup(wamrc.stop)
 
     def write_json(self, name, value):
         (self.app / name).write_bytes((json.dumps(value) + '\n').encode())
@@ -94,7 +101,7 @@ class ReleaseTests(unittest.TestCase):
                                            'screenshots/01.png', 'build/report.json'])
             for name in ('release.json', 'build/report.json'):
                 self.assertNotIn(str(self.app).encode(), z.read(name))
-        self.assertEqual(archive.name, 'demo.test-v1-wasm.zip')
+        self.assertEqual(archive.name, 'demo.test-v1-wasm-aot.zip')
         self.assertEqual(result['package_version'], 1)
         self.assertNotIn('display_version', result)
 

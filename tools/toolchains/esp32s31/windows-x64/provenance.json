@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "source_lock_sha256": "57bff42ced57d6dc7e4c89fde606b6def1ddb672d7dfe89253cdf5d6a8f917d4",
+  "source_lock_sha256": "e88e7c352b4395b416c0f528309354100c2253ba8a6ccdc87b7c98f46884a3f6",
   "build_script_sha256": "d58dd8e39c85d9ed3979b5529c9daee8b8df4aa27883f41c4147e3994df5dcb9",
   "sources": {
     "wamr": {
