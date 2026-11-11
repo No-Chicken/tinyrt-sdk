@@ -97,7 +97,7 @@ int32_t blob_read(void *dst,uint32_t capacity);
 
 | Wasm | 权限 / Permission | 阶段 / Stage | since_level | 限额 / Limits | 返回与错误 / Results and errors |
 |---|---|---|---|---|---|
-| `(ii)i` | STORAGE (4) | init / event / render / stop | 4 | 一个应用一块 / one blob per app, 0..2048 bytes | 字节数，0 空 / bytes read, 0 if empty；−2 缓冲区过小、不支持或超限，无复制 / short buffer, unavailable or over limit, no copy；−1 存储失败 / storage failure |
+| `(ii)i` | STORAGE (4) | init / event / render / stop | 4 | 一个应用一块 / one blob per app, 0..2048 bytes | 字节数，0 空 / bytes read, 0 if empty；−2 目标空间不足或不可用 / insufficient capacity or unavailable；−1 参数超限或存储失败 / over limit or storage failure |
 
 ## `blob_write`
 
@@ -107,7 +107,7 @@ int32_t blob_write(const void *src,uint32_t length);
 
 | Wasm | 权限 / Permission | 阶段 / Stage | since_level | 限额 / Limits | 返回与错误 / Results and errors |
 |---|---|---|---|---|---|
-| `(ii)i` | STORAGE (4) | init / event / render / stop | 4 | 0..2048 bytes, 0 清空 / empty clears | 写入字节数 / bytes written；−2 不可用或超限 / unavailable or over limit；−1 存储失败 / storage failure |
+| `(ii)i` | STORAGE (4) | init / event / render / stop | 4 | 0..2048 bytes, 0 清空 / empty clears | 写入字节数 / bytes written；−2 不可用 / unavailable；−1 参数超限或存储失败 / over limit or storage failure |
 
 ## `clock_interval`
 
@@ -437,6 +437,58 @@ int32_t kv_set(uint32_t key,int32_t value);
 |---|---|---|---|---|---|
 | `(ii)i` | STORAGE (4) | init / event / render / stop | 1 | 槽数 / slots (key starts at 0) — Level 1–3: 16, Level 4: 24, i32 | 0 成功 / success；非法调用触发 trap / invalid use traps |
 
+## `mic_close`
+
+```c
+int32_t mic_close(void);
+```
+
+| Wasm | 权限 / Permission | 阶段 / Stage | since_level | 限额 / Limits | 返回与错误 / Results and errors |
+|---|---|---|---|---|---|
+| `()i` | MIC (64) | init / event | 3 | Release capture and discard buffered input. | 0 closed (also when already closed); -2 unavailable. |
+
+Level 3, MIC=64. Recording is visible to the user and ends on app teardown. Reassess raw PCM permission before adding networking or audio-sized storage. Open in init/event: 16000 Hz, nonempty PCM|LEVEL|FEATURES flags, default gain 24 dB. 0 opened, 1 busy, -2 unavailable. Close in init/event; already closed returns 0. Event-only reads return bytes from a one-second FIFO, oldest items drop on overrun. Read even PCM byte counts or multiples of 32 feature bytes, each <=4096. Gain in init/event: 0..42 dB rounded down to 6 dB steps; 200 ms settling. MIC_LEVEL: peak in x, RMS in y (both 0..32767), flags in arg (low 16 bits).
+
+## `mic_features`
+
+```c
+int32_t mic_features(void *dst,uint32_t length);
+```
+
+| Wasm | 权限 / Permission | 阶段 / Stage | since_level | 限额 / Limits | 返回与错误 / Results and errors |
+|---|---|---|---|---|---|
+| `(ii)i` | MIC (64) | event | 3 | FEATURES flag required; 0..4096 bytes, multiple of 32. | Bytes read, 0 if empty; -2 unavailable; invalid use traps. |
+
+## `mic_gain`
+
+```c
+int32_t mic_gain(int32_t db);
+```
+
+| Wasm | 权限 / Permission | 阶段 / Stage | since_level | 限额 / Limits | 返回与错误 / Results and errors |
+|---|---|---|---|---|---|
+| `(i)i` | MIC (64) | init / event | 3 | Open microphone, 0..42 dB rounded down to 6 dB steps. | Effective dB; -2 unavailable; invalid use traps. |
+
+## `mic_open`
+
+```c
+int32_t mic_open(uint32_t sample_rate,uint32_t flags);
+```
+
+| Wasm | 权限 / Permission | 阶段 / Stage | since_level | 限额 / Limits | 返回与错误 / Results and errors |
+|---|---|---|---|---|---|
+| `(ii)i` | MIC (64) | init / event | 3 | 16000 Hz mono, flags PCM=1, LEVEL=2, FEATURES=4; at least one. | 0 opened, 1 busy, -2 unavailable; invalid use traps. |
+
+## `mic_read`
+
+```c
+int32_t mic_read(void *dst,uint32_t length);
+```
+
+| Wasm | 权限 / Permission | 阶段 / Stage | since_level | 限额 / Limits | 返回与错误 / Results and errors |
+|---|---|---|---|---|---|
+| `(ii)i` | MIC (64) | event | 3 | PCM flag required; PCM16 LE, 0..4096 even bytes. | Bytes read, 0 if empty; -2 unavailable; invalid use traps. |
+
 ## `now_ms`
 
 ```c
@@ -487,12 +539,12 @@ int32_t sys_info(void *destination,uint32_t length);
 
 | Wasm | 权限 / Permission | 阶段 / Stage | since_level | 限额 / Limits | 返回与错误 / Results and errors |
 |---|---|---|---|---|---|
-| `(ii)i` | 无 / none (0) | init / event / render / stop | 2 | 36 bytes (baseline); 52 bytes also reports text_bytes_max, image_count_max, commands_max, kv_keys_max for this package level | 0 成功 / success；−2 缓冲区过小 / short buffer；越界触发 trap / invalid address traps |
+| `(ii)i` | 无 / none (0) | init / event / render / stop | 2 | 36 bytes (baseline); 52 bytes also reports text_bytes_max, image_count_max, commands_max, kv_keys_max available to this package; 56 bytes adds the session log_dropped count | 0 成功 / success；−1 缓冲区过小 / short buffer；越界触发 trap / invalid address traps |
 
-Writes the 36-byte baseline or the full 52-byte quota record when the buffer fits.
+Writes the largest complete record that fits (36, 52 or 56 bytes).
 
 长度 36–51 字节时写入原有九个字段。至少 52 字节时另写本应用等级的文本字节、图片数、命令数与 KV 槽数上限。
-Use `tinyrt_sys_info_t` for the original nine fields or `tinyrt_sys_info_v4_t` for all thirteen fields on a Level 4 host.
+至少 56 字节时另写本次会话丢弃的日志条数。Use `tinyrt_sys_info_t`, `tinyrt_sys_info_v4_t` or `tinyrt_sys_info_diagnostics_t` for the 36-, 52- or 56-byte layout.
 
 ## `time_local`
 

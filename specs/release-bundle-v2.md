@@ -42,6 +42,11 @@ PNGs; preview images retain the existing round-screen alpha mask.
    validation; local checks do not replace all device/core compatibility checks.
 6. Generate manifest/report, archive and self-inspect, then commit local output.
 
+Validate the manifest's permission bits against the pinned ABI. Form `known` by
+OR-ing the permission values in `contracts/abi-v1.json` and reject
+`permissions & ~known != 0`. MIC (64) requires Level 3 even when the guest has
+no microphone imports. The package header and release manifest must agree.
+
 Default destination is <app>/release/<app_id>-v<app.json.version>-<variant>.zip
 and its same-named unpacked directory. --output changes the destination directory. Fixed entry order:
 

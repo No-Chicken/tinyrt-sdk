@@ -236,6 +236,7 @@ def main(argv=None):
     preview_cmd.add_argument('app',type=Path);preview_cmd.add_argument('--events',type=Path)
     preview_cmd.add_argument('--frames',default='0,330');preview_cmd.add_argument('--output',type=Path)
     preview_cmd.add_argument('--runner',type=Path)
+    preview_cmd.add_argument('--mic',type=Path,help='16 kHz mono PCM16 WAV for microphone input')
     preview_cmd.add_argument('--step-ms',type=int,help='explicit fixed CLOCK injection; default honors guest clock_interval')
     pack=commands.add_parser('pack',help='package a built app; compiles AOT for the target by default')
     pack.add_argument('app',type=Path);pack.add_argument('--wasm',type=Path);pack.add_argument('--output',type=Path)
@@ -300,7 +301,7 @@ def main(argv=None):
         elif args.command=='build':result=build(args.app,args.cc,args.output)
         elif args.command=='run':
             import preview
-            result=preview.run(args.app,args.events,args.frames,args.output,args.runner,args.step_ms)
+            result=preview.run(args.app,args.events,args.frames,args.output,args.runner,args.step_ms,args.mic)
         elif args.command=='release':
             import release_bundle
             result=release_bundle.make_release(args)

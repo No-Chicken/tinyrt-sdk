@@ -123,7 +123,7 @@ def raster(frame):
     canvas.putalpha(mask);return canvas
 
 
-def run(app,events=None,frames='0,330',output=None,runner=None,step_ms=None):
+def run(app,events=None,frames='0,330',output=None,runner=None,step_ms=None,mic=None):
     manifest=tinyrt.manifest_path(app);m=tinyrt.load_manifest(manifest)
     wasm=manifest.parent/'build'/(m['app_id']+'.wasm')
     if not wasm.is_file():raise ValueError('build the app before running the preview')
@@ -136,6 +136,7 @@ def run(app,events=None,frames='0,330',output=None,runner=None,step_ms=None):
     for event in scripted:
         if not isinstance(event,dict):raise ValueError('event must be an object')
         hardware_fields={
+            'mic_level':(('peak',0,32767),('rms',0,32767),('flags',0,65535)),
             'rtc':(('epoch',0,0xffffffff),('offset',-840,840),('valid',0,1)),
             'battery':(('pct',0,100),('charging',0,1),('full',0,1),('mv',0,6000)),
             'gyro':(('x',-20480,20480),('y',-20480,20480),('arg',-20480,20480)),
@@ -181,7 +182,7 @@ def run(app,events=None,frames='0,330',output=None,runner=None,step_ms=None):
         lines += [f'{"advance" if step_ms is None else "time"} {ms}',*commands]
         if ms in captures:lines.append('capture')
     runtime=runner_path(runner)
-    inputs=[manifest,wasm,runtime,events,*[tinyrt.local_file(manifest.parent,name) for name in m['sources']]]
+    inputs=[manifest,wasm,runtime,events,mic,*[tinyrt.local_file(manifest.parent,name) for name in m['sources']]]
     asset=tinyrt.resource_file(manifest.parent,m.get('assets'))
     if asset:inputs.extend([asset,*tinyrt.asset_inputs(manifest.parent,m.get('assets'))])
     destination=Path(output or manifest.parent/'build/preview').resolve()
@@ -190,6 +191,7 @@ def run(app,events=None,frames='0,330',output=None,runner=None,step_ms=None):
     level=package.required_api_level(package.read_bounded(wasm),m['permissions'],m.get('min_api_level',1))
     command=[str(runtime),str(wasm),'--min-api-level',str(level),'--pages',str(m['memory_pages']),
              '--permissions',str(m['permissions']),'--budget',str(m['budget'])]
+    if mic:command+=['--mic',str(mic)]
     if asset:command+=['--assets',str(asset)]
     result=subprocess.run(command,input='\n'.join(lines)+'\n',capture_output=True,text=True,encoding='utf-8',timeout=120)
     records=[json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]

@@ -1,6 +1,8 @@
 # Wave
 
-从 SDK 根目录运行 `python tools/tinyrt.py dev examples/wave_sim` 可构建、安装并启动。加 `--watch` 后会在源码变化时重装。
+开发版固件可从 SDK 根目录运行 `python tools/tinyrt.py dev examples/wave_sim` 构建、安装并启动应用。加 `--watch` 后会在源码变化时重装。
+
+客户版固件先运行 `python tools/tinyrt.py build examples/wave_sim` 和 `python tools/tinyrt.py pack examples/wave_sim`。在设备应用大厅打开“添加”页，运行 `python tools/tinyrt.py install examples/wave_sim/build/demo.wave-sim.trpkg --transport ble`，在设备上确认安装，再从大厅启动。
 
 目标设备为 Magie S31，最低固件为 0.1.0（ABI 1.1）。使用 SDK 的 `pack` 或 `release` 生成包含 S31 AOT 的包。
 

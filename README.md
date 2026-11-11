@@ -4,9 +4,11 @@
 
 开发固件支持 `python tools/tinyrt.py dev examples/pixel_quest --watch`。命令构建并打包应用，自动寻找 USB 开发板，安装后等待设备显示应用页面，再持续输出 `app:` 日志。修改源码、清单或素材会触发重新构建和安装，按 Ctrl+C 退出。使用 BLE 时，先在设备上打开“添加”页，再指定 `--transport ble --address <地址>`，以便在同一连接内安装和启动。
 
+客户版固件在大厅打开“添加”页，运行 `python tools/tinyrt.py install <pkg> --transport ble`，在设备上确认后从大厅启动。
+
 支持权限预览的固件会在安装页和远程确认弹窗列出应用权限。使用旧工具时，远程确认弹窗提示发送端未提供权限，接收包头后安装页会显示实际权限。
 
-在“添加”页运行 `python tools/tinyrt.py info` 可读取本次开机最近一次应用崩溃的包身份、回调阶段和原因。连接参数与 `install` 相同。设备保留一条记录，后续崩溃会覆盖它。当前 S31 配置无法提供出错指令的函数索引和 PC，命令会显示“未知”。
+在“添加”页运行 `python tools/tinyrt.py info` 可读取本次开机最近一次应用崩溃的包身份、回调阶段和原因。连接参数与 `install` 相同。设备保留一条记录，后续崩溃会覆盖它。运行时能定位出错指令时显示函数索引和 PC，缺失的字段显示“未知”。
 
 Magie（S31）设备只运行 AOT 应用。`pack` 默认编译并附带 S31 AOT。桌面预览使用解释器，帧耗时不能用来估计设备性能。
 
@@ -21,6 +23,8 @@ Wave 为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](exa
 
 图形批次、GRID、驻留精灵与兼容要求见 [graphics-v1.md](specs/graphics-v1.md)。
 
+麦克风需要 MIC 权限（64）和 API Level 3。设备特征采集、玩家标定和桌面 WAV 回放命令见[麦克风标定与声音检测](specs/audio-detectors.md)。
+
 ## 一键生成网站交付 ZIP
 
 安装 requirements.txt 并准备本地工具后，从 SDK 根目录执行：
@@ -30,8 +34,7 @@ python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe
 ```
 
 设置 `TINYRT_CC` 后也可执行 `make release APP=examples/flappy`。
-Windows 没有 make 时直接使用 Python 命令。Wasm 诊断包用
-`RELEASE_ARGS="--variant wasm"` 指定。
+Windows 没有 make 时直接使用 Python 命令。
 
 命令离线完成资料检查、原生测试（如有）、编译、真实 WAMR 截图、打包、网站 v2 清单和 ZIP 自检。
 本项目只交付 AOT：Flappy 输出 `examples/flappy/release/<app_id>-v<version>-wasm-aot.zip` 及同名展开目录。
@@ -39,7 +42,7 @@ ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单�
 release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s31`，使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`）。
 `--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留源 Wasm 供复编译比对。S31 安装要求兼容的 AOT section。
 失败保留此前完整交付件；诊断报告写入应用 `build/release-report.json`（安全可写时）。
-四个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。
+三个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。
 
 开发者维护 listing.json、三个 Markdown 和封面。完整 listing 示例：
 
@@ -160,7 +163,7 @@ input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION|TINYRT_IN_GAMEPAD);
 | `title` | 1..63 字节严格 UTF-8，不含 NUL |
 | `version` | 1..4294967295 的整数；同 ID 的不同包会直接替换旧包并保留存档，设备不要求递增，上架要递增 |
 | `abi_version` | 当前只能为 1 |
-| `permissions` | 位掩码。DRAW=1、INPUT=2、STORAGE=4、CLOCK=8、AUDIO=16、HAPTIC=32、SENSOR=128、SYSTEM=256、ACCESSORY=512。 |
+| `permissions` | 位掩码。DRAW=1、INPUT=2、STORAGE=4、CLOCK=8、AUDIO=16、HAPTIC=32、MIC=64、SENSOR=128、SYSTEM=256、ACCESSORY=512。 |
 | `min_api_level` | 可选。SDK 取此值和导入、权限要求的最高 Level，基线为 1。 |
 | `graphics` | 可选。immediate、raster 或 framebuffer，默认 immediate。 |
 | `memory_pages` | Level 1–3 为 1..16，Level 4 为 1..20。每页为 64 KiB。 |

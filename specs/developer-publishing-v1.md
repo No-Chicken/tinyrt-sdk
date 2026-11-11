@@ -63,7 +63,7 @@ my-game/
 | title | 1–63 UTF-8 字节，无 NUL；中文按字节计数 |
 | version | 1–4294967295 的整数，上架更新必须递增（设备不强制）；不要填字符串 `1.0.0` |
 | abi_version | 当前固定 1 |
-| permissions | 位掩码 DRAW=1、INPUT=2、STORAGE=4、CLOCK=8、AUDIO=16、HAPTIC=32、SENSOR=128、SYSTEM=256、ACCESSORY=512 |
+| permissions | 位掩码 DRAW=1、INPUT=2、STORAGE=4、CLOCK=8、AUDIO=16、HAPTIC=32、MIC=64、SENSOR=128、SYSTEM=256、ACCESSORY=512 |
 | memory_pages | Level 1–3 为 1–16，Level 4 为 1–20，每页 65536 字节，另受 runtime 总配额约束 |
 | budget | 解释器每回调指令预算为 1–100000，Level 4 为 1–125000。AOT 使用回调截止时间 |
 | sources | 1–64 个应用目录内部的唯一 `.c` 文件 |

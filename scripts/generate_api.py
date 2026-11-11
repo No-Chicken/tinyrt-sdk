@@ -114,7 +114,7 @@ def render():
             out.extend(["", notes[name]])
         if name == "sys_info" and "quotas" in abi:
             out.extend(["", "长度 36–51 字节时写入原有九个字段。至少 52 字节时另写本应用等级的文本字节、图片数、命令数与 KV 槽数上限。",
-                        "Use `tinyrt_sys_info_t` for the original nine fields or `tinyrt_sys_info_v4_t` for all thirteen fields on a Level 4 host."])
+                        "至少 56 字节时另写本次会话丢弃的日志条数。Use `tinyrt_sys_info_t`, `tinyrt_sys_info_v4_t` or `tinyrt_sys_info_diagnostics_t` for the 36-, 52- or 56-byte layout."])
     return "\n".join(out) + "\n"
 
 

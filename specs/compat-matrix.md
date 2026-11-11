@@ -10,3 +10,5 @@
 设备安装时校验完整 compat_id。上表中的短值仅供识别。S31 包元数据的架构是 riscv32，CPU 是 generic-rv32。发布新 Level 后登记首个正式固件及对应 SDK。
 
 Level 2～4 都由固件 0.4.0 首次提供；0.2.x 和 0.3.x 没有对外发布。网站按“包的 Level → 首个支持固件”显示最低固件要求，例如需要 Level 3 的包显示“需要固件 0.4.0 及以上”。
+
+麦克风权限 MIC（64）及 `mic_open`、`mic_read`、`mic_features`、`mic_gain`、`mic_close` 均要求 ABI 1、API Level 3。特征帧和应用端校准见[声音检测器](audio-detectors.md)。

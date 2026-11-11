@@ -52,6 +52,8 @@ def check_schema(value, name):
         error = errors[0]
         field = '/'.join(map(str, error.absolute_path))
         raise ValueError(f'{name}/{field}: {error.message}')
+    if name == 'release-v2.schema.json':
+        package.required_api_level(None, value['package']['permissions'])
 
 
 def png(raw, name, size, limit):

@@ -45,7 +45,7 @@ class SDKTests(unittest.TestCase):
     def test_rejects_policy_and_type_violations(self):
         cases = [('app_id',''),('app_id','A'),('app_id','x'*32),('title',''),('title','中'*22),
                  ('title','a\0b'),('version',0),('version',2**32),('version',True),('version',1.5),
-                 ('abi_version',2),('permissions',64),('permissions',-1),('memory_pages',0),
+                 ('abi_version',2),('permissions',1024),('permissions',-1),('memory_pages',0),
                  ('memory_pages',17),('budget',0),('budget',100001),('sources',[]),
                  ('sources',['../outside.c']),('sources',['/absolute.c']),
                  ('sources',['main.c','main.c']),('assets','../outside.bin'),

@@ -7,6 +7,7 @@ import json
 import struct
 import time
 import zlib
+from collections import deque
 
 MAGIC = b"EEDB"
 VERSION = 1
@@ -19,6 +20,7 @@ KEY, GAMEPAD, MOTION = 0x20, 0x21, 0x22
 CAPTURE, READ, RELEASE = 0x30, 0x31, 0x32
 UI_TREE, UI_PAGE = 0x40, 0x41
 APP_LIST, APP_LAUNCH, APP_STOP, APP_REMOVE = 0x50, 0x51, 0x52, 0x53
+MIC_START, MIC_READ, MIC_CLOSE = 0x60, 0x61, 0x62
 
 STATUS_NAMES = {0: "OK", 1: "BAD_LEN", 2: "BAD_ARG", 3: "BUSY", 4: "NOT_SUPPORTED", 5: "PRIVATE",
                 6: "RATE_LIMIT", 7: "NOT_FOUND", 8: "TIMEOUT", 9: "FAILED"}
@@ -193,6 +195,31 @@ class Bridge:
 
     def motion(self, enable, x=0, y=0, z=0):
         self.call(MOTION, struct.pack("<Bhhh", 1 if enable else 0, x, y, z))
+
+    def mic_batches(self):
+        """Keep two reads in flight. Each read pushes the preceding reply to USB."""
+        pending = deque()
+        deadline = time.monotonic() + self.timeout
+        nudge_at = time.monotonic() + self.NUDGE_AFTER
+        while True:
+            while len(pending) < 2:
+                self.seq = (self.seq + 1) & 0xffffffff
+                pending.append(self.seq)
+                self._send(encode(MIC_READ, self.seq))
+            data = self.port.read(self.port.in_waiting or 1)
+            for kind, seq, body in self.reader.feed(data):
+                if kind != MIC_READ | 0x80 or not pending or seq != pending[0]:
+                    continue
+                pending.popleft()
+                yield self._reply(MIC_READ, body)
+                deadline = time.monotonic() + self.timeout
+                nudge_at = time.monotonic() + self.NUDGE_AFTER
+            now = time.monotonic()
+            if now >= deadline:
+                raise TimeoutError('no EEDB MIC_READ reply')
+            if now >= nudge_at:
+                self._nudge()
+                nudge_at = now + 1
 
     def capture(self, scale=1):
         """Returns (width, height, rgb565 little-endian bytes)."""

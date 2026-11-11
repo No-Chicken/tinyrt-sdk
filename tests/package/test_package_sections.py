@@ -27,7 +27,6 @@ class SectionEnvelope(unittest.TestCase):
     def test_required_api_level_combines_import_permissions_and_manifest(self):
         contract=package.abi_contract()
         contract['imports'].append(dict(name='future',since_level=2,permission=0))
-        contract['permissions']['MIC']=dict(value=64,since_level=3)
         record=b'\x01\x06tinyrt\x06future\x00\x00'
         wasm=WASM[:8]+bytes([2,len(record)])+record
         with patch.object(package,'abi_contract',return_value=contract):
@@ -50,7 +49,7 @@ class SectionEnvelope(unittest.TestCase):
         good=package.build_wasm_package(WASM,b'asset',**KW)
         self.verify(good)
         changes=[(8,'H',3),(10,'H',255),(12,'I',len(good)+1),(16,'I',260),(20,'I',0),(20,'I',4),
-            (24,'I',20),(28,'I',1),(36,'I',2),(40,'I',64),(44,'I',17),(48,'I',0),
+            (24,'I',20),(28,'I',1),(36,'I',2),(40,'I',1024),(44,'I',17),(48,'I',0),
             (256,'I',0),(256,'I',4),(260,'I',1),(264,'I',256),(264,'I',289),(268,'I',0),(268,'I',0xffffffff),
             (272,'I',1),(272,'I',4),(276,'I',1),(280,'I',296),(280,'I',304),(284,'I',0),(284,'I',0xffffffff),
             (299,'B',1)]

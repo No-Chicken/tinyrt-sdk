@@ -70,7 +70,7 @@ class PackageCLI(unittest.TestCase):
     def test_reject_invalid_metadata_without_overwriting(self):
         self.output.write_bytes(b"preserve")
         for flag,value in [("--app-id","BAD"),("--title",""),("--title","x"*64),("--version","0"),
-                           ("--abi-version","2"),("--permissions","64"),("--memory-pages","17"),
+                           ("--abi-version","2"),("--permissions","1024"),("--memory-pages","17"),
                            ("--budget","100001")]:
             with self.subTest(flag=flag):
                 result=self.invoke(*self.base,flag,value)

@@ -118,7 +118,8 @@
         "permissions": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 959
+          "maximum": 1023,
+          "$comment": "Bits 0..9 are assigned in ABI 1 Level 4. Verify each set bit against the permissions table in contracts/abi-v1.json."
         },
         "memory_pages": {
           "type": "integer",
