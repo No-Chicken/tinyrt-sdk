@@ -556,7 +556,9 @@ contact:;
     }
     if (kp == PB_OWL) {
         if (g->boss_attack == 2) { g->bx += g->bvx * dt / slow; g->by -= 150 * PG_FP * dt / 1000 / slow; }
-        if (g->boss_attack == 3 && g->by < 150 * PG_FP) g->by = 150 * PG_FP;
+        /* Recover above a hovering player before exposing the weak point. */
+        if (g->boss_attack == 3 && g->by < 330 * PG_FP)
+            g->by = pg_clamp(g->by + 220 * PG_FP * dt / 1000, 150 * PG_FP, 330 * PG_FP);
         if (g->boss_attack == 0 && g->by < 330 * PG_FP) g->by += 150 * PG_FP * dt / 1000;
         g->bx = pg_clamp(g->bx, 80 * PG_FP, 386 * PG_FP);
         if (l->dark) g->light = (g->boss_attack == 1 || g->boss_attack == 2) ? 120 : 170;
@@ -601,8 +603,9 @@ static inline void pg_step(pg_game_t *g, const pg_input_t *in) {
     /* ---- vertical: lift vs gravity (px/s * 16) ---- */
     static const int weight[] = {0, 75, 88, 100, 108, 115};
     int lift = in->blow * 300 / 100 * weight[g->balloons > 0 ? g->balloons : 1] / 100;  /* px/s at full */
-    int target_vy = (in->blow > 0 ? lift : 0) - 70;                                     /* px/s */
+    int target_vy = in->blow > 0 ? pg_clamp(lift - 70, 0, 440) : 0;                                     /* px/s */
     if (g->dash_ms > 0) target_vy = 420;
+    if (!in->blow && g->dash_ms <= 0) g->vy = 0;
     g->vy += ((target_vy * PG_FP) - g->vy) * dt / 180;
     g->vy = pg_clamp(g->vy, -150 * PG_FP, 440 * PG_FP);
     /* ---- horizontal: tilt ---- */
@@ -625,13 +628,15 @@ static inline void pg_step(pg_game_t *g, const pg_input_t *in) {
         if (g->state != PG_PLAYING) return;
     }
 
+    /* Weather can reduce lift, but never makes a hovering player sink. */
+    if (g->vy < 0) g->vy = 0;
     g->px += g->vx * dt / 1000;
     g->py += g->vy * dt / 1000;
     g->px = pg_clamp(g->px, PG_FIELD_MIN * PG_FP, PG_FIELD_MAX * PG_FP);
     if (g->px == PG_FIELD_MIN * PG_FP || g->px == PG_FIELD_MAX * PG_FP) g->vx = 0;
     int ceiling = l->boss ? 300 : l->height + 120;
     if (g->py < 20 * PG_FP) { g->py = 20 * PG_FP; if (g->vy < 0) g->vy = 0; }
-    if (g->level_index >= 0 && g->py > ceiling * PG_FP) { g->py = ceiling * PG_FP; if (g->vy > 0) g->vy = 0; }
+    if (g->level_index >= 0 && g->py > ceiling * PG_FP) { g->py = ceiling * PG_FP; if (g->vy > 0 && !l->boss) g->vy = 0; }
 
     if (l->boss) pg_boss_step(g, dt);
     if (g->state != PG_PLAYING) return;

@@ -383,5 +383,12 @@ for code, size, x, y, w, h, adv in sorted(glyphs):
     header.append('    {%d,%d,%d,%d,%d,%d,%d},' % (code, size, x, y, w, h, adv))
 header.append('};')
 header.append('#define GLYPH_COUNT %d' % len(glyphs))
+# Right-edge progress arc, sampled once here instead of using per-pixel atan2.
+gauge = [(round(218 * math.cos(math.radians(300 + i))),
+          round(218 * math.sin(math.radians(300 + i)))) for i in range(121)]
+header.append('static const int16_t gauge_points[][2] = {' +
+              ','.join('{%d,%d}' % point for point in gauge) + '};')
+header.append('static const uint16_t circle_width[] = {' +
+              ','.join(str(round(1024 * math.sqrt(1 - (i / 64) ** 2))) for i in range(65)) + '};')
 (APP / 'assets_generated.h').write_text('\n'.join(header) + '\n', encoding='utf-8')
 print('resources', len(blob), 'bytes')

@@ -8,7 +8,7 @@
 #include "puff_game.h"
 
 /* ------------------------------------------------------------------ state */
-enum { S_TITLE, S_MAP, S_CARD, S_PLAY, S_PAUSE, S_RESULT, S_CAL, S_SETTINGS };
+enum { S_TITLE, S_MAP, S_CARD, S_PLAY, S_RESULT, S_CAL, S_SETTINGS };
 enum { KV_VERSION, KV_STARS0, KV_STARS1, KV_STARS2, KV_STARS3, KV_UNLOCK, KV_BEST_H, KV_BEST_S,
        KV_SETTINGS, KV_CAL_FLOOR, KV_CAL_REF, KV_COINS };
 #define SAVE_VERSION 2
@@ -18,6 +18,7 @@ static pg_game_t game;
 static int screen = S_TITLE, map_world, card_level, endless, result_stars, new_record;
 static int stars[PG_LEVEL_COUNT], unlocked, best_height, best_score, total_coins;
 static int fixed_mode, tilt_sens = 1, touch_blow, mic_running, mic_error;
+static int frame_ready = 1;
 static int touch_down, blow_level, tilt_level, feather_tap;
 static int32_t tilt_raw, tilt_zero;
 static int countdown_ms, result_ms, hint_ms, hint_id, anim, shake_ms, pop_ms, pop_x, pop_y;
@@ -32,12 +33,15 @@ static pg_level_t endless_level;
 static int endless_top;
 
 /* ------------------------------------------------------------------ drawing */
+typedef uint32_t __attribute__((may_alias)) command_word_t;
 static union { uint32_t aligned; uint8_t bytes[60000]; } cmd;
 static uint32_t used;
 static void emit(const void *src, uint32_t n) {
-    const uint8_t *p = src;
+    const command_word_t *p = src;
     if (used + n > sizeof(cmd.bytes)) return;
-    for (uint32_t i = 0; i < n; i++) cmd.bytes[used++] = p[i];
+    command_word_t *out = (command_word_t *)(cmd.bytes + used);
+    for (uint32_t i = 0; i < n / 4; i++) out[i] = p[i];
+    used += n;
 }
 static uint32_t rgb565(uint32_t c) { return ((c >> 8) & 0xf800u) | ((c >> 5) & 0x07e0u) | ((c >> 3) & 0x001fu); }
 static void rect(int x, int y, int w, int h, uint32_t c, int a) {
@@ -362,11 +366,6 @@ static void press(int x, int y) {
         touch_down = 1;
         if (game.has_feather && countdown_ms <= 0) feather_tap = 1;
         break;
-    case S_PAUSE:
-        if (hit(x, y, 233, 220, 180, 48)) { screen = S_PLAY; (void)mic_start(); countdown_ms = 900; }
-        else if (hit(x, y, 233, 280, 180, 48)) pending_level = card_level;
-        else if (hit(x, y, 233, 340, 180, 48)) screen = endless ? S_TITLE : S_MAP;
-        break;
     case S_RESULT:
         if (result_ms < 700) break;
         if (!endless && game.state == PG_WON && card_level + 1 < PG_LEVEL_COUNT && hit(x, y, 233, 300, 180, 48)) {
@@ -501,26 +500,38 @@ static void draw_player(void) {
     static const sprite_t *const colors[] = {&b_red, &b_blue, &b_green, &b_yellow, &b_purple};
     int x = (int)(game.px / PG_FP) + (shake_ms > 0 ? (anim / 15 % 2 ? 3 : -3) : 0);
     int y = sy((int)(game.py / PG_FP));
-    if (game.invuln_ms > 0 && anim / 70 % 2) return;
-    int n = game.balloons;
-    for (int i = 0; i < n; i++) {
-        int bx = x + (i - (n - 1) / 2) * 13 - (n % 2 ? 0 : 6), by = y - 52 - (i % 2) * 8 + pg_sin(anim + i * 200) * 3 / 1024;
-        rect(bx, by + 13, 1, y - 14 - by - 13, 0x6b6e78, 255);   /* string down to the antenna */
-        spr(colors[i], bx, by);
+    if (!(game.invuln_ms > 0 && anim / 70 % 2)) {
+        int n = game.balloons;
+        for (int i = 0; i < n; i++) {
+            int bx = x + (i - (n - 1) / 2) * 13 - (n % 2 ? 0 : 6), by = y - 52 - (i % 2) * 8 + pg_sin(anim + i * 200) * 3 / 1024;
+            rect(bx, by + 13, 1, y - 14 - by - 13, 0x6b6e78, 255);   /* string down to the antenna */
+            spr(colors[i], bx, by);
+        }
+        int kicking = (blow_level > 0 || (touch_down && (touch_blow || mic_error))) && anim / 120 % 2;
+        spr(game.invuln_ms > 800 ? &hero2 : kicking ? &hero1 : &hero0, x, y);
+        if (game.shield_ms > 0) arc(x, y - 26, 44, 3, 0, 360, 0x7fe0ff);
+        if (game.dash_ms > 0) for (int k = 0; k < 3; k++) rect(x - 10 + k * 10, y + 20 + k * 6, 3, 18, 0xffffff, 160);
     }
-    int kicking = (blow_level > 0 || (touch_down && (touch_blow || mic_error))) && anim / 120 % 2;
-    spr(game.invuln_ms > 800 ? &hero2 : kicking ? &hero1 : &hero0, x, y);
-    if (game.shield_ms > 0) arc(x, y - 26, 44, 3, 0, 360, 0x7fe0ff);
-    if (game.dash_ms > 0) for (int k = 0; k < 3; k++) rect(x - 10 + k * 10, y + 20 + k * 6, 3, 18, 0xffffff, 160);
     if (game.level->dark) {
-        /* darkness: four rectangles around a window around the player */
-        int r = game.light;
-        rect(0, 0, 466, y - 26 - r > 0 ? y - 26 - r : 0, 0x05061a, 235);
-        rect(0, y - 26 + r, 466, 466, 0x05061a, 235);
-        rect(0, y - 26 - r, x - r > 0 ? x - r : 0, 2 * r, 0x05061a, 235);
-        rect(x + r, y - 26 - r, 466, 2 * r, 0x05061a, 235);
-        arc(x, y - 26, r * 142 / 100 + 4, r * 42 / 100 + 6, 0, 360, 0x05061a);   /* fills the square's corners */
+        /* Horizontal spans keep the circular view without a per-pixel ring test. */
+        int r = game.light, cy = y - 26;
+        rect(0, 0, 466, cy - r, 0x05061a, 255);
+        rect(0, cy + r, 466, 466 - cy - r, 0x05061a, 255);
+        for (int dy = -r; dy < r; dy += 4) {
+            int h = r - dy < 4 ? r - dy : 4;
+            int mid = dy + h / 2;
+            int half = r * circle_width[pg_abs(mid) * 64 / r] / 1024;
+            rect(0, cy + dy, x - half, h, 0x05061a, 255);
+            rect(x + half, cy + dy, 466 - x - half, h, 0x05061a, 255);
+        }
     }
+}
+
+static void progress_gauge(int first, int thickness, uint32_t color) {
+    /* Precomputed arc points avoid host atan2 work on every display pixel. */
+    for (int i = first; i <= 120; i++)
+        rect(233 + gauge_points[i][0] - thickness / 2,
+             233 + gauge_points[i][1] - thickness / 2, thickness, thickness, color, 255);
 }
 
 static void hud(void) {
@@ -534,17 +545,17 @@ static void hud(void) {
         int left = (game.time_limit_ms - game.time_ms) / 1000;
         number(left, 354, 88);
         int frac = left * 1000 / (game.time_limit_ms ? game.time_limit_ms / 120 : 1);
-        arc(233, 233, 222, 7, 300, 420, 0x2e2440);
-        if (frac > 0) arc(233, 233, 220, 4, 420 - (frac > 120 ? 120 : frac), 420, left < 10 ? 0xff5d6c : 0xffffff);
+        progress_gauge(0, 7, 0x2e2440);
+        if (frac > 0) progress_gauge(120 - (frac > 120 ? 120 : frac), 4, left < 10 ? 0xff5d6c : 0xffffff);
     } else if (!game.level->boss) {
         int h = endless ? (int)(game.py / PG_FP) / 10 : 0;
         if (endless) { number(h, 340, 88); spr(&d_m, 372, 88); }
         else {
             int prog = (int)(game.py / PG_FP) * 100 / game.level->height;
             /* climb gauge on the right edge: bottom (60 deg) to top (-60 deg) */
-            arc(233, 233, 222, 7, 300, 420, 0x2e2440);
+            progress_gauge(0, 7, 0x2e2440);
             int p = prog > 100 ? 100 : prog;
-            if (p > 0) arc(233, 233, 220, 4, 420 - 120 * p / 100, 420, 0xffd23f);
+            if (p > 0) progress_gauge(120 - 120 * p / 100, 4, 0xffd23f);
         }
     }
     if (game.has_feather) { round_rect(213, 400, 40, 40, 20, 0x2e2440); spr(&i_feather, 233, 420); }
@@ -647,13 +658,7 @@ static void play_screen(void) {
         round_rect(233 - hw / 2, 372, hw, 36, 18, 0x2e2440);
         text(233, 389, hw, 18, 0xffffff, hints[hint_id]);
     }
-    if (screen == S_PAUSE) {
-        rect(0, 0, 466, 466, 0x000000, 140);
-        text(233, 150, 200, 36, 0xffffff, "暂停");
-        button(233, 220, 180, 0xff8a3d, "继续");
-        button(233, 280, 180, 0x4fb3ff, "重试");
-        button(233, 340, 180, 0x8a8fa8, endless ? "主页" : "地图");
-    }
+
 }
 static void result_screen(void) {
     background(world_of_current(), game.camera);
@@ -717,27 +722,25 @@ int32_t tinyrt_init(int32_t width, int32_t height) {
     if (gfx_pal_upload(1, 0, 2, glyph_palette)) return -1;
     if (gfx_tex_upload(1, TINYRT_GFX_INDEX8, TEXT_ATLAS_WIDTH, TEXT_ATLAS_HEIGHT, (const void *)TEXT_ATLAS_OFFSET,
                        TEXT_ATLAS_WIDTH * TEXT_ATLAS_HEIGHT, TINYRT_GFX_FROM_ASSET)) return -1;
-    if (input_events(TINYRT_INPUT_LIFECYCLE_MASK | TINYRT_INPUT_USER_KEY_MASK | TINYRT_IN_MOTION)) return -1;
+    if (input_events(TINYRT_INPUT_LIFECYCLE_MASK | TINYRT_IN_MOTION)) return -1;
     load();
     last_ms = now_ms();
     if (!calibration.ok && !touch_blow) {
         screen = S_CAL; cal_step = 0; cal_window = (ta_calib_window_t){0};
         (void)mic_begin();
     }
-    return clock_interval(20);
+    return clock_interval(33);
 }
 
 int32_t tinyrt_event(int32_t kind, int32_t x, int32_t y, int32_t arg) {
-    if (kind == TINYRT_TOUCH_PRESS) press(x, y);
+    if (kind == TINYRT_TOUCH_PRESS) { press(x, y); frame_ready = 1; }
     else if (kind == TINYRT_TOUCH_RELEASE || kind == TINYRT_TOUCH_CANCEL) touch_down = 0;
     else if (kind == TINYRT_EV_MOTION) {
-        /* Badge held upright: screen-right tilt is -X on the S31 sensor. */
-        tilt_raw = -x;
+        /* S31 screen-right tilt follows the host X axis. */
+        tilt_raw = x;
         tilt_update();
-    } else if (kind == TINYRT_USER_KEY_EVENT && y == 1) {
-        if (screen == S_PLAY) { screen = S_PAUSE; mic_stop(); touch_down = 0; }
-        else if (screen == S_PAUSE) { screen = S_PLAY; (void)mic_start(); countdown_ms = 900; }
     } else if (kind == TINYRT_CLOCK_EVENT) {
+        frame_ready = 1;
         uint32_t now = now_ms(), delta = now - last_ms;
         last_ms = now;
         if (delta > 100) delta = 100;
@@ -765,12 +768,14 @@ int32_t tinyrt_event(int32_t kind, int32_t x, int32_t y, int32_t arg) {
 }
 
 int32_t tinyrt_render(void) {
+    if (!frame_ready) return draw_skip();
+    frame_ready = 0;
     used = 0;
     switch (screen) {
     case S_TITLE: title_screen(); break;
     case S_MAP: map_screen(); break;
     case S_CARD: card_screen(); break;
-    case S_PLAY: case S_PAUSE: play_screen(); break;
+    case S_PLAY: play_screen(); break;
     case S_RESULT: result_screen(); break;
     case S_CAL: cal_screen(); break;
     case S_SETTINGS: settings_screen(); break;
