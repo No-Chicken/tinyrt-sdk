@@ -24,19 +24,10 @@ python tools/tinyrt.py pack examples/wave_sim
 python tools/tinyrt.py validate examples/wave_sim/build/demo.wave-sim.trpkg
 ```
 
-临时性能包使用同一应用 ID 和 revision，增加 metrics 显示：
-
-```powershell
-python examples/wave_sim/tools/build_debug.py
-python tools/tinyrt.py build build/diagnostic-wave --cc path/to/zig.exe
-python tools/tinyrt.py pack build/diagnostic-wave
-```
-
-测量结束恢复普通包，不安装额外应用。metrics 的 P/R 为毫秒分辨率的 Guest 物理和组合时间，提交 FPS 与真实面板帧率不同。
+性能测量使用宿主串口统计，见 [性能测量](../../docs/performance.md)。
 
 ## 真机验证
 
 - 扫描并安装普通 AOT 包，查询 APP_INFO 核对包身份与实际后端后启动。
 - 人工验证倾斜方向、长按换色、触摸取消、掀浪、退出和主题循环。
-- 用宿主日志区分 Guest 提交、绘制和面板完成；桌面耗时与 metrics 提交 FPS 不能代替面板帧率。
-- 临时测量使用同 ID、同版本的 metrics 包，结束后恢复普通包。
+- 用宿主日志区分 Guest 提交、绘制和面板完成；桌面耗时与 Guest 提交 FPS 不能代替面板帧率。

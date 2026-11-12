@@ -49,11 +49,6 @@ int main(void) {
 #else
     assert(sx==700&&sy==-300);
 #endif
-#ifdef WAVE_METRICS
-    metrics_reset(0);physics_ms=240;physics_count=240;compose_ms=120;compose_count=60;present_count=59;
-    assert(metrics_draw(2000)==0&&metrics_ready&&measured_fps==30);
-    assert(measured_physics10==10&&measured_compose10==20&&present_count==0);
-#endif
     static wave_state_t sliced,whole;
     wave_reset(&sliced);wave_reset(&whole);
     for(int n=0;n<100;n++) {
@@ -97,11 +92,7 @@ int main(void) {
         replay_skips=skips;
         /* An unchanged composed scene must preserve the existing panel. */
         if(scene%11==0){unsigned before=skips;frame--;compose();assert(tinyrt_render()==0);
-#ifndef WAVE_METRICS
             assert(skips==before+1);
-#else
-            (void)before;
-#endif
             replay_skips=skips;
         }
         if(scene%3==2||scene==239){

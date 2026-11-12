@@ -64,38 +64,6 @@ static int fast_backend,physics_active,compose_stage,compose_row;
 static unsigned render_theme;
 static int background_valid,last_marker_x,last_marker_y;
 static unsigned background_theme;
-#ifdef WAVE_METRICS
-static uint32_t stats_since,physics_ms,compose_ms,physics_count,compose_count,present_count;
-static uint32_t measured_fps,measured_physics10,measured_compose10;
-static int metrics_ready;
-static void metrics_reset(uint32_t now){
-    stats_since=now;physics_ms=compose_ms=physics_count=compose_count=present_count=0;
-    measured_fps=measured_physics10=measured_compose10=0;metrics_ready=0;
-}
-static unsigned number(char *s,unsigned n,uint32_t v){
-    char digits[10];unsigned k=0;do{digits[k++]=(char)('0'+v%10);v/=10;}while(v);
-    while(k)s[n++]=digits[--k];return n;
-}
-static unsigned timing(char *s,unsigned n,uint32_t v){n=number(s,n,v/10);s[n++]='.';s[n++]=(char)('0'+v%10);return n;}
-static int metrics_draw(uint32_t now){
-    present_count++;uint32_t span=now-stats_since;
-    if(span>=2000u){
-        measured_fps=present_count*1000u/span;
-        measured_physics10=physics_count?physics_ms*10u/physics_count:0;
-        measured_compose10=compose_count?compose_ms*10u/compose_count:0;
-        stats_since=now;physics_ms=compose_ms=physics_count=compose_count=present_count=0;metrics_ready=1;
-    }
-    char s[64];unsigned n=0;
-    if(!metrics_ready){const char *p="Measuring...";while(*p)s[n++]=*p++;}
-    else {
-        const char *p="FPS ";while(*p)s[n++]=*p++;n=number(s,n,measured_fps);
-        p="  P ";while(*p)s[n++]=*p++;n=timing(s,n,measured_physics10);
-        p="  R ";while(*p)s[n++]=*p++;n=timing(s,n,measured_compose10);
-        p=" ms";while(*p)s[n++]=*p++;
-    }
-    return draw_text_box(43,300,380,36,s,n,0xffffff,18,1);
-}
-#endif
 static void next_theme(uint32_t now){theme=(theme+1)%5;toast_ms=now;theme_changed=1;}
 /* 俯视 IMU：0 度为 1 号脚左上，180 度为右下。
  * S3 与 S31 V2 实测均为 180 度：X 正向、Y 反向（S31 于 2026-10-11 确认）。 */
@@ -210,32 +178,14 @@ static int compose_chunk(void) {
     frame++;frame_ready=1;compose_stage=-1;return 1;
 }
 static int compose_work(void){
-#ifdef WAVE_METRICS
-    uint32_t started=now_ms();
-#endif
     int done=compose_chunk();
-#ifdef WAVE_METRICS
-    compose_ms+=now_ms()-started;if(done)compose_count++;
-#endif
     return done;
 }
 static void physics_step(void){
-#ifdef WAVE_METRICS
-    uint32_t started=now_ms();
-#endif
     wave_step(&fluid,WAVE_STEP_DT);
-#ifdef WAVE_METRICS
-    physics_ms+=now_ms()-started;physics_count++;
-#endif
 }
 static int physics_work(void){
-#ifdef WAVE_METRICS
-    uint32_t started=now_ms();
-#endif
     int done=wave_work(&fluid,16);
-#ifdef WAVE_METRICS
-    physics_ms+=now_ms()-started;if(done)physics_count++;
-#endif
     return done;
 }
 static void compose(void){compose_begin();while(!compose_work()){} }
@@ -247,9 +197,6 @@ int32_t tinyrt_init(int32_t w,int32_t h) {
     wave_reset(&fluid);theme=frame=accumulator=0;touch_down=theme_changed=frame_ready=0;
     background_valid=0;
     last_ms=render_ms=now_ms();toast_ms=last_ms-1500u;
-#ifdef WAVE_METRICS
-    metrics_reset(last_ms);
-#endif
     if(input_events(TINYRT_INPUT_LIFECYCLE_MASK|TINYRT_IN_MOTION)!=0)return -1;
     fast_backend=runtime_backend();physics_active=0;compose_begin();
     if(fast_backend)compose();
@@ -296,9 +243,6 @@ int32_t tinyrt_render(void) {
             }
             if(toast!=submitted_toast)damage_add(&d,133,126,200,36);
         }
-#ifdef WAVE_METRICS
-        damage_add(&d,0,0,466,466);
-#endif
         if(!d.valid)return draw_skip();
         if(gfx_failed||gfx_begin(0)!=0||gfx_submit(graphics.bytes,graphics_length)!=0||
            gfx_damage(d.x,d.y,d.right-d.x,d.bottom-d.y)!=0||gfx_end()!=0)return -1;
@@ -313,9 +257,6 @@ int32_t tinyrt_render(void) {
         unsigned n=0;while(themes[theme].name[n])n++;
         if(draw_text_box(133,126,200,36,themes[theme].name,n,themes[theme].ink,24,1)!=0)return -1;
     }
-#ifdef WAVE_METRICS
-    return metrics_draw(now_ms());
-#endif
     return 0;
 }
 int32_t tinyrt_stop(void){touch_down=0;return 0;}

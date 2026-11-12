@@ -19,11 +19,10 @@ for variant,defines in [('default',[]),('production',['-DWAVE_N=400','-DWAVE_GRI
         str(root/'tests/wave_sim/test_settling.c'),str(root/'examples/wave_sim/wave_physics.c'),
         '-o',str(executable)],check=True,env=env)
     subprocess.run([str(executable)],check=True,timeout=120)
-for variant,defines in [('wave',[]),('wave-metrics',['-DWAVE_METRICS=1']),
+for variant,defines in [('wave',[]),
                         ('wave-s31',['-DWAVE_IMU_MOUNT_DEG=0']),
                         ('wave-400',['-DWAVE_N=400']),
                         ('wave-coarse',['-DWAVE_GRID=20','-DWAVE_N=130']),
-                        ('wave-coarse-metrics',['-DWAVE_GRID=20','-DWAVE_N=130','-DWAVE_METRICS=1']),
                         ('wave-coarse-s31',['-DWAVE_GRID=20','-DWAVE_N=130','-DWAVE_IMU_MOUNT_DEG=0'])]:
     executable=out/f'test-{variant}.exe'
     subprocess.run(command+['-std=c11','-O2','-UNDEBUG','-Wall','-Wextra','-Werror']+defines+[

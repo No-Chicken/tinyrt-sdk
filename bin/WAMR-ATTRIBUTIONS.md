@@ -46,11 +46,11 @@ The WAMR fast interpreter is a clean room development. We would acknowledge the 
 
 ### contiki-ng
 
-[LICENSE](./core/shared/coap/er-coap/LICENSE.md)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/shared/coap/er-coap/LICENSE.md)
 
 ### freebsd libm
 
-[COPYRIGHT](./core/shared/platform/common/math/COPYRIGHT)
+[COPYRIGHT](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/shared/platform/common/math/COPYRIGHT)
 
 ### LVGL
 
@@ -60,19 +60,19 @@ The WAMR fast interpreter is a clean room development. We would acknowledge the 
 
 ### llvm
 
-[LICENSE](./LICENSE)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/LICENSE)
 
 ### wasm-c-api
 
-[LICENSE](./samples/wasm-c-api/src/LICENSE)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/samples/wasm-c-api/src/LICENSE)
 
 ### wasmtime
 
-[LICENSE](./core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/LICENSE)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/LICENSE)
 
-[LICENSE](./core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/LICENSE)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/LICENSE)
 
-[LICENSE](./core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/include/LICENSE)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/include/LICENSE)
 
 ### zephyr
 
@@ -80,26 +80,26 @@ The WAMR fast interpreter is a clean room development. We would acknowledge the 
 
 ### libuv
 
-[LICENSE](./core/iwasm/libraries/libc-uvwasi/LICENSE_LIBUV)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/iwasm/libraries/libc-uvwasi/LICENSE_LIBUV)
 
 ### uvwasi
 
-[LICENSE](./core/iwasm/libraries/libc-uvwasi/LICENSE_UVWASI)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/iwasm/libraries/libc-uvwasi/LICENSE_UVWASI)
 
 ### asmjit
 
-[LICENSE](./core/iwasm/fast-jit/cg/LICENSE_ASMJIT)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/iwasm/fast-jit/cg/LICENSE_ASMJIT)
 
 ### zydis
 
-[LICENSE](./core/iwasm/fast-jit/cg/LICENSE_ZYDIS)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/iwasm/fast-jit/cg/LICENSE_ZYDIS)
 
 ### NuttX ELF headers
 
-[LICENSE](./core/iwasm/aot/debug/LICENSE_NUTTX)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/iwasm/aot/debug/LICENSE_NUTTX)
 
-[NOTICE](./core/iwasm/aot/debug/NOTICE_NUTTX)
+[NOTICE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/core/iwasm/aot/debug/NOTICE_NUTTX)
 
 ### Dhrystone
 
-[LICENSE](./tests/benchmarks/dhrystone/LICENSE)
+[LICENSE](https://github.com/bytecodealliance/wasm-micro-runtime/blob/25bd7eb63e828e4bd242cc9b38d260b4b31c6605/tests/benchmarks/dhrystone/LICENSE)

@@ -1,7 +1,7 @@
 {
   "app_id": "puff",
   "title": "Puff",
-  "version": 4,
+  "version": 5,
   "abi_version": 1,
   "min_api_level": 3,
   "permissions": 127,

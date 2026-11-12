@@ -593,7 +593,7 @@ static void title_screen(void) {
     button(233, 262, 180, 0xff8a3d, "冒险");
     button(233, 318, 180, unlocked >= 4 ? 0x4fb3ff : 0x8a8fa8, "无尽");
     button(233, 374, 180, 0x5ad18a, "设置");
-    if (mic_error) text(233, 420, 320, 18, 0xffffff, "麦克风不可用，可在设置中用按屏代替");
+    if (mic_error) text(233, 420, 320, 18, 0xffffff, "吹气不可用，请开启按屏代吹");
 }
 static void map_screen(void) {
     static const char *const worlds[] = {"花园", "云海", "夜空", "风暴"};
@@ -686,7 +686,7 @@ static void cal_screen(void) {
     background(1, 0);
     round_rect(73, 110, 320, 250, 30, 0x2e2440);
     round_rect(77, 112, 312, 244, 28, 0xfff7e8);
-    if (mic_error) { text(233, 200, 300, 20, 0x2e2440, "麦克风不可用"); text(233, 240, 300, 16, 0x5c5470, "可在设置中打开按屏代吹"); text(233, 320, 300, 16, 0x5c5470, "点击返回"); return; }
+    if (mic_error) { text(233, 200, 300, 20, 0x2e2440, "吹气感应暂不可用"); text(233, 240, 300, 16, 0x5c5470, "可在设置中打开按屏代吹"); text(233, 320, 300, 16, 0x5c5470, "点击返回"); return; }
     static const char *const steps[] = {"请保持安静", "对着屏幕持续吹气", "标定完成"};
     text(233, 160, 300, 24, 0x2e2440, steps[cal_step]);
     int prog = cal_window.frames * 100 / (cal_step == 1 ? 30 : 100);
@@ -703,7 +703,7 @@ static void settings_screen(void) {
     static const char *const sens[] = {"倾斜灵敏度：低", "倾斜灵敏度：中", "倾斜灵敏度：高"};
     background(1, 0);
     text(233, 92, 200, 24, 0x2e2440, "设置");
-    button(233, 150, 220, 0xff8a3d, "重新标定麦克风");
+    button(233, 150, 220, 0xff8a3d, "吹气标定");
     button(233, 206, 220, 0x4fb3ff, fixed_mode ? "吹气：匀速" : "吹气：力度");
     button(233, 262, 220, 0x5ad18a, sens[tilt_sens]);
     button(233, 318, 220, 0xb98bff, touch_blow ? "按屏代吹：开" : "按屏代吹：关");

@@ -72,6 +72,27 @@ class SDKTests(unittest.TestCase):
         self.cli('new',dest,'--app-id','demo.new',success=False)
         self.assertEqual(json.loads((dest/'app.json').read_text())['title'],'New')
 
+    def test_new_excludes_template_build_outputs(self):
+        isolated = self.project / 'sdk'
+        (isolated / 'tools').mkdir(parents=True)
+        for name in ('tinyrt.py', 'package.py'):
+            shutil.copyfile(ROOT / 'tools' / name, isolated / 'tools' / name)
+        shutil.copytree(ROOT / 'contracts', isolated / 'contracts')
+        shutil.copyfile(ROOT / 'VERSION', isolated / 'VERSION')
+        template = isolated / 'templates/minimal'
+        shutil.copytree(ROOT / 'templates/minimal', template,
+                        ignore=shutil.ignore_patterns('build', 'release', 'zig-cache', '__pycache__'))
+        for name in ('build', 'release', 'zig-cache', '__pycache__'):
+            (template / name).mkdir()
+            (template / name / 'stale.txt').write_text('generated output', encoding='utf-8')
+        project = self.project / 'clean-app'
+        result = subprocess.run([sys.executable, str(isolated / 'tools/tinyrt.py'),
+                                 'new', str(project)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((project / 'main.c').is_file())
+        for name in ('build', 'release', 'zig-cache', '__pycache__'):
+            self.assertFalse((project / name).exists(), name)
+
     def test_build_pack_validate_from_standalone_copy(self):
         cc=os.environ.get('TINYRT_CC') or shutil.which('clang') or shutil.which('zig')
         if not cc: self.skipTest('set TINYRT_CC to run real freestanding build')

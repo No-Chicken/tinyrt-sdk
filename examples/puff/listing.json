@@ -2,7 +2,7 @@
   "summary": "吹气让气球上升，倾斜左右移动。4 个世界 16 关、4 个首领和无尽模式。",
   "category": "game",
   "tags": [
-    "麦克风",
+    "吹气",
     "气球",
     "像素",
     "冒险"
@@ -13,7 +13,7 @@
     "短按设备按键返回应用大厅；设置里可打开按屏代吹"
   ],
   "publisher_display": "EEBadge 示例",
-  "release_notes": "v4：修复短按返回、停吹悬停和倾斜方向；减少重复帧，优化弧形进度条绘制，修复严重卡顿。",
+  "release_notes": "v5：标定入口统一为「吹气标定」，调整吹气感应相关提示。",
   "rights": {
     "status": "unverified",
     "note": "美术、字形和音效由 prepare_assets.py 用代码生成，字形取自本机 Microsoft YaHei；见 LICENSES.md，发布前由发布方确认。"

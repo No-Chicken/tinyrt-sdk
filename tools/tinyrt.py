@@ -277,7 +277,9 @@ def main(argv=None):
             if args.directory.exists(): raise ValueError('destination already exists')
             app_id=args.app_id or re.sub(r'[^a-z0-9._-]+','-',args.directory.resolve().name.lower()).strip('-')[:31]
             with tempfile.TemporaryDirectory(prefix='tinyrt-new-') as temp:
-                staged=Path(temp)/'app';shutil.copytree(ROOT/'templates'/args.template,staged)
+                staged=Path(temp)/'app'
+                shutil.copytree(ROOT/'templates'/args.template,staged,
+                                ignore=shutil.ignore_patterns('build','release','zig-cache','__pycache__','*.pyc'))
                 m=json.loads((staged/'app.json').read_text(encoding='utf-8-sig'))
                 m.update(app_id=app_id,title=args.title)
                 (staged/'app.json').write_bytes((json.dumps(m,indent=2)+'\n').encode('utf-8'))

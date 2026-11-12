@@ -8,3 +8,5 @@
 - 应用版本由作者递增。最低固件由应用使用的 API Level 决定，见[兼容矩阵](specs/compat-matrix.md)。
 - 打包和预览后在设备验证输入、退出和存档。板上运行核对 APP_INFO 的 selected_backend=2、fallback_reason=0。
 - 发布 ZIP 的文件、授权说明和校验要求见[发布规范](specs/developer-publishing-v1.md)。
+
+清理约定：AI 方案在对话中确认，不在工作区留存计划、设计讨论或验收报告。临时验证程序用完删除；维护现有 tests 中仍有效的回归。正式说明同步更新原文档。

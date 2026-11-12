@@ -31,6 +31,7 @@ Wave 为 40×40 网格、400 粒子的二维水面效果，见 [Wave 示例](exa
 
 ```powershell
 python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe
+python tools/tinyrt.py release examples/puff --cc path/to/zig.exe
 ```
 
 设置 `TINYRT_CC` 后也可执行 `make release APP=examples/flappy`。
@@ -42,7 +43,9 @@ ZIP 包含应用包、封面、截图、README、CHANGELOG、LICENSES、清单�
 release 默认为 wasm-aot，`--target` 选择 AOT 设备目标（默认 `esp32s31`，使用仓库内 `tools/toolchains/esp32s31/windows-x64/wamrc.exe`）。
 `--output` 指定输出目录。`.wasm` 用于编译和桌面预览，AOT 包内保留源 Wasm 供复编译比对。S31 安装要求兼容的 AOT section。
 失败保留此前完整交付件；诊断报告写入应用 `build/release-report.json`（安全可写时）。
-三个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。
+三个 `new` 模板均带齐发布资料和占位封面，创建后即可运行 release。新建时排除 build、release、zig-cache 和 Python 缓存。
+
+`pack` 输出供设备安装的 `.trpkg`；上传网站使用 `release` 输出的 ZIP，例如 `examples/puff/release/puff-v<version>-wasm-aot.zip`。ZIP 由工具统一生成清单、文件摘要和校验结果。
 
 开发者维护 listing.json、三个 Markdown 和封面。完整 listing 示例：
 
@@ -202,8 +205,8 @@ PNG 默认生成小端 RGB565（忽略透明度）。`index8` 输出逐像素索
 
 ## 示例和安装
 
-- [Flappy Bird / 圆屏 Flappy Bird](examples/flappy/README.md)：466×466 满屏像素场景，触摸或 KEY1 起跳、碰撞重试、最高分保存。使用经典精灵与音效；素材授权状态见示例 NOTICE。
-- [Wave](examples/wave_sim/README.md)：圆屏二维粒子水面，支持 IMU 重力、长按换色与 KEY1 掀浪。
+- [Flappy Bird / 圆屏 Flappy Bird](examples/flappy/README.md)：466×466 满屏像素场景，触摸起跳、碰撞重试、最高分保存，短按 KEY1 返回大厅。使用经典精灵与音效；素材授权状态见示例 NOTICE。
+- [Wave](examples/wave_sim/README.md)：圆屏二维粒子水面，支持 IMU 重力、点击掀浪、长按换色，短按 KEY1 返回大厅。
 - [Pixel Quest](examples/pixel_quest/README.md)：原创横版平台跳跃，倾斜或按住左右侧移动、点按起跳，TILEMAP 关卡窗口加精灵，美术与音效由脚本原创生成。
 - [Puff](examples/puff/README.md)：Level 3 吹气气球冒险，倾斜移动，含四个世界 16 关、首领战和无尽模式。
 

@@ -20,5 +20,4 @@ BSP 将不同板子的安装方向转换到旧板坐标；应用统一使用屏�
 [{"ms": 100, "kind": "motion", "x": -700, "y": 0, "arg": 1000}]
 ```
 
-Wave 的 `tools/live_preview.py --runner <tinyrt-run.exe>` 用方向键生成运动事件，
-Space 模拟 KEY1，鼠标模拟触摸。画面来自真实 WAMR 解释器，不代表真机性能。
+使用 `python tools/tinyrt.py run examples/wave_sim --events examples/wave_sim/events.json --frames 0,1000,3150,5500` 回放运动与触摸事件。交互联调使用 `dev --watch`；桌面解释器耗时不代表真机性能。
