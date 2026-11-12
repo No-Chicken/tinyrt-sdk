@@ -6,7 +6,7 @@
 
 客户版固件在大厅打开“添加”页，运行 `python tools/tinyrt.py install <pkg> --transport ble`，在设备上确认后从大厅启动。
 
-远程安装确认弹窗会列出应用申请的权限。使用旧工具时，弹窗提示发送端未提供权限。
+远程安装由设备确认；应用权限只用于协议与运行时校验。
 
 在“添加”页运行 `python tools/tinyrt.py info` 可读取本次开机最近一次应用崩溃的包身份、回调阶段和原因。连接参数与 `install` 相同。设备保留一条记录，后续崩溃会覆盖它。运行时能定位出错指令时显示函数索引和 PC，缺失的字段显示“未知”。
 
@@ -205,7 +205,7 @@ PNG 默认生成小端 RGB565（忽略透明度）。`index8` 输出逐像素索
 - [Flappy Bird / 圆屏 Flappy Bird](examples/flappy/README.md)：466×466 满屏像素场景，触摸或 KEY1 起跳、碰撞重试、最高分保存。使用经典精灵与音效；素材授权状态见示例 NOTICE。
 - [Wave](examples/wave_sim/README.md)：圆屏二维粒子水面，支持 IMU 重力、长按换色与 KEY1 掀浪。
 - [Pixel Quest](examples/pixel_quest/README.md)：原创横版平台跳跃，倾斜或按住左右侧移动、点按起跳，TILEMAP 关卡窗口加精灵，美术与音效由脚本原创生成。
-- [Puff](examples/puff/README.md)：Level 3 吹气气球游戏，默认力度模式，停止吹气时悬停，25 秒内躲过黄蜂飞向云顶。
+- [Puff](examples/puff/README.md)：Level 3 吹气气球冒险，倾斜移动，含四个世界 16 关、首领战和无尽模式。
 
 BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需要 Bleak；Windows 配对还需要对应 WinRT Python 包。设备配对和具体传输 profile 由产品配置提供，应用构建不依赖这些包。
 

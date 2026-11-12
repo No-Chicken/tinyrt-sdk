@@ -1,10 +1,10 @@
 {
   "app_id": "puff",
   "title": "Puff",
-  "version": 2,
+  "version": 3,
   "abi_version": 1,
   "min_api_level": 3,
-  "permissions": 75,
+  "permissions": 127,
   "memory_pages": 4,
   "budget": 100000,
   "sources": [
