@@ -148,7 +148,7 @@ def usb_ports():
 
 
 def resolve_transport(mode, port=None, address=None, *, scan=False, debug_probe=None):
-    """只探测 EEBadge 协议身份；一旦选定介质，传输失败不切换。"""
+    """只探测 Magie 协议身份；一旦选定介质，传输失败不切换。"""
     if port and address:
         raise ValueError('--port 与 --address 不能同时使用')
     if mode != 'auto':

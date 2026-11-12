@@ -11,7 +11,7 @@
     "失败后点击橙色 OK 重开",
     "短按 KEY1 返回应用大厅；支持新固件边缘侧滑返回"
   ],
-  "publisher_display": "EEBadge 示例",
+  "publisher_display": "Magie 示例",
   "release_notes": "v6：KEY1 短按返回应用大厅，保留触摸玩法，释放按键给宿主。",
   "full_bleed": true,
   "rights": {
