@@ -79,7 +79,7 @@ at_ms 与 file 二选一，1–6 张。封面必须为 210×210 RGB/RGBA PNG、�
 
 Windows x64 的已打包 `wamrc.exe` 还需要 Microsoft Visual C++ v14 x64 运行库（14.51或以上）；可安装[微软最新运行库](https://learn.microsoft.com/zh-CN/cpp/windows/latest-supported-vc-redist)。已打包桌面 runner 使用静态CRT。
 
-需要 Python 3.10+，以及可生成 wasm32 的 Clang 或 Zig 0.13.0。安装 `requirements.txt`（打包用 cryptography，PNG 用 Pillow）；用 `--cc` 或 `TINYRT_CC` 指定编译器。AI 与人都可以从 [AGENTS.md](AGENTS.md) 开始，各导入函数的签名、权限、调用阶段、限额和错误处理见 [API 参考](docs/api.md)。
+需要 Python 3.10+，以及可生成 wasm32 的 Clang 或 Zig 0.13.0。安装 `requirements.txt`（打包用 cryptography，PNG 用 Pillow）；用 `--cc` 或 `TINYRT_CC` 指定编译器。各导入函数的签名、权限、调用阶段、限额和错误处理见 [API 参考](docs/api.md)。
 
 ```powershell
 python -m pip install -r requirements.txt
