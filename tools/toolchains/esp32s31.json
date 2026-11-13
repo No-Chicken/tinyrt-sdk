@@ -25,7 +25,7 @@
   "compat_id": "4da7807470d6df3e05b2519132b9a8e836b4df20e6d568e72d714f9d8dd8a32c",
   "patch_sha256": "98c37c763a258ca281bdc474ec66ba74e2c975d7fd6131c48447304e74fb887b",
   "compiler": {
-    "sha256": "9b7c129f2db705f56ab660d89c16ec0325f740d6d762fa14ec746554973934e8",
+    "sha256": "cd19490b3b11da983bd674707f8e31ab6b62cd797e856d8fe1b363001fa9eeac",
     "version": "wamrc 2.4.5",
     "size": 42041856
   },

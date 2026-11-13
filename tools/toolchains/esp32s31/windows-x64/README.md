@@ -19,7 +19,7 @@ if ((Get-Item $compiler).Length -ne $pin.compiler.size) { throw 'Compiler size m
 
 SDK 打包时也会强制核验编译器 SHA-256。版本号相同不代表文件相同；自行重编译的文件不能直接替换这份固定工具。此工具需要 Microsoft Visual C++ v14 x64 运行库，要求见 [SDK README](../../../../README.md)。
 
-编译器内部含有原构建环境的源码诊断路径，其中保留旧产品名。这些字符串用于编译器报错定位，不要求用户磁盘存在对应目录；改写或重编译二进制会改变固定摘要，须连同工具链身份与 AOT 兼容配置一起重新验证，因此产品更名时保留原文件。
+编译器源码诊断路径规范化为 `wamr/core/iwasm/aot/aot_intrinsic.c`，provenance 的 `postprocess` 记录原始文件和处理后的摘要、处理范围及脚本身份。此处理保持二进制布局与 AOT 兼容标识不变；发布前须确认生成的 AOT 代码逐字节一致。
 
 ## 构建 S31 应用包
 

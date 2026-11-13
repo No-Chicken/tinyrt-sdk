@@ -38,7 +38,7 @@
   ],
   "compiler": {
     "path": "<build-root>\\wamrc-build-riscv\\wamrc.exe",
-    "sha256": "9b7c129f2db705f56ab660d89c16ec0325f740d6d762fa14ec746554973934e8",
+    "sha256": "cd19490b3b11da983bd674707f8e31ab6b62cd797e856d8fe1b363001fa9eeac",
     "version": "wamrc 2.4.5"
   },
   "host": {
@@ -191,6 +191,17 @@
     {
       "path": "WAMR-LICENSE.txt",
       "sha256": "af3f7d967a7b633e4965cb6ad506cb94ebe8c527b8525baf4c8f16268866263f"
+    }
+  ],
+  "postprocess": [
+    {
+      "operation": "normalize-source-diagnostic-path",
+      "offset": 29812144,
+      "length": 110,
+      "replacement": "wamr/core/iwasm/aot/aot_intrinsic.c",
+      "input_sha256": "9b7c129f2db705f56ab660d89c16ec0325f740d6d762fa14ec746554973934e8",
+      "output_sha256": "cd19490b3b11da983bd674707f8e31ab6b62cd797e856d8fe1b363001fa9eeac",
+      "script_sha256": "024f445f38e95b615d62a4b9072404491f0c953227cc69daae205b333367b2a7"
     }
   ]
 }
