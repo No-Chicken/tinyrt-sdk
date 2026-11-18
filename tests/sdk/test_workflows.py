@@ -197,7 +197,7 @@ class SDKTests(unittest.TestCase):
         self.assertTrue((ROOT/'examples/flappy/main.c').is_file())
         app=self.sdk.load_manifest(ROOT/'examples/flappy/app.json')
         self.assertEqual(app['permissions'],31)
-        self.assertEqual(app['app_id'],'demo.sky-hop')
+        self.assertEqual(app['app_id'],'flappy')
         examples = ROOT / 'examples'
         catalog = (examples / 'README.md').read_text(encoding='utf-8')
         listed = re.findall(r'\]\(([a-z0-9_]+)/README\.md\)', catalog)
@@ -205,7 +205,7 @@ class SDKTests(unittest.TestCase):
         for name in listed:
             self.assertTrue((examples / name / 'README.md').is_file())
         wave=self.sdk.load_manifest(ROOT/'examples/wave_sim/app.json')
-        self.assertEqual((wave['app_id'],wave['version']),('demo.wave-sim',13))
+        self.assertEqual((wave['app_id'],wave['version']),('wave-sim',13))
         quest=self.sdk.load_manifest(ROOT/'examples/pixel_quest/app.json')
         self.assertEqual((quest['app_id'],quest['version'],quest['permissions']),('pixel-quest',3,63))
         self.assertEqual(app['version'],6)

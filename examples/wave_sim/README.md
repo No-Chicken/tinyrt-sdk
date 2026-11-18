@@ -2,7 +2,7 @@
 
 开发版固件可从 SDK 根目录运行 `python tools/tinyrt.py dev examples/wave_sim` 构建、安装并启动应用。加 `--watch` 后会在源码变化时重装。
 
-客户版固件先运行 `python tools/tinyrt.py build examples/wave_sim` 和 `python tools/tinyrt.py pack examples/wave_sim`。在设备应用大厅打开“添加”页，运行 `python tools/tinyrt.py install examples/wave_sim/build/demo.wave-sim.trpkg --transport ble`，在设备上确认安装，再从大厅启动。
+客户版固件先运行 `python tools/tinyrt.py build examples/wave_sim` 和 `python tools/tinyrt.py pack examples/wave_sim`。在设备应用大厅打开“添加”页，运行 `python tools/tinyrt.py install examples/wave_sim/build/wave-sim.trpkg --transport ble`，在设备上确认安装，再从大厅启动。
 
 目标设备为 Magie S31，最低固件为 0.1.0（ABI 1.1）。使用 SDK 的 `pack` 或 `release` 生成包含 S31 AOT 的包。
 
@@ -21,7 +21,7 @@ python tests/wave_sim/run_native.py --cc path/to/zig.exe
 python tools/tinyrt.py build examples/wave_sim --cc path/to/zig.exe
 python tools/tinyrt.py run examples/wave_sim --runner path/to/tinyrt-run.exe --events examples/wave_sim/events.json --frames 990,3300,6000
 python tools/tinyrt.py pack examples/wave_sim
-python tools/tinyrt.py validate examples/wave_sim/build/demo.wave-sim.trpkg
+python tools/tinyrt.py validate examples/wave_sim/build/wave-sim.trpkg
 ```
 
 性能测量使用宿主串口统计，见 [性能测量](../../docs/performance.md)。

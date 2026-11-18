@@ -44,7 +44,7 @@ my-game/
 
 ```json
 {
-  "app_id": "demo.sky-hop",
+  "app_id": "flappy",
   "title": "Flappy Bird",
   "version": 2,
   "abi_version": 1,
@@ -105,7 +105,7 @@ README 不嵌入原始 HTML，不引用外部图片；允许链接 HTTPS 文档�
 推荐名称 `<app_id>-v<version>-<variant>.zip`，上架 variant 为 `wasm-aot`。文件名只用于人读，真实身份以清单和应用包为准。
 
 ```text
-demo.sky-hop-v2-wasm-aot.zip
+flappy-v2-wasm-aot.zip
   release.json
   package.trpkg
   cover.png

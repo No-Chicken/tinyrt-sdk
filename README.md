@@ -213,10 +213,10 @@ PNG 默认生成小端 RGB565（忽略透明度）。`index8` 输出逐像素索
 BLE 安装使用单独的 `tools/ble_install.py`，先查看 `--help`。它需要 Bleak；Windows 配对还需要对应 WinRT Python 包。设备配对和具体传输 profile 由产品配置提供，应用构建不依赖这些包。
 
 ```powershell
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install examples/flappy/build/demo.sky-hop.trpkg
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install examples/flappy/build/flappy.trpkg
 ```
 
-支持隔离诊断的宿主在 HELLO capability bit 3 标记能力：`quarantine` 列出损坏包，`uninstall --app-id demo.sky-hop` 解析当前目录完整身份后卸载，无需原包。`list` 只列健康项。重新 install 相同的原包可修复隔离项；最终 QUERY 仍必须确认完整身份，不能把 VERIFY_FAILED 当成成功。
+支持隔离诊断的宿主在 HELLO capability bit 3 标记能力：`quarantine` 列出损坏包，`uninstall --app-id flappy` 解析当前目录完整身份后卸载，无需原包。`list` 只列健康项。重新 install 相同的原包可修复隔离项；最终 QUERY 仍必须确认完整身份，不能把 VERIFY_FAILED 当成成功。
 
 支持分页的宿主在 HELLO capability bit 4 标记能力，最多安装 16 个应用。客户端使用 `LIST_PAGE=0x18`，每页最多三条 info72；目录在翻页期间变化时，从第一页重新读取，完整读取最多尝试三次。generation 是不透明的 64 位标记，客户端校验每页标记、总数、游标、规范身份和严格递增的 app ID；畸形回复立即失败。管理消息不超过 256 字节。
 
@@ -224,8 +224,8 @@ python tools/ble_install.py --address AA:BB:CC:DD:EE:FF --pair install examples/
 
 ```powershell
 python tools/ble_install.py --address AA:BB:CC:DD:EE:FF storage
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id demo.sky-hop
-python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info examples/flappy/build/demo.sky-hop.trpkg
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info --app-id flappy
+python tools/ble_install.py --address AA:BB:CC:DD:EE:FF info examples/flappy/build/flappy.trpkg
 ```
 
 `storage` 输出实际包字节、4 KiB 对齐占用、总空闲、最大连续空闲、健康和隔离总数及容量限制；总空闲不保证能暂存同样大小的连续更新。传输中返回 BUSY。generation 在 JSON 中是精确的 16 位十六进制字符串，表示 wire 小端 u64 的数值，来源与分页 token 相同。BSP RAM 有效位未设置时，六项 internal/external RAM 指标输出 null；runtime heap 的 limit/used/peak 独立有效，始终校验 used≤peak≤limit。

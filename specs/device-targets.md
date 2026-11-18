@@ -6,7 +6,7 @@ Magie runs RISC-V AOT code. The SDK uses the pinned compiler in `tools/toolchain
   for provenance, licenses, checksum verification and website integration.
 
 ```powershell
-python tools/tinyrt.py pack examples/flappy --wasm examples/flappy/build/demo.sky-hop.wasm --output examples/flappy/build/demo.sky-hop-s31.trpkg 
+python tools/tinyrt.py pack examples/flappy --wasm examples/flappy/build/flappy.wasm --output examples/flappy/build/flappy-s31.trpkg
 ```
 
 The S31 target uses RV32 with M/A/C/F features and **ilp32f single-precision hard-float calling

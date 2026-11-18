@@ -2,7 +2,7 @@
 
 开发版固件可从 SDK 根目录运行 `python tools/tinyrt.py dev examples/flappy` 构建、安装并启动应用。加 `--watch` 后会在源码变化时重装。
 
-客户版固件先运行 `python tools/tinyrt.py build examples/flappy` 和 `python tools/tinyrt.py pack examples/flappy`。在设备应用大厅打开“添加”页，运行 `python tools/tinyrt.py install examples/flappy/build/demo.sky-hop.trpkg --transport ble`，在设备上确认安装，再从大厅启动。
+客户版固件先运行 `python tools/tinyrt.py build examples/flappy` 和 `python tools/tinyrt.py pack examples/flappy`。在设备应用大厅打开“添加”页，运行 `python tools/tinyrt.py install examples/flappy/build/flappy.trpkg --transport ble`，在设备上确认安装，再从大厅启动。
 
 目标设备为 Magie S31，最低固件为 0.1.0（ABI 1.1）。使用 SDK 的 `pack` 或 `release` 生成包含 S31 AOT 的包。
 
@@ -32,11 +32,11 @@ python tests/flappy/run_native.py --cc path/to/zig.exe
 python tools/tinyrt.py build examples/flappy --cc path/to/zig.exe
 python tools/tinyrt.py run examples/flappy --runner path/to/tinyrt-run.exe --events examples/flappy/events.json --frames 32,990,3300,6600,9900,14000 --output examples/flappy/build/classic-preview
 python tools/tinyrt.py pack examples/flappy
-python tools/tinyrt.py validate examples/flappy/build/demo.sky-hop.trpkg
+python tools/tinyrt.py validate examples/flappy/build/flappy.trpkg
 python tools/tinyrt.py release examples/flappy --cc path/to/zig.exe --runner path/to/tinyrt-run.exe
 ```
 
-应用 ID 为 demo.sky-hop。游戏中分数显示在屏幕 y=88。
+应用 ID 为 flappy。游戏中分数显示在屏幕 y=88。
 
 游戏使用 33 ms 固定整数物理与有界补帧；8 ms 时钟分四条带合成 233×233 RGB565 完整帧，再由宿主放大到 466×466。一帧只提交一张图，部分合成帧不显示；像素素材通过包内只读资源读取，避免超出解释器回调预算。32 ms 合成周期是软件目标，不是设备帧率实测结果。
 
